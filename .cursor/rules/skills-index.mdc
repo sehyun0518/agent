@@ -1,0 +1,28 @@
+---
+description: 프론트엔드 설계·상태·패턴·성능 스킬 색인. 컴포넌트 API 설계, 상태 배치, React/React Native 성능을 다룰 때 해당 스킬 파일을 참조.
+alwaysApply: false
+---
+
+# 스킬 색인 (참조)
+
+스킬 본문은 저장소 `skills/`에 있다. 복제하지 않고 필요 시 해당 파일을 연다.
+
+## 아키텍처 · 패턴 · 상태 (컴포넌트 API 설계 시)
+
+- `skills/architecture-avoid-boolean-props.md`
+- `skills/architecture-compound-components.md`
+- `skills/patterns-children-render-props.md`
+- `skills/patterns-explicit-variants.md`
+- `skills/state-lift-state.md`
+- `skills/state-context-interface.md`
+- `skills/state-decouple-implementation.md`
+- `skills/react19-no-forwardref.md`
+
+(spec 에이전트가 계약을 설계할 때 주로 참조)
+
+## 성능 규칙 팩 (구현 시, 타깃별)
+
+- **웹 React/Next**: `skills/react-best-practice/SKILL.md` (+ `rules/`)
+- **React Native(Expo)**: `skills/react-native-skills/SKILL.md` (+ `rules/`)
+
+implementation 에이전트는 배정 컴포넌트의 타깃에 맞는 팩만 적용한다(섞지 않음).

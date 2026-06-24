@@ -1,0 +1,19 @@
+---
+description: 요구사항 스키마·완결성 판정·스펙(계약) 문서 포맷의 단일 출처. 요구사항을 구조화/검증/이관하거나 스펙을 읽거나 쓰거나, 요구사항이 충분한지 판정할 때 반드시 참조.
+alwaysApply: false
+---
+
+# Requirements Spec (참조)
+
+전체 정의는 저장소 `skills/requirements-spec.md`를 단일 출처로 따른다.
+여기 복제하지 않는다.
+
+요지:
+
+- 필수 슬롯 6개: `goal` · `target` · `design_ref` · `scope_in` ·
+  `scope_out` · `acceptance_criteria` (+ 권장 슬롯).
+- 경계마다(논의→설계→실행→피드백) 이 계약으로 완결성 검사.
+- `design_ref`는 DESIGN.md 표준 따름 + 의도적 벗어남만 기록.
+- `acceptance_criteria`는 그대로 피드백 레이어의 검증 게이트가 된다.
+
+@skills/requirements-spec.md
