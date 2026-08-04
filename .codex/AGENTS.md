@@ -18,6 +18,7 @@
 
 ## Capability
 
+- `git-operations` — Git 작업
 - `implementation` — 실제 구현
 - `requirements` — 요구사항 논의
 - `review` — 통합 검토

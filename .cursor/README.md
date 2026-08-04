@@ -19,6 +19,7 @@
 
 | 에이전트 | 소유 | 모델 | 권한 |
 |---|---|---|---|
+| `git-operator` | Capability git-operations | composer-2.5 | 쓰기 |
 | `implementation` | Capability implementation | composer-2.5 | 쓰기 |
 | `discussion` | Capability requirements | composer-2.5 | 읽기 전용 |
 | `review` | Capability review | gpt-5.5 | 읽기 전용 |
@@ -38,4 +39,4 @@
 - 모델 이름은 티어(`cheap`/`strong`)를 이 플랫폼 값으로 옮긴 것이다. 바꾸려면
   `tooling/generators/platforms.json`을 고친다.
 
-Capability 6종의 계약은 각 `capabilities/<id>/capability.yaml`이 단일 출처다.
+Capability 7종의 계약은 각 `capabilities/<id>/capability.yaml`이 단일 출처다.

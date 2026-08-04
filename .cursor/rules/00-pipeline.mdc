@@ -12,6 +12,7 @@ alwaysApply: true
 
 | id | requires | produces |
 |---|---|---|
+| `git-operations` | — | 변형이 소유 |
 | `implementation` | specification.contract · specification.completed · test-design.completed · test.red-confirmed | implementation.patch · implementation.summary · implementation.completed |
 | `requirements` | — | requirements.spec · requirements.completed |
 | `review` | specification.contract · specification.completed · implementation.completed · implementation.patch · test.unit.completed | review.verdict · review.completed |
@@ -25,19 +26,19 @@ alwaysApply: true
 
 자동 진행: specification → reproduction → red-check → fix → unit → integration → e2e → review
 
-사람이 호출: requirements
+사람이 호출: requirements · inspect · commit · push · pr-create · pr-update
 
 ### `change` — 기본 변경 작업
 
 자동 진행: specification → test-design → red-check → implementation → unit → integration → e2e → review
 
-사람이 호출: requirements
+사람이 호출: requirements · inspect · commit · push · pr-preview · pr-create · pr-update
 
 ### `review` — 검토 전용
 
 자동 진행: integration → e2e → review
 
-사람이 호출: unit
+사람이 호출: unit · inspect · pr-preview
 
 ## 전이 규칙
 

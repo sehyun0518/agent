@@ -1,0 +1,23 @@
+id: destructive-approval
+scope: destructive-actions
+level: immutable
+relaxable: false
+title: 파괴적 작업 승인
+statement: >-
+  permissions.destructive가 true인 Capability나 변형은 사람의 명시적 승인 없이
+  실행할 수 없다. 승인은 approval-record 증거로 남으며 status가 granted여야 한다.
+  파괴적 작업은 워크플로의 automatic 단계가 될 수 없고, 승인 거부를 재시도로
+  우회할 수 없다.
+rationale: >-
+  되돌리기 어렵거나 외부로 나가는 작업은 "한 번 잘못"의 비용이 크다. 푸시·PR 생성·
+  이력 재작성·파일 삭제가 여기 해당한다.
+appliesTo: ["*"]
+enforcement:
+  validator: destructive-requires-manual-and-approval
+  hooks:
+    - event: before-capability
+      blocking: true
+  requiresApproval: true
+  requiresEvidence:
+    - approval-record
+    - policy-decision

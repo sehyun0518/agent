@@ -53,6 +53,21 @@
     },
     "review.verdict": {
       "producedBy": "review"
+    },
+    "git.commit-ref": {
+      "producedBy": "git-operations#commit"
+    },
+    "git.push-ref": {
+      "producedBy": "git-operations#push"
+    },
+    "git.pr-preview": {
+      "producedBy": "git-operations#pr-preview"
+    },
+    "git.pr-ref": {
+      "producedBy": "git-operations#pr-create"
+    },
+    "git.inspection": {
+      "producedBy": "git-operations#inspect"
     }
   },
   "evidence": {

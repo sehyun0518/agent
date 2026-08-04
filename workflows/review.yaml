@@ -63,3 +63,19 @@ steps:
     note: >-
       계약 대조와 증거 소비만 한다. 코드를 고치지 않고, 지적은 프로파일의 routing이
       정한 소유자로 라우팅한다.
+
+  - id: inspect
+    capability: git-operations
+    variant: inspect
+    trigger: manual
+    produces:
+      - git.inspection
+    note: 읽기 전용. 다른 Git 작업 전에 대상을 확인한다.
+
+  - id: pr-preview
+    capability: git-operations
+    variant: pr-preview
+    trigger: manual
+    produces:
+      - git.pr-preview
+    note: 판정 결과를 PR 본문으로 정리해 보여주기만 한다. 게시하지 않는다.

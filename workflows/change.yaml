@@ -140,3 +140,51 @@ steps:
     note: >-
       테스트를 직접 돌리지 않는다. 증거를 소비한다. integration·e2e가 생략됐다면
       생략 사유와 승인 기록을 함께 본다.
+
+  # ── Git 작업 (전부 manual, 서로 연쇄하지 않는다) ────────────
+  - id: inspect
+    capability: git-operations
+    variant: inspect
+    trigger: manual
+    produces:
+      - git.inspection
+    note: 읽기 전용. 다른 Git 작업 전에 대상을 확인한다.
+
+  - id: commit
+    capability: git-operations
+    variant: commit
+    trigger: manual
+    produces:
+      - git.commit-ref
+    note: push하지 않는다.
+
+  - id: push
+    capability: git-operations
+    variant: push
+    trigger: manual
+    produces:
+      - git.push-ref
+    note: 승인이 필요하다. PR을 만들지 않는다.
+
+  - id: pr-preview
+    capability: git-operations
+    variant: pr-preview
+    trigger: manual
+    produces:
+      - git.pr-preview
+    note: 읽기 전용. 아무것도 게시하지 않는다.
+
+  - id: pr-create
+    capability: git-operations
+    variant: pr-create
+    trigger: manual
+    produces:
+      - git.pr-ref
+    note: 기존 PR이 있으면 이걸 쓰지 않고 pr-update를 쓴다.
+
+  - id: pr-update
+    capability: git-operations
+    variant: pr-update
+    trigger: manual
+    produces:
+      - git.pr-ref

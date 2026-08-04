@@ -131,3 +131,39 @@ steps:
     produces:
       - review.verdict
       - review.completed
+
+  - id: inspect
+    capability: git-operations
+    variant: inspect
+    trigger: manual
+    produces:
+      - git.inspection
+    note: 읽기 전용. 다른 Git 작업 전에 대상을 확인한다.
+
+  - id: commit
+    capability: git-operations
+    variant: commit
+    trigger: manual
+    produces:
+      - git.commit-ref
+
+  - id: push
+    capability: git-operations
+    variant: push
+    trigger: manual
+    produces:
+      - git.push-ref
+
+  - id: pr-create
+    capability: git-operations
+    variant: pr-create
+    trigger: manual
+    produces:
+      - git.pr-ref
+
+  - id: pr-update
+    capability: git-operations
+    variant: pr-update
+    trigger: manual
+    produces:
+      - git.pr-ref
