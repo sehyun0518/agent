@@ -1,0 +1,378 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-harness/schemas/capability.schema.json",
+  "title": "Capability Manifest",
+  "description": "재사용 가능한 작업 유형 하나의 계약. capabilities/<id>/capability.yaml에 둔다. 실행 인스턴스(특정 요청에서 이 Capability를 쓴 기록)는 이 스키마의 대상이 아니다.",
+  "type": "object",
+  "required": ["id", "version", "title", "requires", "produces", "permissions", "entrypoints", "failure"],
+  "additionalProperties": false,
+
+  "allOf": [
+    {
+      "$comment": "변형이 없는 Capability는 자기 증거와 완료 조건을 직접 선언해야 한다. 변형이 있으면 각 변형이 소유하므로 루트는 생략할 수 있다. 어느 쪽이든 증거 없이 완료되는 경로는 없다.",
+      "if": { "not": { "required": ["variants"] } },
+      "then": { "required": ["evidence", "completion"] }
+    }
+  ],
+
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Capability ID. 디렉터리명과 일치해야 한다."
+    },
+    "version": { "type": "integer", "minimum": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+
+    "requires": {
+      "description": "선행 조건. 이 토큰들이 증거로 충족되기 전에는 실행할 수 없다.",
+      "$ref": "#/$defs/tokenList"
+    },
+    "produces": {
+      "description": "이 Capability가 만드는 신호와 아티팩트.",
+      "$ref": "#/$defs/tokenList"
+    },
+
+    "permissions": { "$ref": "#/$defs/permissions" },
+
+    "evidence": {
+      "type": "array",
+      "minItems": 1,
+      "description": "이 Capability가 반드시 생성해야 하는 증거 종류.",
+      "items": {
+        "type": "object",
+        "required": ["kind"],
+        "additionalProperties": false,
+        "properties": {
+          "kind": { "$ref": "#/$defs/evidenceKind" },
+          "required": { "type": "boolean", "default": true },
+          "artifactRequired": {
+            "type": "boolean",
+            "default": false,
+            "description": "true면 status만으로 부족하고 원본 경로를 반드시 남겨야 한다."
+          }
+        }
+      }
+    },
+
+    "completion": {
+      "type": "object",
+      "description": "실행 완료 조건. 상태 플래그가 아니라 증거로 판정한다.",
+      "required": ["requiresEvidence"],
+      "additionalProperties": false,
+      "properties": {
+        "requiresEvidence": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/evidenceKind" },
+          "description": "이 증거들이 기록돼야 완료로 본다. evidence[].kind의 부분집합이어야 한다."
+        },
+        "expectedStatus": {
+          "type": "object",
+          "description": "특정 증거가 특정 status여야 완료인 경우. 예: test.red-proof는 confirmed여야 한다.",
+          "propertyNames": { "$ref": "#/$defs/evidenceKind" },
+          "additionalProperties": { "type": "string" }
+        }
+      }
+    },
+
+    "entrypoints": { "$ref": "#/$defs/entrypoints" },
+    "failure": { "$ref": "#/$defs/failure" },
+
+    "chaining": {
+      "type": "object",
+      "description": "호출 방향 두 가지를 따로 선언한다. 나가는 호출(autoInvoke)과 들어오는 자동 진행(autoTriggerable)은 다른 문제다.",
+      "additionalProperties": false,
+      "properties": {
+        "autoInvoke": {
+          "type": "boolean",
+          "default": false,
+          "description": "나가는 방향. 이 Capability가 다른 Capability를 직접 호출할 수 있는지. Git 변형이 서로를 부르지 못하게 하는 것이 이 필드다."
+        },
+        "autoTriggerable": {
+          "type": "boolean",
+          "default": true,
+          "description": "들어오는 방향. 워크플로가 이 Capability를 automatic 단계로 둘 수 있는지. false면 사람이 명시적으로 불러야 한다."
+        },
+        "invokable": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "description": "autoInvoke가 true일 때만 의미가 있다. 여기 없는 Capability는 호출할 수 없다.",
+          "default": []
+        }
+      }
+    },
+
+    "variants": {
+      "type": "object",
+      "description": "같은 훈련을 공유하되 독립된 produces·evidence를 갖는 하위 실행 형태. 예: test-execution의 unit/integration/e2e.",
+      "minProperties": 1,
+      "propertyNames": { "pattern": "^[a-z][a-z0-9-]*$" },
+      "additionalProperties": {
+        "type": "object",
+        "required": ["produces", "evidence"],
+        "additionalProperties": false,
+        "properties": {
+          "title": { "type": "string" },
+          "description": { "type": "string" },
+          "requires": { "$ref": "#/$defs/tokenList" },
+          "produces": { "$ref": "#/$defs/tokenList" },
+          "evidence": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["kind"],
+              "additionalProperties": false,
+              "properties": {
+                "kind": { "$ref": "#/$defs/evidenceKind" },
+                "required": { "type": "boolean", "default": true },
+                "artifactRequired": { "type": "boolean", "default": false }
+              }
+            }
+          },
+          "completion": {
+            "type": "object",
+            "required": ["requiresEvidence"],
+            "additionalProperties": false,
+            "properties": {
+              "requiresEvidence": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "$ref": "#/$defs/evidenceKind" }
+              },
+              "expectedStatus": {
+                "type": "object",
+                "propertyNames": { "$ref": "#/$defs/evidenceKind" },
+                "additionalProperties": { "type": "string" }
+              }
+            }
+          },
+          "permissions": { "$ref": "#/$defs/permissions" },
+          "entrypoints": { "$ref": "#/$defs/entrypoints" },
+          "requiresApproval": {
+            "type": "boolean",
+            "default": false,
+            "description": "사람의 명시적 승인 없이는 실행할 수 없다. approval-record 증거를 함께 선언해야 한다."
+          },
+          "commandKey": {
+            "type": "string",
+            "description": "저장소 profile의 commands에서 실제 명령을 찾을 키. 공용 하네스는 명령 문자열을 담지 않는다.",
+            "pattern": "^[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)*$"
+          }
+        }
+      }
+    },
+
+    "profileExtensible": {
+      "type": "object",
+      "description": "프로파일이 이 Capability에 무엇을 주입할 수 있는지. 여기 허용되지 않은 축은 프로파일이 건드릴 수 없다.",
+      "additionalProperties": false,
+      "properties": {
+        "skills": { "type": "boolean", "default": true },
+        "agents": { "type": "boolean", "default": false },
+        "tools": {
+          "type": "boolean",
+          "default": false,
+          "description": "프로파일이 이 Capability 에이전트의 도구·MCP 서버를 늘릴 수 있는지. 늘리더라도 permissions 상한은 그대로 적용된다."
+        },
+        "hooks": { "type": "boolean", "default": true },
+        "commands": { "type": "boolean", "default": true }
+      }
+    }
+  },
+
+  "$defs": {
+    "token": {
+      "type": "string",
+      "pattern": "^([a-z][a-z0-9-]*:)?[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$",
+      "description": "신호·아티팩트 토큰. 반드시 도메인 한정이다(<domain>.<noun>). 코어는 vocabulary.json 등록 필수, 프로파일 확장은 <namespace>: 접두사."
+    },
+
+    "evidenceKind": {
+      "type": "string",
+      "pattern": "^([a-z][a-z0-9-]*:)?[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)*$",
+      "description": "증거 종류. 신호·아티팩트와 달리 단일 세그먼트를 허용한다(changed-files, review-findings). 증거는 어느 단계가 냈는지가 producedBy에 이미 있어 도메인 한정이 불필요하다."
+    },
+
+    "tokenList": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/token" },
+      "uniqueItems": true,
+      "default": []
+    },
+
+    "permissions": {
+      "type": "object",
+      "description": "정책 엔진이 보는 의미 권한. 각 에이전트의 구체 도구 목록은 이 범위를 넘을 수 없다.",
+      "required": ["filesystem", "network", "destructive"],
+      "additionalProperties": false,
+      "properties": {
+        "filesystem": { "enum": ["none", "read", "write"] },
+        "network": { "enum": ["none", "allowlist", "any"] },
+        "destructive": {
+          "type": "boolean",
+          "default": false,
+          "description": "되돌리기 어렵거나 외부에 나가는 작업. true면 승인 게이트가 붙는다."
+        },
+        "networkAllowlist": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "network가 allowlist일 때의 호스트 목록.",
+          "default": []
+        }
+      }
+    },
+
+    "entrypoints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agents": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "required": ["id", "file", "tools", "description"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+              "file": { "type": "string", "description": "Capability 디렉터리 기준 상대 경로." },
+              "description": {
+                "type": "string",
+                "minLength": 1,
+                "description": "언제 이 에이전트를 부르는지. 플랫폼의 자동 위임 판단에 쓰이므로 생성기가 frontmatter로 옮긴다."
+              },
+              "tools": {
+                "type": "array",
+                "items": { "type": "string" },
+                "description": "구체 도구 목록. 검증기가 permissions 범위를 넘는지 검사하고, 생성기가 플랫폼 frontmatter로 옮긴다.",
+                "uniqueItems": true
+              },
+              "modelTier": {
+                "enum": ["cheap", "strong", "inherit"],
+                "default": "inherit",
+                "description": "모델 이름이 아니라 티어. 실제 모델 ID는 플랫폼 생성 시 매핑한다."
+              },
+              "background": { "type": "boolean", "default": false },
+              "isolation": { "enum": ["none", "worktree"], "default": "none" },
+              "readonly": { "type": "boolean", "default": false },
+              "memory": { "type": "string", "description": "플랫폼 메모리 스코프. 예: project" },
+              "color": { "type": "string" },
+              "mcpServers": {
+                "type": "array",
+                "items": { "type": "object" },
+                "description": "이 에이전트가 필요로 하는 MCP 서버 정의. 생성기가 플랫폼 형식으로 옮긴다.",
+                "default": []
+              }
+            }
+          }
+        },
+        "skills": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string",
+            "pattern": "^([a-z][a-z0-9-]*[:/])?[a-z][a-z0-9-]*$",
+            "description": "자기 Capability 스킬은 이름만, 교차 참조는 <capability>/<skill>, 프로파일 스킬은 <namespace>:<skill>."
+          },
+          "uniqueItems": true
+        },
+        "tools": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "required": ["id", "file"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+              "file": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "hooks": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "object",
+            "required": ["event", "file"],
+            "additionalProperties": false,
+            "properties": {
+              "event": {
+                "enum": [
+                  "before-capability",
+                  "after-capability",
+                  "before-tool",
+                  "after-tool",
+                  "on-evidence",
+                  "on-failure"
+                ]
+              },
+              "file": { "type": "string" },
+              "blocking": {
+                "type": "boolean",
+                "default": true,
+                "description": "true면 훅 실패가 Capability 실행을 막는다. 필수 검증 훅은 blocking이어야 한다."
+              },
+              "description": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+
+    "failure": {
+      "type": "object",
+      "description": "고정 분류 4종. 분류 자체와 policy-denied의 동작은 바꿀 수 없고, 재시도 횟수만 조정한다.",
+      "required": ["transient", "precondition-unmet", "contract-violation", "policy-denied"],
+      "additionalProperties": false,
+      "properties": {
+        "transient": {
+          "type": "object",
+          "required": ["action"],
+          "additionalProperties": false,
+          "properties": {
+            "action": { "const": "retry" },
+            "maxAttempts": { "type": "integer", "minimum": 1, "maximum": 3, "default": 2 }
+          }
+        },
+        "precondition-unmet": {
+          "type": "object",
+          "required": ["action"],
+          "additionalProperties": false,
+          "properties": {
+            "action": { "const": "return-to-producer" },
+            "note": { "type": "string" }
+          }
+        },
+        "contract-violation": {
+          "type": "object",
+          "required": ["action"],
+          "additionalProperties": false,
+          "properties": {
+            "action": { "const": "escalate" },
+            "escalateTo": {
+              "type": "string",
+              "description": "되돌릴 Capability id 또는 'orchestrator'.",
+              "default": "orchestrator"
+            }
+          }
+        },
+        "policy-denied": {
+          "type": "object",
+          "required": ["action"],
+          "additionalProperties": false,
+          "properties": {
+            "action": {
+              "const": "halt",
+              "description": "재시도 불가. 정책 거부를 재시도로 우회할 수 없게 스키마가 고정한다."
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,6 +1,8 @@
 ---
-name: react19-no-forwardref
-description: React 19 API Changes — cleaner component definitions and context usage. Apply when working on: react19, refs, context, hooks.
+title: React 19 API Changes
+impact: MEDIUM
+impactDescription: cleaner component definitions and context usage
+tags: react19, refs, context, hooks
 ---
 
 ## React 19 API Changes

@@ -1,0 +1,15 @@
+id: required-verification-hooks
+scope: permissions
+level: immutable
+relaxable: false
+title: 필수 검증 훅
+statement: >-
+  blocking으로 선언된 검증 훅은 비활성화하거나 우회할 수 없다. 프로파일과 저장소
+  profile은 훅을 추가할 수 있지만 기존 blocking 훅을 제거하거나 blocking:false로
+  낮출 수 없다. 훅 실패는 재시도로 우회되지 않는다.
+rationale: >-
+  게이트를 끌 수 있으면 게이트가 아니다. red 증거 요구·완결성 게이트·계약 고정처럼
+  공정의 뼈대가 되는 검사가 여기 해당한다.
+appliesTo: ["*"]
+enforcement:
+  validator: blocking-hooks-preserved

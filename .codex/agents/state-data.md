@@ -1,22 +1,16 @@
 ---
 name: state-data
-source: ../../agents/state-data.md
-skills:
-  - state-lift-state
-  - state-context-interface
-  - state-decouple-implementation
-codex_role: state-data-worker
+source: profiles/frontend/agents/state-data.md
+profile: frontend
 ---
 
-# State Data Role for Codex
+# state-data (Codex 래퍼)
 
-원본 역할 정의는 `agents/state-data.md`다.
+프로파일 `frontend`의 역할이다. 원본은 `profiles/frontend/agents/state-data.md`.
 
 ## 사용
 
-1. `agents/state-data.md`를 읽고 따른다.
-2. 상태 설계가 필요하면 `.codex/skills/state-lift-state/SKILL.md`,
-   `.codex/skills/state-context-interface/SKILL.md`,
-   `.codex/skills/state-decouple-implementation/SKILL.md`를 읽는다.
-3. 고정된 계약을 import해 사용하고 다시 정의하지 않는다.
-4. UI, JSX, 스타일링은 만들지 않는다.
+1. `profiles/frontend/agents/state-data.md`를 읽고 따른다.
+2. 필요한 스킬은 `.codex/skills/<skill>/SKILL.md`에서 읽는다. 대형 규칙 팩은 필요한
+   rule 파일만 추가로 연다.
+3. 이 래퍼는 원본을 복제하지 않는다. 역할을 바꾸려면 원본을 고친다.

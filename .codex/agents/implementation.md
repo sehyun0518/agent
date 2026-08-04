@@ -1,20 +1,19 @@
 ---
 name: implementation
-source: ../../agents/implementation.md
+source: capabilities/implementation/agents/implementation.md
+capability: implementation
 skills:
   - react-best-practice
   - react-native-skills
-codex_role: component-worker
 ---
 
-# Implementation Role for Codex
+# implementation (Codex 래퍼)
 
-원본 역할 정의는 `agents/implementation.md`다.
+Capability `implementation`의 역할이다. 원본은 `capabilities/implementation/agents/implementation.md`.
 
 ## 사용
 
-1. `agents/implementation.md`를 읽고 따른다.
-2. 타깃이 웹 React/Next면 `.codex/skills/react-best-practice/SKILL.md`를 사용한다.
-3. 타깃이 React Native/Expo면 `.codex/skills/react-native-skills/SKILL.md`를 사용한다.
-4. 두 타깃의 스킬을 섞지 않는다.
-5. 배정된 컴포넌트 또는 작은 컴포넌트 그룹만 구현하고, 계약·데이터·토큰은 소비만 한다.
+1. `capabilities/implementation/agents/implementation.md`를 읽고 따른다.
+2. 필요한 스킬은 `.codex/skills/<skill>/SKILL.md`에서 읽는다. 대형 규칙 팩은 필요한
+   rule 파일만 추가로 연다.
+3. 이 래퍼는 원본을 복제하지 않는다. 역할을 바꾸려면 원본을 고친다.

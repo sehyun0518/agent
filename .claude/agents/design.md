@@ -1,19 +1,17 @@
 ---
 name: design
-description: >-
-  기능의 디자인 토큰과 컴포넌트별 시각 스펙을 산출합니다 — 색·간격·타이포·
-  상태·반응형. 스펙 에이전트와 병렬로 기능 시작 단계에서 사용하세요.
-  컴포넌트를 직접 구현하지 않고, 구현 에이전트가 소비할 토큰과 스펙만
-  만듭니다.
-tools: Read, Grep, Glob, Bash, Write, Edit, mcp__playwright
+description: 기능의 디자인 토큰과 컴포넌트별 시각 스펙을 산출합니다 — 색·간격·타이포·상태·반응형. 계약 고정과 병렬로 기능 시작 단계에서 사용하세요. 컴포넌트를 직접 구현하지 않고, 구현이 소비할 토큰과 스펙만 만듭니다.
 model: inherit
+tools: Read, Grep, Glob, Bash, Write, Edit, mcp__playwright
 memory: project
 color: yellow
 mcpServers:
   - playwright:
       type: stdio
       command: npx
-      args: ["-y", "@playwright/mcp@latest"]
+      args:
+        - -y
+        - "@playwright/mcp@latest"
 ---
 
 당신은 Design 에이전트입니다. 구현 에이전트가 소비할 디자인 토큰과

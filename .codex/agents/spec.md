@@ -1,23 +1,22 @@
 ---
 name: spec
-source: ../../agents/spec.md
+source: capabilities/specification/agents/spec.md
+capability: specification
 skills:
   - architecture-avoid-boolean-props
   - architecture-compound-components
   - patterns-children-render-props
   - patterns-explicit-variants
-codex_role: contract-author
+  - react19-no-forwardref
 ---
 
-# Spec Role for Codex
+# spec (Codex 래퍼)
 
-원본 역할 정의는 `agents/spec.md`다.
+Capability `specification`의 역할이다. 원본은 `capabilities/specification/agents/spec.md`.
 
 ## 사용
 
-1. `agents/spec.md`를 읽고 따른다.
-2. 컴포넌트 API·계약 설계 시 frontmatter의 스킬을 `.codex/skills/*/SKILL.md`에서
-   필요한 만큼 읽는다.
-3. 구현·스타일링·데이터 레이어는 만들지 않는다.
-4. 병렬 실행자가 기다리지 않도록 타입, props, API 스키마, 훅 시그니처, test-id를
-   고정 가능한 파일로 산출한다.
+1. `capabilities/specification/agents/spec.md`를 읽고 따른다.
+2. 필요한 스킬은 `.codex/skills/<skill>/SKILL.md`에서 읽는다. 대형 규칙 팩은 필요한
+   rule 파일만 추가로 연다.
+3. 이 래퍼는 원본을 복제하지 않는다. 역할을 바꾸려면 원본을 고친다.

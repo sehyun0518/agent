@@ -1,0 +1,24 @@
+---
+description: 스킬 색인. 스킬 본문은 저장소 소스에 있고 여기서 복제하지 않는다.
+alwaysApply: false
+---
+
+# 스킬 색인 (참조)
+
+필요할 때 해당 파일을 연다. 복제하지 않는다.
+
+- `requirements-spec` → `packages/boundary-contracts/requirements-spec/SKILL.md`
+- `architecture-avoid-boolean-props` → `profiles/frontend/skills/architecture-avoid-boolean-props/SKILL.md`
+- `architecture-compound-components` → `profiles/frontend/skills/architecture-compound-components/SKILL.md`
+- `patterns-children-render-props` → `profiles/frontend/skills/patterns-children-render-props/SKILL.md`
+- `patterns-explicit-variants` → `profiles/frontend/skills/patterns-explicit-variants/SKILL.md`
+- `react19-no-forwardref` → `profiles/frontend/skills/react19-no-forwardref/SKILL.md`
+- `state-lift-state` → `profiles/frontend/skills/state-lift-state/SKILL.md`
+- `state-context-interface` → `profiles/frontend/skills/state-context-interface/SKILL.md`
+- `state-decouple-implementation` → `profiles/frontend/skills/state-decouple-implementation/SKILL.md`
+- `react-best-practice` → `profiles/frontend/skills/react-best-practice/SKILL.md`
+- `react-native-skills` → `profiles/frontend/skills/react-native-skills/SKILL.md`
+
+## 택일 주입
+
+- `implementation`: `react-best-practice` 또는 `react-native-skills` — **택일. 섞지 않는다.** (프로파일 `frontend`)

@@ -1,16 +1,16 @@
 ---
 name: accessibility
-source: ../../agents/accessibility.md
-codex_role: accessibility-finisher
+source: profiles/frontend/agents/accessibility.md
+profile: frontend
 ---
 
-# Accessibility Role for Codex
+# accessibility (Codex 래퍼)
 
-원본 역할 정의는 `agents/accessibility.md`다.
+프로파일 `frontend`의 역할이다. 원본은 `profiles/frontend/agents/accessibility.md`.
 
 ## 사용
 
-1. `agents/accessibility.md`를 읽고 따른다.
-2. 병합된 통합 빌드 위에서 키보드, 포커스, 시맨틱, 대비, 모션 환경설정을 점검한다.
-3. 접근성 범위의 수정만 직접 수행한다.
-4. 토큰 자체가 문제인 대비 결함은 `design` 역할로 되돌린다.
+1. `profiles/frontend/agents/accessibility.md`를 읽고 따른다.
+2. 필요한 스킬은 `.codex/skills/<skill>/SKILL.md`에서 읽는다. 대형 규칙 팩은 필요한
+   rule 파일만 추가로 연다.
+3. 이 래퍼는 원본을 복제하지 않는다. 역할을 바꾸려면 원본을 고친다.

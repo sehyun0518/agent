@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-harness/schemas/orchestrator.schema.json",
+  "title": "Orchestrator",
+  "description": "조정자의 진입점 선언. Capability가 아니므로 requires/produces·증거·실패 분류를 갖지 않는다 — 작업 단계가 아니라 횡단 관심사다. packages/orchestrator/orchestrator.yaml에 둔다.",
+  "type": "object",
+  "required": ["id", "version", "title", "agent"],
+  "additionalProperties": false,
+
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "version": { "type": "integer", "minimum": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+
+    "agent": {
+      "type": "object",
+      "required": ["id", "file", "tools", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "file": { "type": "string" },
+        "description": { "type": "string", "minLength": 1 },
+        "tools": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "modelTier": { "enum": ["cheap", "strong", "inherit"], "default": "strong" },
+        "memory": { "type": "string" },
+        "color": { "type": "string" }
+      }
+    },
+
+    "skills": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true,
+      "default": [],
+      "description": "교차 참조만 가능하다. 오케스트레이터는 자기 스킬을 소유하지 않는다."
+    },
+
+    "forbiddenReferences": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": [],
+      "description": "본체에 등장하면 안 되는 문자열. 검증기가 검사해 도메인 지식이 본체로 새는 것을 막는다."
+    }
+  }
+}

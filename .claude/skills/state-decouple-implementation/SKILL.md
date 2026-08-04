@@ -1,6 +1,8 @@
 ---
-name: state-decouple-implementation
-description: Decouple State Management from UI — enables swapping state implementations without changing UI. Apply when working on: composition, state, architecture.
+title: Decouple State Management from UI
+impact: MEDIUM
+impactDescription: enables swapping state implementations without changing UI
+tags: composition, state, architecture
 ---
 
 ## Decouple State Management from UI

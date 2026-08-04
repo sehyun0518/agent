@@ -1,6 +1,8 @@
 ---
-name: patterns-explicit-variants
-description: Create Explicit Component Variants — self-documenting code, no hidden conditionals. Apply when working on: composition, variants, architecture.
+title: Create Explicit Component Variants
+impact: MEDIUM
+impactDescription: self-documenting code, no hidden conditionals
+tags: composition, variants, architecture
 ---
 
 ## Create Explicit Component Variants

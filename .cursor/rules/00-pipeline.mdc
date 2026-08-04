@@ -1,41 +1,38 @@
 ---
-description: 프론트엔드 에이전트 파이프라인 개요 — 4레이어, 계약 고정, 역할·모델 매핑, Cursor 단일 에이전트 운용 규칙.
+description: 작업 Capability 기반 하네스 개요 — 흐름, 증거 기반 전이, 프로파일 바인딩, Git 작업 비연쇄 규칙.
 alwaysApply: true
 ---
 
-# 프론트엔드 에이전트 파이프라인 (Cursor 이식)
+# 작업 Capability 하네스 (Cursor)
 
-논의 → 설계(오케스트레이션) → 실행(7역할) → 피드백. 각 역할의 전체 정의는
-저장소 `agents/<name>.md`, 공유 스키마는 `skills/requirements-spec.md`가
-단일 출처다. 이 `.cursor` 규칙들은 그것을 **복제하지 않고 `@파일`로 참조**한다
-(드리프트 방지 — 이 프로젝트의 핵심 원칙).
+이 규칙은 생성물이다. 고치려면 `capabilities/`·`profiles/`·`workflows/`를 고치고
+`npm run generate`를 돌린다.
 
-## Cursor 운용 (네이티브 서브에이전트)
+## Capability
 
-각 역할은 `.cursor/agents/*.md`에 정의된 **진짜 Cursor 서브에이전트**다(격리
-컨텍스트·자체 모델). 본문은 저장소 `agents/<name>.md`를 단일 출처로 참조한다.
+| id | requires | produces |
+|---|---|---|
+| `implementation` | specification.contract · specification.completed | implementation.patch · implementation.summary · implementation.completed |
+| `requirements` | — | requirements.spec · requirements.completed |
+| `review` | specification.contract · specification.completed · implementation.completed · implementation.patch | review.verdict · review.completed |
+| `specification` | requirements.spec · requirements.completed | specification.contract · specification.testids · specification.completed |
 
-- **Task 디스패치** ✅: `orchestration`이 Task로 서브에이전트를 실제 위임하고
-  결과를 회수한다. 자동 위임(description 기반)·명시 호출(`/spec` 등)·병렬 launch 가능.
-- **모델·역할 분리** ✅: frontmatter `model`로 에이전트별 모델 지정(아래 티어).
-- **백그라운드** ✅: 2단계 워커는 `is_background: true`.
-- **중첩 한계** ⚠️: 서브에이전트가 띄운 서브에이전트는 더 깊이 못 띄운다(한 단계).
-  그래서 `orchestration`은 **메인 드라이버로 운용**해 7개 역할을 직접 1차로 띄운다.
-- **worktree 병렬**(선택): Agents Window의 `/worktree`로 2단계를 별도 worktree에
-  격리 실행할 수도 있다. `/best-of-n`은 같은 작업을 여러 모델로 돌려 최선 채택(품질용).
+## 워크플로
 
-## 계약 고정 (병렬의 전제)
 
-`spec`·`design` 단계 산출(타입·props·API 스키마·훅 시그니처·test-id·디자인
-토큰)을 **커밋해 고정**한 뒤에만 다음 단계를 병렬 진행한다. 부족·모순이면
-추측하지 말고 이전 모드로 되돌린다.
 
-## 모델 티어 (티어 유지)
+## 전이 규칙
 
-각 `.cursor/agents/*.md`의 frontmatter `model`로 지정. 모델 ID는 예시이며
-본인 계정 모델로 교체 가능.
+- 상태가 아니라 **증거**로 다음 단계로 간다. 증거가 없으면 진행하지 않고 되돌린다.
+- 구현은 `test.red-confirmed` 없이 시작할 수 없다. 컴파일·import 실패로 빨간 것은 red가 아니다.
+- `unit`·`integration`·`e2e`를 하나의 `test` 단계로 합치지 않는다. 생략하려면 사유와
+  승인을 증거로 남긴다.
+- Git 작업(`commit`·`push`·`pr-preview`·`pr-create`·`pr-update`)은 서로를 자동 호출하지
+  않고, 워크플로가 자동 단계로 두지도 않는다. 각각 사람이 명시적으로 부른다.
+- 커밋·PR에 자동화 도구 출처 문구를 자동으로 넣지 않는다.
 
-- **강(판단) = `gpt-5.5`**: `orchestration`, `spec`, `design`, `accessibility`, `review`
-- **저가 = `composer-2.5`**: `discussion`, `implementation`, `state-data`, `tester`
+## 프로파일
 
-자세한 매핑은 `.cursor/README.md`.
+- `frontend` (namespace `frontend`) — 역할 3, 스킬 10, 바인딩 3
+
+도메인 지식(토큰·규칙 팩·컨벤션)은 Capability가 아니라 프로파일이 소유한다.

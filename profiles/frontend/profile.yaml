@@ -1,0 +1,161 @@
+schemaVersion: 1
+id: frontend
+kind: domain
+namespace: frontend
+title: 프론트엔드 도메인 프로파일
+description: >-
+  도메인 무관 Capability에 프론트엔드 지식을 바인딩한다. 이 프로파일을 교체하면
+  같은 Capability가 다른 도메인에 그대로 쓰인다. 구 orchestration §9(로스터·DAG·
+  라우팅)가 여기로 옮겨왔다.
+
+# ---------------------------------------------------------------- 도메인 전용 역할
+# Capability에 속하지 않는다. 프론트엔드가 아니면 존재하지 않는 역할들이다.
+agents:
+  - id: design
+    file: agents/design.md
+    description: >-
+      기능의 디자인 토큰과 컴포넌트별 시각 스펙을 산출합니다 — 색·간격·타이포·상태·반응형.
+      계약 고정과 병렬로 기능 시작 단계에서 사용하세요. 컴포넌트를 직접 구현하지 않고,
+      구현이 소비할 토큰과 스펙만 만듭니다.
+    tools: [Read, Grep, Glob, Bash, Write, Edit, mcp__playwright]
+    modelTier: strong
+    memory: project
+    color: yellow
+    mcpServers:
+      - playwright:
+          type: stdio
+          command: npx
+          args: ["-y", "@playwright/mcp@latest"]
+
+  - id: accessibility
+    file: agents/accessibility.md
+    description: >-
+      병합된 통합 빌드를 자동 검사 너머까지 점검하고 직접 개선하는 접근성 전문가입니다 —
+      키보드 조작, 포커스 관리, 스크린리더 시맨틱(ARIA), 명도 대비, 모션 환경설정.
+      구현·리뷰 직전 통합 단계에서 사용하세요. 접근성 외의 코드(로직·데이터·계약·디자인)는
+      수정하지 않습니다.
+    tools: [Read, Grep, Glob, Bash, Write, Edit, mcp__playwright]
+    modelTier: strong
+    memory: project
+    color: blue
+    scope: 접근성 범위만. 대비 문제의 뿌리가 토큰이면 design으로 라우팅한다.
+    mcpServers:
+      - playwright:
+          type: stdio
+          command: npx
+          args: ["-y", "@playwright/mcp@latest"]
+
+  - id: state-data
+    file: agents/state-data.md
+    description: >-
+      기능의 데이터 레이어를 구현합니다 — API 클라이언트, 데이터 페칭 훅,
+      상태 관리(스토어/슬라이스). 계약이 고정된 직후에 proactively 사용하세요.
+      UI 컴포넌트·JSX·스타일링은 만들지 않습니다.
+    tools: [Read, Grep, Glob, Bash, Write, Edit]
+    modelTier: cheap
+    background: true
+    isolation: worktree
+    memory: project
+    color: cyan
+
+# ---------------------------------------------------------------- 도메인 스킬
+skills:
+  - id: architecture-avoid-boolean-props
+    path: skills/architecture-avoid-boolean-props
+  - id: architecture-compound-components
+    path: skills/architecture-compound-components
+  - id: patterns-children-render-props
+    path: skills/patterns-children-render-props
+  - id: patterns-explicit-variants
+    path: skills/patterns-explicit-variants
+  - id: react19-no-forwardref
+    path: skills/react19-no-forwardref
+  - id: state-lift-state
+    path: skills/state-lift-state
+  - id: state-context-interface
+    path: skills/state-context-interface
+  - id: state-decouple-implementation
+    path: skills/state-decouple-implementation
+  - id: react-best-practice
+    path: skills/react-best-practice
+    description: 웹 React/Next 성능 규칙 팩
+  - id: react-native-skills
+    path: skills/react-native-skills
+    description: React Native/Expo 성능 규칙 팩
+
+# ---------------------------------------------------------------- Capability 바인딩
+bindings:
+  - capability: specification
+    skills:
+      - frontend:architecture-avoid-boolean-props
+      - frontend:architecture-compound-components
+      - frontend:patterns-children-render-props
+      - frontend:patterns-explicit-variants
+      - frontend:react19-no-forwardref
+    note: 컴포넌트 API를 계약으로 고정할 때 보는 설계 규칙.
+
+  - capability: implementation
+    # 택일. 웹 컴포넌트에 RN 규칙을, RN 컴포넌트에 웹 규칙을 적용하지 않는다.
+    skillsOneOf:
+      - frontend:react-best-practice
+      - frontend:react-native-skills
+    tools: [mcp__playwright]
+    mcpServers:
+      - playwright:
+          type: stdio
+          command: npx
+          args: ["-y", "@playwright/mcp@latest"]
+    note: 시각 자가 점검용. RN 타깃이면 이 도구 대신 RN 프리뷰를 쓴다.
+
+  - capability: review
+    tools: [mcp__playwright]
+    mcpServers:
+      - playwright:
+          type: stdio
+          command: npx
+          args: ["-y", "@playwright/mcp@latest"]
+    note: 통합 결과 시각 확인용. 테스트 실행에는 쓰지 않는다.
+
+# ---------------------------------------------------------------- 로스터
+# generic 작업 단위 → 명명된 실행자. 오케스트레이터는 이 표를 통해서만 이름을 안다.
+# 순서는 여기 없다 — 워크플로와 workflowExtensions가 소유한다.
+roster:
+  - unit: 계약·컴포넌트 계획
+    runner: specification
+  - unit: 토큰·시각 스펙
+    runner: design
+  - unit: 상태·데이터 연결
+    runner: state-data
+  - unit: 컴포넌트 구현·화면 조립
+    runner: implementation
+  - unit: 접근성·반응형 마감
+    runner: accessibility
+  - unit: 통합 검증·게이트 판정
+    runner: review
+
+# ---------------------------------------------------------------- 라우팅
+routing:
+  - symptom: 계약 드리프트·타입 불일치
+    owner: specification
+  - symptom: 토큰 부재·대비 부족(뿌리가 토큰)
+    owner: design
+  - symptom: 마크업·렌더 상태·컴포넌트 경계
+    owner: implementation
+  - symptom: 데이터 페칭·API 클라이언트·상태 로직
+    owner: state-data
+  - symptom: 키보드·포커스·ARIA·모션
+    owner: accessibility
+    exception: accessibility는 이 범위를 직접 고친다. 단 대비의 뿌리가 토큰이면 design으로 넘긴다.
+
+# ---------------------------------------------------------------- 지식
+knowledge:
+  design: ./knowledge/DESIGN.md
+
+# ---------------------------------------------------------------- 정책
+git:
+  commitConvention: conventional
+  automaticAttribution: forbidden
+
+# 실행 명령은 도메인 프로파일이 아니라 소비 저장소의 .agent-harness/profile.yaml이 준다.
+# 이 저장소는 하네스 자체이므로 비워둔다.
+commands: {}

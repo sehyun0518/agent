@@ -1,0 +1,76 @@
+id: implementation
+version: 1
+title: 실제 구현
+description: >-
+  고정된 계약과 주입된 도메인 규칙을 소비해 구현한다. 계약·데이터 인터페이스·
+  디자인 토큰을 새로 정의하지 않고 소비만 한다. 요구사항을 검증하는 테스트가
+  예상한 이유로 실패했다는 증거가 있어야 착수할 수 있다.
+
+requires:
+  - specification.contract
+  - specification.completed
+
+produces:
+  - implementation.patch
+  - implementation.summary
+  - implementation.completed
+
+permissions:
+  filesystem: write
+  network: none
+  destructive: false
+
+# 구현자가 자가 교정을 위해 하네스를 돌리는 것은 작업 방식이지 기록의 증거가 아니다.
+# 판정 근거가 되는 테스트 결과는 test-execution이 낸다. 여기서 test.*.result를
+# 선언하면 같은 증거를 두 곳이 생산해 어느 쪽이 진짜인지 알 수 없게 된다.
+evidence:
+  - kind: changed-files
+    required: true
+    artifactRequired: true
+
+completion:
+  requiresEvidence:
+    - changed-files
+
+entrypoints:
+  agents:
+    - id: implementation
+      file: agents/implementation.md
+      description: >-
+        배정된 단일 단위를 구현합니다 — 고정된 계약(props·데이터 접근 인터페이스),
+        디자인 토큰, 상태·데이터 인터페이스를 소비해 산출물을 작성합니다. 이미 작성된
+        테스트를 초록으로 만드는 것이 목표이며, 인수 기준을 검증하는 테스트를 새로 쓰지
+        않습니다. 계약·데이터 레이어·디자인 토큰도 새로 정의하지 않습니다.
+      tools: [Read, Grep, Glob, Bash, Write, Edit]
+      modelTier: cheap
+      background: true
+      isolation: worktree
+      memory: project
+      color: green
+  skills: []
+  # 이관 게이트(선행 증거 검사)는 이 레이어가 소유하지 않는다.
+  # test.red-confirmed를 요구하는 것은 requires가 선언하고, 그 검사는
+  # workflows/gates/require-red-evidence.md가 한다.
+
+failure:
+  transient:
+    action: retry
+    maxAttempts: 2
+  precondition-unmet:
+    action: return-to-producer
+  contract-violation:
+    action: escalate
+    escalateTo: specification
+  policy-denied:
+    action: halt
+
+chaining:
+  autoInvoke: false
+
+# 규칙 팩(웹/네이티브 등)은 프로파일이 택일 주입한다. 혼용은 금지다.
+profileExtensible:
+  skills: true
+  agents: false
+  tools: true
+  hooks: true
+  commands: true

@@ -1,16 +1,9 @@
 ---
 name: state-data
-description: >-
-  기능의 데이터 레이어를 구현합니다 — API 클라이언트, 데이터 페칭 훅,
-  상태 관리(스토어/슬라이스). 스펙 에이전트가 계약을 고정한 직후에
-  proactively 사용하세요. UI 컴포넌트·JSX·스타일링은 만들지 않습니다.
-tools: Read, Grep, Glob, Bash, Write, Edit
+description: 기능의 데이터 레이어를 구현합니다 — API 클라이언트, 데이터 페칭 훅, 상태 관리(스토어/슬라이스). 계약이 고정된 직후에 proactively 사용하세요. UI 컴포넌트·JSX·스타일링은 만들지 않습니다.
 model: sonnet
+tools: Read, Grep, Glob, Bash, Write, Edit
 memory: project
-skills: 
-    - state-lift-state
-    - state-context-interface
-    - state-decouple-implementation
 background: true
 isolation: worktree
 color: cyan

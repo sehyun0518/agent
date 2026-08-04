@@ -1,0 +1,60 @@
+# 계약 고정 에이전트의 품질 평가 케이스. 러너는 ADR-0002 이후.
+
+capability: specification
+agent: spec
+
+criteria:
+  - id: parallelizable
+    weight: blocking
+    check: 계약만 읽고 하류가 서로를 기다리지 않고 병렬 작업할 수 있다.
+    why: 이 Capability의 출력 품질이 이후 모든 병렬 작업의 품질을 결정한다.
+
+  - id: no-implementation
+    weight: blocking
+    check: 컴포넌트를 직접 구현하거나 스타일링하지 않았다.
+
+  - id: no-design-tokens
+    weight: blocking
+    check: 디자인 토큰을 정의하지 않았다.
+    why: 토큰은 도메인 프로파일의 소유다. 계약과 토큰이 섞이면 프로파일 교체가 불가능해진다.
+
+  - id: no-placeholders
+    weight: blocking
+    check: TBD·미정·"나중에" 항목이 없다.
+
+  - id: derived-from-spec
+    weight: high
+    check: 계약의 모든 항목이 요구사항 스펙에서 유도된다. 스펙에 없는 기능을 계약이 만들지 않는다.
+
+cases:
+  - id: list-with-empty-state
+    input: 요구사항 스펙 — 항목 목록, 빈 상태·로딩·에러 처리 포함.
+    expect:
+      contract:
+        mustDefine:
+          - 컴포넌트 트리
+          - props 인터페이스
+          - 데이터 접근 훅 시그니처
+          - test-id 규약
+        mustCoverStates: [loading, empty, error, loaded]
+    why: 상태별 렌더링이 계약에 없으면 구현자가 상태 집합을 추측하게 된다.
+
+  - id: api-unspecified
+    input: 요구사항 스펙에 데이터 출처가 적혀 있지 않다.
+    expect:
+      outcome: return-to-producer
+      failureClass: precondition-unmet
+    why: 없는 정보를 계약으로 지어내지 않는다. requirements로 되돌린다.
+
+  - id: contradictory-acceptance
+    input: 수용 기준 두 개가 서로 배타적이다.
+    expect:
+      outcome: escalate
+      returnTo: requirements
+
+  - id: boolean-prop-explosion
+    input: 한 컴포넌트에 상태 변형이 5가지다.
+    expect:
+      contract:
+        mustNot: [불리언 prop 나열식 변형]
+    why: 프로파일이 주입하는 컴포넌트 API 스킬(architecture-*·patterns-*)의 판정 대상이다.

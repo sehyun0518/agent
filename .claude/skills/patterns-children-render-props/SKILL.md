@@ -1,6 +1,8 @@
 ---
-name: patterns-children-render-props
-description: Prefer Composing Children Over Render Props — cleaner composition, better readability. Apply when working on: composition, children, render-props.
+title: Prefer Composing Children Over Render Props
+impact: MEDIUM
+impactDescription: cleaner composition, better readability
+tags: composition, children, render-props
 ---
 
 ## Prefer Children Over Render Props

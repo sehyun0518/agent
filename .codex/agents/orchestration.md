@@ -1,22 +1,17 @@
 ---
 name: orchestration
-source: ../../agents/orchestration.md
+source: packages/orchestrator/orchestrator.md
 skills:
   - requirements-spec
-codex_role: planner
 ---
 
-# Orchestration Role for Codex
+# orchestration (Codex 래퍼)
 
-원본 역할 정의는 `agents/orchestration.md`다. Codex에서는 이 역할을 메인 드라이버로
-운용한다.
+조정자 (Capability 아님)의 역할이다. 원본은 `packages/orchestrator/orchestrator.md`.
 
 ## 사용
 
-1. `agents/orchestration.md`를 읽고 §4 루프와 §9 프론트엔드 인스턴스화를 따른다.
-2. 완결성 게이트에는 `.codex/skills/requirements-spec/SKILL.md`를 사용한다.
-3. Codex 하위 에이전트 도구가 있으면 `.codex/agents/<role>.md`를 각 역할
-   프롬프트로 넘긴다. 없으면 동일한 DAG를 메인 세션에서 순차/병렬 가능한 단위로
-   직접 수행한다.
-4. 오케스트레이션 역할은 코드 수정을 직접 하지 않는다. 브리프 생성, 위임, 통합,
-   실패 라우팅만 담당한다.
+1. `packages/orchestrator/orchestrator.md`를 읽고 따른다.
+2. 필요한 스킬은 `.codex/skills/<skill>/SKILL.md`에서 읽는다. 대형 규칙 팩은 필요한
+   rule 파일만 추가로 연다.
+3. 이 래퍼는 원본을 복제하지 않는다. 역할을 바꾸려면 원본을 고친다.

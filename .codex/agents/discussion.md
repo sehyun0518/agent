@@ -1,20 +1,18 @@
 ---
 name: discussion
-source: ../../agents/discussion.md
+source: capabilities/requirements/agents/discussion.md
+capability: requirements
 skills:
   - requirements-spec
-codex_role: requirements-intake
 ---
 
-# Discussion Role for Codex
+# discussion (Codex 래퍼)
 
-원본 역할 정의는 `agents/discussion.md`다. 이 파일은 Codex에서 해당 역할을
-호출하거나 하위 에이전트 프롬프트로 넘길 때 쓰는 얇은 래퍼다.
+Capability `requirements`의 역할이다. 원본은 `capabilities/requirements/agents/discussion.md`.
 
 ## 사용
 
-1. `agents/discussion.md`를 읽고 따른다.
-2. 요구사항 스키마가 필요하면 `.codex/skills/requirements-spec/SKILL.md`를 읽는다.
-3. 파일·레포 조사는 하지 않는다. 사용자 발화를 스키마에 매핑하고, 부족한 슬롯만
-   질문한다.
-4. 출력은 오케스트레이션이 소비할 실행 가능한 스펙 하나로 제한한다.
+1. `capabilities/requirements/agents/discussion.md`를 읽고 따른다.
+2. 필요한 스킬은 `.codex/skills/<skill>/SKILL.md`에서 읽는다. 대형 규칙 팩은 필요한
+   rule 파일만 추가로 연다.
+3. 이 래퍼는 원본을 복제하지 않는다. 역할을 바꾸려면 원본을 고친다.
