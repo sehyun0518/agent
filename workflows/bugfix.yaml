@@ -1,0 +1,133 @@
+id: bugfix
+version: 1
+title: 버그 수정
+description: >-
+  change와 같은 공정을 쓰되 명세 단계가 가볍다. red 게이트는 **면제되지 않는다** —
+  버그를 재현하는 테스트가 먼저 실패해야 수정을 시작한다. 재현 없이 고치면 그 버그가
+  정말 사라졌는지도, 다시 돌아오지 않는지도 모른다.
+
+steps:
+  - id: requirements
+    capability: requirements
+    trigger: manual
+    produces:
+      - requirements.spec
+      - requirements.completed
+    note: >-
+      버그 리포트를 스키마에 맞춘다. acceptance_criteria는 "이 재현 절차가 더 이상
+      실패하지 않는다"로 구체화된다.
+
+  # 계약이 바뀌지 않는 수정도 많지만, 게이트는 건너뛰지 않는다.
+  # 계약 변경이 없으면 contract-diff가 "변경 0"으로 기록될 뿐이다.
+  - id: specification
+    capability: specification
+    trigger: automatic
+    dependsOn: [requirements]
+    expect:
+      - evidence: completeness-check
+        status: passed
+        from: requirements
+    produces:
+      - specification.contract
+      - specification.completed
+    note: 계약 변경이 없으면 기존 계약을 확인만 하고 차이 0으로 기록한다.
+
+  - id: reproduction
+    capability: test-design
+    trigger: automatic
+    dependsOn: [specification]
+    expect:
+      - evidence: contract-diff
+        status: recorded
+        from: specification
+    produces:
+      - test-design.suite
+      - test-design.completed
+    note: 버그를 재현하는 테스트를 쓴다. 이 테스트가 회귀 방지 장치가 된다.
+
+  - id: red-check
+    capability: test-execution
+    variant: unit
+    trigger: automatic
+    dependsOn: [reproduction]
+    expect:
+      - evidence: changed-files
+        status: recorded
+        from: reproduction
+    produces:
+      - test.red-confirmed
+    note: >-
+      재현 테스트가 **버그 때문에** 실패해야 한다. 테스트를 잘못 짜서 실패하거나
+      러너가 못 뜬 것은 rejected다. 이 구분이 bugfix에서 특히 중요하다 — 재현하지
+      못한 채 고치면 엉뚱한 곳을 고치게 된다.
+
+  - id: fix
+    capability: implementation
+    gate: require-red-evidence
+    trigger: automatic
+    dependsOn: [red-check]
+    expect:
+      - evidence: test.red-proof
+        status: confirmed
+        from: red-check
+    produces:
+      - implementation.patch
+      - implementation.summary
+      - implementation.completed
+
+  - id: unit
+    capability: test-execution
+    variant: unit
+    trigger: automatic
+    dependsOn: [fix]
+    expect:
+      - evidence: changed-files
+        status: recorded
+        from: fix
+    produces:
+      - test.unit.completed
+
+  - id: integration
+    capability: test-execution
+    variant: integration
+    trigger: automatic
+    dependsOn: [unit]
+    expect:
+      - evidence: test.unit.result
+        status: passed
+        from: unit
+    produces:
+      - test.integration.completed
+    skippable:
+      evidenceOnSkip: test.skip-justification
+      reasonRequired: true
+      approvalRequired: true
+
+  - id: e2e
+    capability: test-execution
+    variant: e2e
+    trigger: automatic
+    dependsOn: [unit]
+    expect:
+      - evidence: test.unit.result
+        status: passed
+        from: unit
+    produces:
+      - test.e2e.completed
+    skippable:
+      evidenceOnSkip: test.skip-justification
+      reasonRequired: true
+      approvalRequired: true
+
+  - id: review
+    capability: review
+    gate: require-test-evidence
+    trigger: automatic
+    dependsOn: [fix, unit, integration, e2e]
+    expect:
+      - evidence: test.unit.result
+        status: passed
+        from: unit
+    produces:
+      - review.verdict
+      - review.completed

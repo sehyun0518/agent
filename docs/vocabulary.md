@@ -66,11 +66,6 @@ import 실패로 빨간 것을 구현 착수 근거로 삼지 않기 위해서�
 | `implementation.patch` | 변경 diff | `implementation` |
 | `implementation.summary` | 변경 요약 (오케스트레이터가 받는 것) | `implementation` |
 | `review.verdict` | PASS/FAIL + 지적 + 소유자 라우팅 | `review` |
-| `git.inspection` | 현재 저장소·브랜치·변경·원격·PR·참조 이슈·컨벤션 상태 | `git-operations#inspect` |
-| `git.commit-ref` | 생성된 커밋 SHA | `git-operations#commit` |
-| `git.push-ref` | 푸시된 원격 ref | `git-operations#push` |
-| `git.pr-preview` | 게시 전 PR 본문 미리보기 | `git-operations#pr-preview` |
-| `git.pr-ref` | 생성/갱신된 PR 번호 | `git-operations#pr-create`·`#pr-update` |
 
 ## 3. 증거 (evidence) — 전이 판정과 감사 기록
 

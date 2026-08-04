@@ -9,6 +9,8 @@ description: >-
 requires:
   - specification.contract
   - specification.completed
+  - test-design.completed
+  - test.red-confirmed
 
 produces:
   - implementation.patch

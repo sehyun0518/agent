@@ -22,10 +22,14 @@
 - `requirements` — 요구사항 논의
 - `review` — 통합 검토
 - `specification` — 계약 고정
+- `test-design` — 테스트 설계
+- `test-execution` — 테스트 실행
 
 ## 워크플로
 
-
+- `bugfix` — 버그 수정
+- `change` — 기본 변경 작업
+- `review` — 검토 전용
 
 ## 프로파일
 

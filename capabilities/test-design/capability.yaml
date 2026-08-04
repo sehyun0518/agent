@@ -1,0 +1,69 @@
+id: test-design
+version: 1
+title: 테스트 설계
+description: >-
+  인수 기준을 검증하는 테스트를 쓴다. 층으로 분담하지 않고 기준의 성격이 층을 정한다 —
+  기준이 단위 수준이면 단위 테스트를, 플로우 수준이면 E2E를. 테스트를 **작성**만 하고
+  실행도 판정도 하지 않는다. 제품 코드를 수정하지 않는다.
+
+requires:
+  - specification.contract
+  - specification.testids
+  - specification.completed
+
+produces:
+  - test-design.suite
+  - test-design.completed
+
+permissions:
+  filesystem: write
+  network: none
+  destructive: false
+
+evidence:
+  - kind: changed-files
+    required: true
+    artifactRequired: true
+
+completion:
+  requiresEvidence:
+    - changed-files
+
+entrypoints:
+  agents:
+    - id: tester
+      file: agents/tester.md
+      description: >-
+        스펙의 인수 기준을 검증하는 테스트를 작성합니다 — 기준이 단위 수준이면 단위 테스트를,
+        경계를 넘으면 통합을, 사용자 여정이면 E2E를 씁니다. 구현보다 **먼저** 호출하세요.
+        테스트를 실행하거나 통과 여부를 판정하지 않고, 제품 코드도 수정하지 않습니다.
+      tools: [Read, Grep, Glob, Bash, Write, Edit]
+      modelTier: cheap
+      background: true
+      isolation: worktree
+      memory: project
+      color: pink
+  skills: []
+
+failure:
+  transient:
+    action: retry
+    maxAttempts: 2
+  precondition-unmet:
+    action: return-to-producer
+  contract-violation:
+    action: escalate
+    escalateTo: specification
+  policy-denied:
+    action: halt
+
+chaining:
+  autoInvoke: false
+
+# 러너·픽스처·E2E 도구는 도메인마다 다르다. 프로파일과 저장소 profile이 준다.
+profileExtensible:
+  skills: true
+  agents: false
+  tools: true
+  hooks: true
+  commands: true

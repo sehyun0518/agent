@@ -107,6 +107,15 @@ bindings:
           args: ["-y", "@playwright/mcp@latest"]
     note: 시각 자가 점검용. RN 타깃이면 이 도구 대신 RN 프리뷰를 쓴다.
 
+  - capability: test-design
+    tools: [mcp__playwright]
+    mcpServers:
+      - playwright:
+          type: stdio
+          command: npx
+          args: ["-y", "@playwright/mcp@latest"]
+    note: 웹 E2E 작성용.
+
   - capability: review
     tools: [mcp__playwright]
     mcpServers:
@@ -124,14 +133,48 @@ roster:
     runner: specification
   - unit: 토큰·시각 스펙
     runner: design
+  - unit: 경계 테스트 설계
+    runner: test-design
+  - unit: red 확인
+    runner: test-execution#unit
   - unit: 상태·데이터 연결
     runner: state-data
   - unit: 컴포넌트 구현·화면 조립
     runner: implementation
+  - unit: 테스트 실행
+    runner: test-execution
   - unit: 접근성·반응형 마감
     runner: accessibility
   - unit: 통합 검증·게이트 판정
     runner: review
+
+# ---------------------------------------------------------------- 워크플로 확장
+# 순서의 단일 출처는 core 워크플로다. 프로파일은 도메인 단계를 **어디에 끼울지**만
+# 선언한다. 이렇게 해야 도메인 단계도 워크플로의 gate·expect를 그대로 받는다.
+workflowExtensions:
+  - workflow: "*"
+    insert:
+      - id: design
+        runner: design
+        mode: parallel-with
+        anchorCapability: specification
+        note: >-
+          계약 고정과 같은 시점에 토큰·시각 스펙을 낸다. 둘 다 끝나야 하류가 병렬로 간다.
+          review 전용 흐름에는 계약 고정 단계가 없으므로 이 삽입은 건너뛰어진다.
+
+      - id: state-data
+        runner: state-data
+        mode: parallel-with
+        anchorCapability: implementation
+        background: true
+        isolation: worktree
+        note: 구현과 같은 시점에 데이터 레이어를 만든다. 고정된 계약에만 기댄다.
+
+      - id: accessibility
+        runner: accessibility
+        mode: before
+        anchorCapability: review
+        note: 병합된 통합 빌드를 판정 전에 점검하고 접근성 범위만 직접 고친다.
 
 # ---------------------------------------------------------------- 라우팅
 routing:
@@ -143,6 +186,10 @@ routing:
     owner: implementation
   - symptom: 데이터 페칭·API 클라이언트·상태 로직
     owner: state-data
+  - symptom: 누락된 플로우·엣지 커버리지
+    owner: test-design
+  - symptom: 테스트가 돌지 않음·red 판정 rejected
+    owner: test-design
   - symptom: 키보드·포커스·ARIA·모션
     owner: accessibility
     exception: accessibility는 이 범위를 직접 고친다. 단 대비의 뿌리가 토큰이면 design으로 넘긴다.

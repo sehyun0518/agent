@@ -1,0 +1,108 @@
+id: test-execution
+version: 1
+title: 테스트 실행
+description: >-
+  작성된 테스트를 실행하고 결과를 증거로 남긴다. unit·integration·e2e는 하나의
+  `test` 상태로 합치지 않고 각각 독립된 신호와 증거를 낸다. 실행 명령 자체는
+  저장소 profile의 commands가 제공한다 — 공용 하네스는 명령 문자열을 담지 않는다.
+
+requires:
+  - test-design.completed
+  - test-design.suite      # 신호만이 아니라 실행할 파일도 받는다
+
+# 루트는 아무것도 내지 않는다. 산출은 변형이 소유한다.
+# red 확인(test.red-confirmed)은 unit 변형만 낸다 — 구현 전에 의미 있게 실패할 수
+# 있는 유일한 층이기 때문이다. 루트에 두면 e2e도 red를 낼 수 있는 것처럼 읽히고,
+# 완료 조건이 모든 변형에 red 증거를 강요하게 된다.
+produces: []
+
+permissions:
+  filesystem: read
+  network: none
+  destructive: false
+
+entrypoints:
+  agents:
+    - id: test-runner
+      file: agents/test-runner.md
+      description: >-
+        저장소 profile이 제공한 명령으로 테스트를 실행하고, 결과를 파싱해 증거로 남깁니다.
+        실패가 예상한 이유인지(red 확인) 판정합니다. 테스트나 제품 코드를 수정하지 않습니다.
+      tools: [Read, Grep, Glob, Bash]
+      modelTier: cheap
+      memory: project
+      readonly: true
+  skills: []
+
+variants:
+  unit:
+    title: 단위 테스트 실행
+    description: >-
+      구현 전 red 확인의 유일한 대상이다. 대상 함수·모듈이 없어 단언이 깨지므로
+      "구현이 없어서 실패"를 다른 이유와 구분할 수 있다.
+    commandKey: test.unit
+    produces:
+      - test.unit.completed
+      - test.red-confirmed
+    evidence:
+      - kind: test.unit.result
+        required: true
+        artifactRequired: true
+      - kind: test.red-proof
+        required: false
+        artifactRequired: true
+    completion:
+      requiresEvidence:
+        - test.unit.result
+
+  integration:
+    title: 통합 테스트 실행
+    commandKey: test.integration
+    produces:
+      - test.integration.completed
+    evidence:
+      - kind: test.integration.result
+        required: true
+        artifactRequired: true
+      - kind: test.skip-justification
+        required: false
+    completion:
+      requiresEvidence:
+        - test.integration.result
+
+  e2e:
+    title: E2E 실행
+    commandKey: test.e2e
+    produces:
+      - test.e2e.completed
+    evidence:
+      - kind: test.e2e.result
+        required: true
+        artifactRequired: true
+      - kind: test.skip-justification
+        required: false
+    completion:
+      requiresEvidence:
+        - test.e2e.result
+
+failure:
+  transient:
+    action: retry
+    maxAttempts: 2
+  precondition-unmet:
+    action: return-to-producer
+  contract-violation:
+    action: escalate
+    escalateTo: test-design
+  policy-denied:
+    action: halt
+
+chaining:
+  autoInvoke: false
+
+profileExtensible:
+  skills: false
+  agents: false
+  tools: true
+  hooks: true
+  commands: true

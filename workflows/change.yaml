@@ -1,0 +1,142 @@
+id: change
+version: 1
+title: 기본 변경 작업
+description: >-
+  요구사항에서 리뷰까지의 표준 흐름. 각 단계는 앞 단계의 상태가 아니라 **증거**를 보고
+  진행한다. Git 작업은 이 흐름에 자동으로 붙지 않는다 — 아래 manual 단계들이다.
+
+steps:
+  # ── 요구사항 ────────────────────────────────────────────────
+  - id: requirements
+    capability: requirements
+    trigger: manual
+    produces:
+      - requirements.spec
+      - requirements.completed
+    note: 사람이 시작한다. 발화가 입력이므로 자동 진입점이 없다.
+
+  # ── 계약 고정 ───────────────────────────────────────────────
+  - id: specification
+    capability: specification
+    trigger: automatic
+    dependsOn: [requirements]
+    expect:
+      - evidence: completeness-check
+        status: passed
+        from: requirements
+    produces:
+      - specification.contract
+      - specification.testids
+      - specification.completed
+
+  # ── 테스트 설계 ─────────────────────────────────────────────
+  - id: test-design
+    capability: test-design
+    trigger: automatic
+    dependsOn: [specification]
+    expect:
+      - evidence: contract-diff
+        status: recorded
+        from: specification
+    produces:
+      - test-design.suite
+      - test-design.completed
+
+  # ── red 확인 (구현 착수의 유일한 관문) ──────────────────────
+  - id: red-check
+    capability: test-execution
+    variant: unit
+    trigger: automatic
+    dependsOn: [test-design]
+    expect:
+      - evidence: changed-files
+        status: recorded
+        from: test-design
+    produces:
+      - test.red-confirmed
+    note: >-
+      여기서 실패가 "예상한 이유"인지 판정한다. 단위 층인 이유는 구현 전에 의미 있게
+      실패할 수 있는 유일한 층이기 때문이다 — 통합은 픽스처 미비로, E2E는 화면 부재로
+      errored가 되기 쉽고 그건 red가 아니다. 컴파일·import 실패도 rejected다.
+
+  # ── 구현 ────────────────────────────────────────────────────
+  - id: implementation
+    capability: implementation
+    gate: require-red-evidence
+    trigger: automatic
+    dependsOn: [red-check]
+    expect:
+      - evidence: test.red-proof
+        status: confirmed
+        from: red-check
+    produces:
+      - implementation.patch
+      - implementation.summary
+      - implementation.completed
+    onFailure:
+      returnTo: specification
+      note: 계약이 부족하거나 모순이면 추측하지 않고 재고정한다.
+
+  # ── 테스트 실행 (세 층을 합치지 않는다) ─────────────────────
+  - id: unit
+    capability: test-execution
+    variant: unit
+    trigger: automatic
+    dependsOn: [implementation]
+    expect:
+      - evidence: changed-files
+        status: recorded
+        from: implementation
+    produces:
+      - test.unit.completed
+    note: 생략 불가.
+
+  # integration·e2e는 unit의 형제다. integration을 생략해도 e2e가 막히지 않는다.
+  - id: integration
+    capability: test-execution
+    variant: integration
+    trigger: automatic
+    dependsOn: [unit]
+    expect:
+      - evidence: test.unit.result
+        status: passed
+        from: unit
+    produces:
+      - test.integration.completed
+    skippable:
+      evidenceOnSkip: test.skip-justification
+      reasonRequired: true
+      approvalRequired: true
+
+  - id: e2e
+    capability: test-execution
+    variant: e2e
+    trigger: automatic
+    dependsOn: [unit]
+    expect:
+      - evidence: test.unit.result
+        status: passed
+        from: unit
+    produces:
+      - test.e2e.completed
+    skippable:
+      evidenceOnSkip: test.skip-justification
+      reasonRequired: true
+      approvalRequired: true
+
+  # ── 판정 ────────────────────────────────────────────────────
+  - id: review
+    capability: review
+    gate: require-test-evidence
+    trigger: automatic
+    dependsOn: [implementation, unit, integration, e2e]
+    expect:
+      - evidence: test.unit.result
+        status: passed
+        from: unit
+    produces:
+      - review.verdict
+      - review.completed
+    note: >-
+      테스트를 직접 돌리지 않는다. 증거를 소비한다. integration·e2e가 생략됐다면
+      생략 사유와 승인 기록을 함께 본다.

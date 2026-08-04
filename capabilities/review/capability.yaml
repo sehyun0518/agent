@@ -12,6 +12,7 @@ requires:
   - specification.completed
   - implementation.completed
   - implementation.patch    # 본문이 diff를 보므로 계약에도 있어야 한다
+  - test.unit.completed
 
 produces:
   - review.verdict

@@ -10,11 +10,26 @@
     "specification.completed": {
       "producedBy": "specification"
     },
+    "test-design.completed": {
+      "producedBy": "test-design"
+    },
+    "test.red-confirmed": {
+      "producedBy": "test-execution"
+    },
     "implementation.completed": {
       "producedBy": "implementation"
     },
     "review.completed": {
       "producedBy": "review"
+    },
+    "test.unit.completed": {
+      "producedBy": "test-execution#unit"
+    },
+    "test.integration.completed": {
+      "producedBy": "test-execution#integration"
+    },
+    "test.e2e.completed": {
+      "producedBy": "test-execution#e2e"
     }
   },
   "artifacts": {
@@ -26,6 +41,9 @@
     },
     "specification.testids": {
       "producedBy": "specification"
+    },
+    "test-design.suite": {
+      "producedBy": "test-design"
     },
     "implementation.patch": {
       "producedBy": "implementation"
@@ -55,6 +73,38 @@
         "violated"
       ]
     },
+    "test.unit.result": {
+      "statuses": [
+        "passed",
+        "failed",
+        "errored"
+      ]
+    },
+    "test.integration.result": {
+      "statuses": [
+        "passed",
+        "failed",
+        "errored"
+      ]
+    },
+    "test.e2e.result": {
+      "statuses": [
+        "passed",
+        "failed",
+        "errored"
+      ]
+    },
+    "test.red-proof": {
+      "statuses": [
+        "confirmed",
+        "rejected"
+      ]
+    },
+    "test.skip-justification": {
+      "statuses": [
+        "recorded"
+      ]
+    },
     "review-findings": {
       "statuses": [
         "recorded"
@@ -64,6 +114,12 @@
       "statuses": [
         "allowed",
         "denied"
+      ]
+    },
+    "approval-record": {
+      "statuses": [
+        "granted",
+        "refused"
       ]
     }
   }

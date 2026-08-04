@@ -12,14 +12,32 @@ alwaysApply: true
 
 | id | requires | produces |
 |---|---|---|
-| `implementation` | specification.contract · specification.completed | implementation.patch · implementation.summary · implementation.completed |
+| `implementation` | specification.contract · specification.completed · test-design.completed · test.red-confirmed | implementation.patch · implementation.summary · implementation.completed |
 | `requirements` | — | requirements.spec · requirements.completed |
-| `review` | specification.contract · specification.completed · implementation.completed · implementation.patch | review.verdict · review.completed |
+| `review` | specification.contract · specification.completed · implementation.completed · implementation.patch · test.unit.completed | review.verdict · review.completed |
 | `specification` | requirements.spec · requirements.completed | specification.contract · specification.testids · specification.completed |
+| `test-design` | specification.contract · specification.testids · specification.completed | test-design.suite · test-design.completed |
+| `test-execution` | test-design.completed · test-design.suite | 변형이 소유 |
 
 ## 워크플로
 
+### `bugfix` — 버그 수정
 
+자동 진행: specification → reproduction → red-check → fix → unit → integration → e2e → review
+
+사람이 호출: requirements
+
+### `change` — 기본 변경 작업
+
+자동 진행: specification → test-design → red-check → implementation → unit → integration → e2e → review
+
+사람이 호출: requirements
+
+### `review` — 검토 전용
+
+자동 진행: integration → e2e → review
+
+사람이 호출: unit
 
 ## 전이 규칙
 
@@ -33,6 +51,7 @@ alwaysApply: true
 
 ## 프로파일
 
-- `frontend` (namespace `frontend`) — 역할 3, 스킬 10, 바인딩 3
+- `frontend` (namespace `frontend`) — 역할 3, 스킬 10, 바인딩 4
+  - 워크플로 확장: `design` → parallel-with `specification` · `state-data` → parallel-with `implementation` · `accessibility` → before `review`
 
 도메인 지식(토큰·규칙 팩·컨벤션)은 Capability가 아니라 프로파일이 소유한다.

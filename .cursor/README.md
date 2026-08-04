@@ -23,6 +23,8 @@
 | `discussion` | Capability requirements | composer-2.5 | 읽기 전용 |
 | `review` | Capability review | gpt-5.5 | 읽기 전용 |
 | `spec` | Capability specification | gpt-5.5 | 쓰기 |
+| `tester` | Capability test-design | composer-2.5 | 쓰기 |
+| `test-runner` | Capability test-execution | composer-2.5 | 읽기 전용 |
 | `orchestration` | 조정자 (Capability 아님) | gpt-5.5 | 읽기 전용 |
 | `design` | 프로파일 frontend | gpt-5.5 | 쓰기 |
 | `accessibility` | 프로파일 frontend | gpt-5.5 | 쓰기 |
@@ -36,4 +38,4 @@
 - 모델 이름은 티어(`cheap`/`strong`)를 이 플랫폼 값으로 옮긴 것이다. 바꾸려면
   `tooling/generators/platforms.json`을 고친다.
 
-Capability 4종의 계약은 각 `capabilities/<id>/capability.yaml`이 단일 출처다.
+Capability 6종의 계약은 각 `capabilities/<id>/capability.yaml`이 단일 출처다.
