@@ -1,0 +1,20 @@
+{
+  "name": "agent-harness",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "작업 Capability 기반 Agent Harness — 선언(manifest) 단일 출처와 검증·생성 툴링",
+  "scripts": {
+    "validate": "node tooling/validators/validate.mjs",
+    "generate": "node tooling/generators/generate.mjs",
+    "check": "npm run validate && node tooling/generators/generate.mjs --check"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "yaml": "^2.8.1"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

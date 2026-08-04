@@ -1,48 +1,52 @@
 # Codex Agent Harness
 
-이 문서는 Codex 전용 진입점이다. 기존 하네스의 단일 출처는 그대로 유지한다:
+**이 파일은 생성물이다. 직접 편집하지 않는다.** 소스를 고치고 `npm run generate`를 돌린다.
 
-- 프로젝트 상수: `AGENT.md`
-- 디자인 시스템: `DESIGN.md`
-- 역할 원본: `agents/*.md`
-- 스킬 원본: `skills/`
+## 단일 출처
 
-`.codex/`는 Codex가 읽기 쉬운 운용 문서와 `SKILL.md` 포맷 미러만 둔다.
-원본과 내용이 충돌하면 루트 원본을 우선한다.
+| 영역 | 위치 |
+|---|---|
+| 작업 계약 | `capabilities/<id>/capability.yaml` |
+| 역할 본문 | `capabilities/<id>/agents/` · `profiles/<id>/agents/` |
+| 도메인 바인딩 | `profiles/<id>/profile.yaml` |
+| 조정자 | `packages/orchestrator/` |
+| 워크플로 | `workflows/` |
+| 정책 | `policies/` |
+| 어휘 | `docs/vocabulary.md` |
+
+`.codex/`는 Codex 운용을 위한 얇은 래퍼와 `SKILL.md` 미러만 둔다.
+
+## Capability
+
+- `git-operations` — Git 작업
+- `implementation` — 실제 구현
+- `requirements` — 요구사항 논의
+- `review` — 통합 검토
+- `specification` — 계약 고정
+- `test-design` — 테스트 설계
+- `test-execution` — 테스트 실행
+
+## 워크플로
+
+- `bugfix` — 버그 수정
+- `change` — 기본 변경 작업
+- `review` — 검토 전용
+
+## 프로파일
+
+- `frontend` — 프론트엔드 도메인 프로파일
 
 ## 운용 원칙
 
-1. 새 작업이 모호하면 `.codex/agents/discussion.md`를 사용해 요구사항 스펙을
-   먼저 완결한다.
-2. 스펙이 충분하면 `.codex/agents/orchestration.md`를 기준으로 작업을 분해한다.
-3. 역할별 실행이 필요하면 해당 `.codex/agents/<role>.md`를 읽고, 그 파일이
-   가리키는 `agents/<role>.md` 원본을 함께 따른다.
-4. 역할이 스킬을 요구하면 `.codex/skills/<skill>/SKILL.md`를 읽는다. 대형 스킬은
-   필요한 rule 파일만 추가로 연다.
-5. Codex 하위 에이전트 도구가 사용 가능하면 역할 문서를 하위 에이전트 프롬프트로
-   넘긴다. 하위 에이전트가 없으면 같은 역할 순서를 메인 Codex 세션에서 수행한다.
-6. 검증은 역할 원본의 하네스 기준을 따른다. green 전 종료 금지 원칙은 유지한다.
-
-## 디렉터리
-
-```text
-.codex/
-  AGENTS.md
-  README.md
-  agents/      # Codex 역할 래퍼
-  skills/      # Codex SKILL.md 미러
-```
-
-## 역할 순서
-
-1. `discussion`: 사용자 요구사항을 스펙으로 정리
-2. `orchestration`: 스펙을 작업 그래프와 브리프로 분해
-3. `spec` + `design`: 계약과 디자인 토큰을 병렬 산출 후 고정
-4. `state-data` + `implementation` + `tester`: 고정 계약 기반 병렬 실행
-5. `accessibility`: 통합 빌드 접근성 개선
-6. `review`: 최종 게이트 판정과 소유자 라우팅
+1. 요구사항이 모호하면 `requirements`부터 시작해 스펙을 완결한다.
+2. 스펙이 충분하면 `packages/orchestrator/orchestrator.md`를 기준으로 분해한다.
+3. 역할 실행은 `.codex/agents/<id>.md`를 열고 그 `source` 원본을 함께 따른다.
+4. **증거 없이 다음 단계로 가지 않는다.** 상태 플래그가 아니라 증거가 전이 근거다.
+5. 구현은 `test.red-confirmed` 없이 시작하지 않는다.
+6. Git 작업은 서로 연쇄하지 않는다. 커밋·푸시·PR을 각각 명시적으로 호출한다.
+7. 커밋·PR에 자동화 도구 출처 문구를 자동으로 넣지 않는다.
 
 ## 드리프트 방지
 
-`.codex/agents/*`는 원본을 복제하지 않는다. 역할을 바꾸려면 먼저 `agents/*.md`를
-수정하고, Codex 운용상 추가 설명이 필요할 때만 `.codex/agents/*`를 갱신한다.
+`.codex/agents/*`는 원본을 복제하지 않는다. 역할을 바꾸려면 소스를 고치고 재생성한다.
+CI가 재생성 결과와 커밋 상태를 대조한다.

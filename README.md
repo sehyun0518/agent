@@ -1,289 +1,267 @@
-# Frontend Agent Harness
+# Agent Harness
 
-이 저장소는 프론트엔드 작업을 여러 역할 에이전트로 나누어 처리하기 위한 하네스다.
-핵심 설계는 요구사항을 먼저 스펙으로 고정하고, 계약과 디자인을 게이트로 만든 뒤,
-구현·상태·테스트를 병렬화하고, 접근성·리뷰로 통합 검증하는 흐름이다.
+작업 유형(**Capability**)을 축으로 구성한 에이전트 하네스. 구성요소 종류가 아니라
+**하나의 작업**이 디렉터리 경계이고, 각 작업이 자기 agent·skill·tool·hook·test·eval을
+수직 슬라이스로 소유한다.
 
 ## 한 줄 요약
 
 ```text
-discussion -> orchestration -> (spec + design) -> (state-data + implementation + tester) -> accessibility -> review
+requirements → specification → test-design → red 확인 → implementation → 테스트 실행 → review
 ```
 
-## 단일 출처
+각 화살표는 **증거**로 건넌다. 상태 플래그가 아니라 증거가 전이 근거다.
 
-이 하네스는 플랫폼별 미러를 두지만, 역할과 규칙의 원본은 한 곳에 둔다.
+## 왜 이렇게 생겼나
 
-| 영역 | 단일 출처 | 설명 |
-|---|---|---|
-| 프로젝트 상수 | `AGENT.md` | 스택, 컨벤션, 검증 하네스, 디자인 문서 링크 |
-| 디자인 시스템 | `DESIGN.md` | 토큰, 시각 규칙, 컴포넌트 프리미티브 |
-| 역할 정의 | `agents/*.md` | 서브에이전트별 책임·경계·검증 방식 |
-| 요구사항 계약 | `skills/requirements-spec.md` | 요구사항 슬롯, 완결성 판정, 스펙 포맷 |
-| 웹 React 성능 | `skills/react-best-practice/` | React/Next 규칙 팩 |
-| React Native 성능 | `skills/react-native-skills/` | RN/Expo 규칙 팩 |
+두 가지가 이 구조를 결정한다.
 
-플랫폼 미러는 원본을 복제하는 장소가 아니라 실행 환경에 맞춘 얇은 포장이다.
-충돌이 있으면 루트 원본을 우선한다.
+**1. 작업이 경계다.** 예전에는 `agents/`·`skills/`처럼 구성요소 종류로 나뉘어 있어,
+"테스트 설계"를 고치려면 여러 디렉터리를 열어야 했고 무엇이 무엇과 함께 도는지 구조에서
+읽히지 않았다. 이제 `capabilities/test-design/` 하나만 열면 된다.
 
-## 레이어 설계
+**2. 도메인은 교체 가능하다.** Capability는 프론트엔드를 모른다. 디자인 토큰·React 규칙
+팩·컴포넌트 API 패턴은 `profiles/frontend/`가 소유하고 바인딩으로 주입한다. 프로파일을
+갈아끼우면 같은 Capability가 다른 도메인에서 돈다.
 
-### 1. 지식 레이어
+## 레이어와 하네스
 
-느리게 변하는 프로젝트 상수를 둔다.
+**레이어(Capability)는 혼자서도 쓸 수 있어야 하고, 하네스는 일하지 않는다.**
+하네스는 묶고(bind) · 검증하고(gate) · 넘기는(handoff) 것만 한다. ([ADR-0003](docs/adr/0003-layer-harness-boundary.md))
 
-- `AGENT.md`: 모든 역할이 공유하는 프로젝트 기반 컨텍스트
-- `DESIGN.md`: 디자인 토큰과 시각 컨벤션의 단일 출처
-- `skills/`: 스키마, 패턴, 성능 규칙
+이 원칙이 두 가지를 결정한다.
 
-작업 브리프에 디자인 토큰이나 컨벤션을 매번 복사하지 않는다. 실행자는 필요한
-단일 출처 파일을 직접 읽는다.
+**훅에는 두 종류가 있고 소유자가 다르다.**
 
-### 2. 논의 레이어
+| 종류 | 검사 대상 | 소유 | 예 |
+|---|---|---|---|
+| 자기 산출 검사 | 내 결과가 쓸 만한가 | 레이어 | `completeness-gate` · `contract-freeze` |
+| **이관 게이트** | 앞 레이어가 넘긴 게 조건을 만족하나 | **하네스** | `workflows/gates/require-red-evidence` |
 
-담당: `discussion`
+이관 게이트가 레이어 안에 있으면 그 레이어는 단독으로 못 쓴다. 구현 하나만 시키려 해도
+앞 단계 증거를 요구하며 막힌다. **게이트 파일을 지웠을 때 레이어가 그대로 도는가**가
+올바른 배치인지 판별하는 시험이다.
 
-사용자 발화를 `requirements-spec` 스키마에 맞춘 실행 가능한 스펙으로 바꾼다.
-레포 조사나 구현 판단은 하지 않는다. 필수 슬롯이 비면 질문하고, 충분하면 스펙을
-오케스트레이션으로 넘긴다.
+**레이어는 토큰으로만 말한다.**
 
-필수 슬롯:
+```diff
+- 테스트를 실행하지 않습니다 — `test-execution` Capability의 몫입니다.
++ 테스트를 실행하지 않습니다. `test.red-proof` 증거는 이 층이 만드는 것이 아닙니다.
+```
 
-| 슬롯 | 의미 |
-|---|---|
-| `goal` | 사용자가 달성하려는 목적 |
-| `target` | 대상 유저, 디바이스, 브라우저 범위 |
-| `design_ref` | `DESIGN.md` 준수와 의도적 벗어남 |
-| `scope_in` | 이번 작업에 포함할 것 |
-| `scope_out` | 이번 작업에서 제외할 것 |
-| `acceptance_criteria` | 검증 가능한 수용 기준 |
+누가 그 토큰을 만드는지, 실패하면 어디로 보내는지는 워크플로의 `dependsOn`과 프로파일의
+`routing`이 안다. 검증기가 Capability 본문의 이웃 이름을 실패로 잡는다.
 
-### 3. 설계/조정 레이어
+## 구조
 
-담당: `orchestration`
+```text
+capabilities/           작업 유형별 수직 슬라이스 (단일 출처)
+  <id>/capability.yaml    계약 — 입력·출력·선행조건·권한·증거·완료조건·진입점·실패정책
+  <id>/agents/            역할 본문 (frontmatter 없음 — 메타는 manifest가 소유)
+  <id>/skills/ hooks/ tests/ evals/
 
-스펙을 자기완결 작업 단위로 쪼개고, 의존성 그래프와 실행 브리프를 만든다.
-코드는 직접 수정하지 않는다. 각 단위는 독립 검증 가능해야 하고, 하위 역할 하나가
-소화할 수 있는 크기여야 한다.
+profiles/               도메인 바인딩 (교체 가능)
+  frontend/profile.yaml   로스터 · 라우팅 · 바인딩 · 워크플로 확장 · 지식 참조
+  frontend/agents/ skills/ knowledge/
 
-오케스트레이터가 만드는 산출물:
+packages/               계약과 조정자 (Capability 아님)
+  manifest-contracts/     capability·profile·workflow·orchestrator JSON Schema + 어휘
+  policy-contracts/       정책 스키마 + 우선순위
+  telemetry-contracts/    공급자 독립 관측 이벤트 계약
+  boundary-contracts/     경계마다 검사되는 계약 (requirements-spec)
+  orchestrator/           도메인 무지 조정자 본체
 
-- 작업 단위 목록
-- 위상 정렬된 실행 순서
-- 병렬 가능 여부
-- 단위별 실행 브리프
-- 수용 기준과 검증 하네스 매핑
-- 실패 시 소유자 라우팅
+workflows/              change · bugfix · review
+  gates/                  이관 게이트 — 앞 레이어가 넘긴 증거를 검사
+policies/               permissions · data-handling · destructive-actions
+tooling/                validators · generators
+docs/                   vocabulary · adr · migration · consumer-profile
 
-### 4. 게이트 레이어
+.claude/ .cursor/ .codex/   생성 산출물 — 직접 편집 금지
+```
 
-담당: `spec`, `design`
+## Capability
 
-병렬 작업의 전제는 대화가 아니라 고정된 계약이다. `spec`과 `design`이 먼저
-산출물을 만들고, 이후 단계가 이 계약에만 의존한다.
+| id | requires | produces | 비고 |
+|---|---|---|---|
+| `requirements` | — | `requirements.spec` | 도구 없음. 입력원은 발화뿐 |
+| `specification` | `requirements.*` | `specification.contract` · `.testids` | 고정 후 재고정 전까지 불변 |
+| `test-design` | `specification.*` | `test-design.suite` | 작성만. 실행·판정 안 함 |
+| `test-execution` | `test-design.completed` | `test.red-confirmed` | `unit`·`integration`·`e2e` 변형 |
+| `implementation` | `test.red-confirmed` | `implementation.patch` | red 증거 없이 착수 불가 |
+| `review` | `test.unit.completed` | `review.verdict` | 증거 소비. 직접 안 돌림 |
+| `git-operations` | — | `git.*` | `inspect`·`commit`·`push`·`pr-*` 6변형, 전부 수동 |
 
-`spec`이 고정하는 것:
+계약의 단일 출처는 각 `capabilities/<id>/capability.yaml`이다.
 
-- 컴포넌트 트리
-- TypeScript 타입과 props 인터페이스
-- API 요청/응답 스키마
-- 데이터 접근 훅 시그니처
-- test-id 규약
+## 증거로 전이한다
 
-`design`이 고정하는 것:
+이 하네스의 중심 규칙이다.
 
-- 디자인 토큰
-- 컴포넌트별 시각 스펙
-- 상태별 시각 규칙
-- 반응형 동작
-- 대비 기준
+```yaml
+evidence:
+  - kind: test.unit.result
+    status: failed              # 기계가 이걸 보고 전이를 판정한다
+    summary: "3 failed, 12 passed"
+    artifact: .harness/runs/{runId}/unit.json
+    producedBy: test-execution#unit
+```
 
-계약이 부족하거나 모순되면 다음 단계가 추측하지 않고 `spec` 또는 `design`으로
-되돌린다.
+- **완료는 증거로만 판정된다.** `capability.yaml`에 상태 플래그 필드가 없다.
+- **`test.*.completed`는 "실행됐다"만 뜻한다.** 통과 여부는 `status`가 담는다. 둘을
+  한 토큰에 섞으면 "돌렸는데 실패"와 "아예 안 돌림"을 구분할 수 없다.
+- **red는 "빨갛다"가 아니라 "예상한 이유로 빨갛다"다.** 컴파일·import 실패는 `rejected`이며
+  구현이 시작되지 않는다.
+- **침묵 생략이 없다.** `integration`·`e2e`를 건너뛰려면 사유(`test.skip-justification`)와
+  승인(`approval-record: granted`)을 남긴다.
 
-### 5. 실행 레이어
+어휘의 단일 출처는 `docs/vocabulary.md`, 기계 판독본은 `packages/manifest-contracts/vocabulary.json`.
 
-담당: `state-data`, `implementation`, `tester`
+## 프로파일
 
-고정된 계약 이후 병렬로 실행한다.
+Capability는 `profileExtensible`로 무엇을 주입받을지 선언하고, 프로파일이 그 축만 채운다.
 
-| 역할 | 책임 | 건드리지 않는 것 |
-|---|---|---|
-| `state-data` | API 클라이언트, 데이터 훅, 상태 스토어 | UI, JSX, 스타일 |
-| `implementation` | 컴포넌트 마크업, 상태별 렌더링, Storybook | 계약, 데이터 레이어, 토큰 정의 |
-| `tester` | 통합/E2E 플로우, 엣지/에러 커버리지 | 제품 코드, 최종 판정 |
+```yaml
+# profiles/frontend/profile.yaml
+bindings:
+  - capability: implementation
+    skillsOneOf:                      # 택일 — 혼용 금지가 스키마로 표현된다
+      - frontend:react-best-practice
+      - frontend:react-native-skills
+    tools: [mcp__playwright]
+```
 
-구현 역할은 타깃을 먼저 판별한다.
+프로파일은 **권한을 좁힐 수만 있다**. `none < read < write`, `none < allowlist < any`
+격자에서 Capability보다 넓으면 검증기가 거부한다.
 
-- 웹 React/Next: `react-best-practice`
-- React Native/Expo: `react-native-skills`
+프로파일은 `<namespace>:` 접두사로 자기 토큰을 만든다. 코어 어휘를 건드리지 않고
+도메인 증거를 늘릴 수 있는 이유다.
 
-두 규칙 팩을 섞지 않는다.
+## 오케스트레이터는 이름을 모른다
 
-### 6. 피드백 레이어
+`packages/orchestrator/orchestrator.md`에는 특정 Capability도 명명 에이전트도 등장하지
+않는다. 검증기가 `forbiddenReferences`로 이걸 강제한다.
 
-담당: `accessibility`, `review`
+실행자 이름은 프로파일의 `roster`가, 지적의 소유자는 `routing`이 정한다.
+그래서 Capability를 추가해도 중앙 문서를 고칠 필요가 없다.
 
-`accessibility`는 병합된 통합 빌드에서 자동 검사 너머의 접근성을 점검하고,
-접근성 범위의 수정만 직접 수행한다. 대비의 근본 원인이 토큰이면 `design`으로
-되돌린다.
+**순서는 워크플로만 안다.** 프로파일은 도메인 단계를 어디에 끼울지(`workflowExtensions`)만
+선언한다. 프로파일이 자기 순서를 따로 갖고 있으면 워크플로와 경쟁하는 정의가 둘이 되고,
+어느 쪽을 따르는지에 따라 게이트가 통째로 우회된다.
 
-`review`는 최종 게이트다. 코드를 수정하지 않고, 고정된 계약과 스펙에 대조해
-PASS/FAIL을 판정한다. 실패하면 어느 역할이 고쳐야 하는지 라우팅한다.
+```yaml
+workflowExtensions:
+  - workflow: "*"
+    insert:
+      - id: design
+        runner: design
+        mode: parallel-with
+        anchorCapability: specification   # step id가 아니라 Capability로 앵커
+```
 
-## 서브에이전트 로스터
+step id가 아니라 Capability로 앵커하는 이유는 워크플로마다 이름이 다르기 때문이다
+(`change`는 `implementation`, `bugfix`는 `fix`). 대상 워크플로에 그 Capability가 없으면
+삽입은 건너뛰어진다 — 그 흐름에 해당 단계가 없다는 뜻이다.
 
-| 에이전트 | 단계 | 모델 티어 | 쓰기 권한 | 핵심 산출물 |
-|---|---:|---|---|---|
-| `discussion` | 0 | 저가 | 없음 | 실행 가능한 요구사항 스펙 |
-| `orchestration` | 1 | 강 | 없음 | 작업 그래프, 브리프, 라우팅 |
-| `spec` | 2 | 강 | 있음 | 계약 문서, 타입, 스키마 |
-| `design` | 2 | 강 | 있음 | 토큰, 시각 스펙 |
-| `state-data` | 3 | 저가 | 있음 | API/훅/스토어 |
-| `implementation` | 3 | 저가 | 있음 | 컴포넌트, 스토리, 단위 테스트 |
-| `tester` | 3 | 저가 | 있음 | 통합/E2E 테스트 |
-| `accessibility` | 4 | 강 | 접근성 한정 | a11y 개선 |
-| `review` | 5 | 강 | 없음 | 최종 판정, 수정 라우팅 |
+## Git 작업은 연쇄하지 않는다
 
-모델 이름은 플랫폼별 파일에서 조정한다. 티어 의도만 유지하면 된다.
+```text
+commit ─╳→ push ─╳→ pr-create
+```
 
-## 실행 플로우
+- `commit`은 push하지 않고, `push`는 PR을 만들지 않고, `pr-create`는 commit도 push도 하지 않는다.
+- 기존 PR이 있으면 `pr-create` 대신 `pr-update`를 명시적으로 쓴다.
+- 커밋·PR에 자동화 도구 출처 문구를 자동으로 넣지 않는다.
 
-### 새 기능 작업
+두 겹으로 막는다: `chaining.autoInvoke: false`(나가는 호출)와
+`chaining.autoTriggerable: false`(들어오는 자동 진행), 그리고 `before-tool` 훅.
 
-1. 요구사항이 모호하면 `discussion`으로 스펙을 완결한다.
-2. `orchestration`이 스펙을 작업 단위로 분해한다.
-3. `spec`과 `design`을 병렬 실행해 계약과 토큰을 고정한다.
-4. `state-data`, `implementation`, `tester`를 병렬 실행한다.
-5. 결과를 병합한 뒤 `accessibility`가 접근성을 점검하고 필요한 범위만 고친다.
-6. `review`가 전체 검증 하네스와 계약 대조로 최종 판정한다.
-7. 실패하면 `orchestration`이 소유 역할로 되돌리고 해당 부분만 재실행한다.
+## 플랫폼 미러는 생성물이다
 
-### 작은 수정 작업
-
-작업이 명확하고 영향 범위가 작으면 전체 DAG를 모두 돌리지 않아도 된다. 그래도
-아래 원칙은 지킨다.
-
-- 계약을 바꾸는 수정이면 `spec`을 거친다.
-- 토큰이나 시각 규칙을 바꾸면 `design`을 거친다.
-- UI만 바꾸면 `implementation`과 필요한 검증을 수행한다.
-- 데이터 계약이나 훅을 바꾸면 `state-data`와 관련 테스트를 수행한다.
-- 최종 결과는 가능한 한 `review` 기준으로 확인한다.
-
-## 실패 라우팅
-
-| 증상 | 되돌릴 역할 |
-|---|---|
-| 요구사항 슬롯 부족, 수용 기준 모호 | `discussion` |
-| 작업 분할이 틀림, 브리프가 과대/과소 | `orchestration` |
-| props, 타입, API 스키마, test-id 불일치 | `spec` |
-| 토큰 부재, 토큰 대비 부족, 시각 스펙 모순 | `design` |
-| 데이터 페칭, API 클라이언트, 상태 훅 문제 | `state-data` |
-| 마크업, 렌더 상태, 컴포넌트 경계 문제 | `implementation` |
-| 플로우 커버리지, E2E 누락 | `tester` |
-| 키보드, 포커스, ARIA, 모션 문제 | `accessibility` |
-| 소유자 판정, 통합 PASS/FAIL | `review` |
-
-실패는 단위 단위로 격리한다. 같은 단위를 한 번 재시도하고, 그래도 실패하면
-브리프를 보강하거나 상위 레이어로 되돌린다.
-
-## 검증 하네스
-
-프로젝트별 실제 명령은 `AGENT.md`에 기록한다. 기본 게이트는 다음 신호를 기준으로
-한다.
-
-- `tsc --noEmit`
-- `eslint`
-- `vitest run`
-- Playwright E2E와 스크린샷
-- 비주얼 스냅샷
-- `axe`
-
-역할별 검증 범위는 다르다. `review`만 최종 통합 PASS/FAIL을 판정한다.
-
-## 플랫폼별 미러
-
-| 플랫폼 | 경로 | 목적 |
-|---|---|---|
-| Claude Code | `.claude/` | Claude 네이티브 agent/skill 포맷 |
-| Cursor | `.cursor/` | Cursor agent/rule 포맷 |
-| Codex | `.codex/` | Codex `AGENTS.md` 진입점과 `SKILL.md` 미러 |
-
-### Claude
-
-`.claude/agents/*.md`와 `.claude/skills/*/SKILL.md`를 둔다. 원본과 같은 구조에
-가깝고, 역할 frontmatter의 도구·모델·스킬 정보가 유지된다.
-
-### Cursor
-
-`.cursor/agents/*.md`는 Cursor 스키마로 얇게 정의하고, 본문은 루트
-`agents/*.md`를 참조한다. `.cursor/rules/*.mdc`는 항상 로드 규칙과 스킬 색인을
-담는다.
-
-### Codex
-
-루트 `AGENTS.md`가 Codex 진입점이다. `.codex/AGENTS.md`는 Codex 운용 규칙,
-`.codex/agents/*.md`는 역할 래퍼, `.codex/skills/*/SKILL.md`는 스킬 미러다.
-Codex가 프로젝트 스킬을 자동 발견하지 못하는 환경이면 `.codex/AGENTS.md` 지시에
-따라 필요한 `SKILL.md`를 직접 읽는다.
-
-## 유지보수 절차
-
-### 역할 수정
-
-1. 루트 `agents/<role>.md`를 수정한다.
-2. Claude 미러가 원본 복사 방식이면 `.claude/agents/<role>.md`도 맞춘다.
-3. Cursor/Codex 래퍼는 원본 참조만 유지한다. 운용 차이가 생길 때만 수정한다.
-4. 해당 역할이 사용하는 스킬 목록이 바뀌면 플랫폼별 frontmatter/rule/index도 맞춘다.
-
-### 스킬 수정
-
-1. 루트 `skills/`의 원본을 수정한다.
-2. `SKILL.md` 패키징이 필요한 스킬은 `.claude/skills/`와 `.codex/skills/`를 동기화한다.
-3. 대형 규칙 팩은 rule 파일 개수와 이름이 플랫폼 미러 간 동일한지 확인한다.
-
-확인 명령:
+`.claude` · `.cursor` · `.codex`를 **직접 편집하지 않는다.**
 
 ```sh
-diff -qr -x README.md .claude/skills .codex/skills
-find .codex/skills -maxdepth 2 -type f -name 'SKILL.md' | sort | wc -l
-find .claude/skills -maxdepth 2 -type f -name 'SKILL.md' | sort | wc -l
+npm run validate   # 선언 검증
+npm run generate   # 미러 생성
+npm run check      # 둘 다 (CI가 도는 것)
 ```
 
-### 새 역할 추가
+CI가 재생성 결과와 커밋 상태를 대조하고, 다르면 병합을 막는다. 소스에 대응이 없는
+생성물(고아)은 제거된다. 손으로 고친 내용은 되돌아간다.
 
-1. `agents/<name>.md`를 만든다.
-2. 역할의 책임, 하지 않는 일, 입력, 산출물, 검증 하네스를 명확히 쓴다.
-3. `agents/orchestration.md`의 로스터와 DAG에 연결한다.
-4. `.claude/agents/`, `.cursor/agents/`, `.codex/agents/`에 플랫폼 미러를 추가한다.
-5. 이 README의 로스터와 실패 라우팅 표를 갱신한다.
+| 플랫폼 | 형태 |
+|---|---|
+| `.claude/` | 본문 전문 인라인 + frontmatter |
+| `.cursor/` | 얇은 래퍼 + `rules/` 색인 |
+| `.codex/` | 얇은 래퍼 + `SKILL.md` 미러 + `AGENTS.md` 진입점 |
 
-### 새 스킬 추가
+## 검증기가 막는 것
 
-1. `skills/<name>.md` 또는 `skills/<name>/SKILL.md`를 만든다.
-2. 어떤 역할이 언제 읽어야 하는지 스킬 설명에 쓴다.
-3. 사용하는 역할의 frontmatter 또는 래퍼에 스킬을 연결한다.
-4. `.claude/skills/<name>/SKILL.md`와 `.codex/skills/<name>/SKILL.md`가 필요하면 만든다.
-5. Cursor는 `.cursor/rules/skills-index.mdc`에 색인을 추가한다.
+프롬프트가 아니라 `npm run validate`가 강제한다.
 
-## 운영 규칙
+- 미등록 어휘 토큰(오타), 허용되지 않은 증거 status
+- 선언하지 않은 증거를 완료 조건으로 요구
+- 없는 파일을 가리키는 진입점
+- 도구가 `permissions`를 초과 (`filesystem-boundary` · `network-access`)
+- 파괴적 작업인데 승인·증거 선언 없음
+- 프로파일이 권한을 넓히거나 blocking 훅을 낮춤
+- 오케스트레이터 본체에 도메인 지식 유입
+- 워크플로가 변형을 안 쓰고 테스트 층을 합침
+- 자동 진행 금지 Capability를 `automatic` 단계로 둠
 
-- 브리프에는 작업 고유 정보만 넣는다. 프로젝트 상수는 단일 출처 파일을 읽게 한다.
-- 병렬 실행 전에는 계약과 토큰을 먼저 고정한다.
-- 하류 역할은 계약을 재정의하지 않는다.
-- 검증할 수 없는 작업 단위는 만들지 않는다.
-- 하위 에이전트가 사용자에게 직접 질문하지 않는다. 질문은 오케스트레이션을 통해 표면화한다.
-- 리뷰는 수정하지 않는다. 판정과 라우팅만 한다.
-- 접근성 역할은 접근성 범위만 수정한다.
-- 웹 React와 React Native 규칙 팩을 섞지 않는다.
+전체 목록은 `tooling/README.md`.
 
-## 관리 체크리스트
+## 운영
 
-정기적으로 아래를 확인한다.
+| 문서 | 언제 |
+|---|---|
+| **[docs/walkthrough.md](docs/walkthrough.md)** | 처음 쓸 때. 작업 하나가 발화에서 판정까지 가는 전 과정 |
+| **[docs/operations.md](docs/operations.md)** | 기준이 필요할 때. 게이트 조건, 되돌릴 곳, 무엇을 고치면 무엇을 돌리는지 |
 
-- `agents/`와 플랫폼 미러의 역할 목록이 일치하는가
-- `.claude/skills`와 `.codex/skills`의 `SKILL.md` 수가 일치하는가
-- React/RN rule 파일 수가 미러 간 일치하는가
-- `AGENT.md`의 스택과 검증 명령이 실제 프로젝트와 맞는가
-- `DESIGN.md`의 토큰 TODO가 실제 값으로 채워졌는가
-- `requirements-spec`의 슬롯 정의와 `discussion`/`orchestration` 설명이 충돌하지 않는가
+지금 **자동인 것은 선언 검사와 미러 드리프트 두 가지뿐**이다. 워크플로 순서와 게이트는
+문서상 규칙이고 실행 주체는 사람 또는 메인 에이전트다. 이 경계를 먼저 확인한다.
+
+## 유지보수
+
+### Capability 추가
+
+1. `capabilities/<id>/capability.yaml`을 쓴다 (`id` = 디렉터리명).
+2. 토큰이 `docs/vocabulary.md`에 있는지 본다. 도메인 전용이면 프로파일 네임스페이스로.
+3. 증거를 정한다. **증거 없이 완료되는 Capability는 만들지 않는다.**
+4. `npm run check`.
+
+중앙 registry나 오케스트레이터는 고치지 않는다.
+
+### 역할 본문 수정
+
+`capabilities/<id>/agents/*.md` 또는 `profiles/<id>/agents/*.md`를 고치고 재생성한다.
+본문에 frontmatter를 넣지 않는다 — 메타데이터는 manifest가 소유하고, 남아 있으면
+생성기가 오류로 잡는다.
+
+### 도메인 지식 수정
+
+`profiles/<id>/`에서 고친다. Capability 본문에 도메인 지식을 넣으면 프로파일을 교체해도
+그 도메인이 따라온다.
+
+### 소비 저장소 연결
+
+`docs/consumer-profile.md`와 `examples/consumer-repo/.agent-harness/profile.yaml`.
+실행 명령·컨벤션·권한 축소는 소비 저장소가 소유한다.
+
+## 아직 코드가 아니다
+
+`orchestrator`·`hook-runtime`·`policy-engine`·`execution-state`는 선언만 있고 실행
+코드가 없다. `tooling/`은 검증·생성 도구이지 하네스 런타임이 아니다.
+
+정책 7종 중 실제로 강제되는 것과 훅 런타임을 기다리는 것은 `policies/README.md`에
+✅/⏳로 구분해 뒀다. 승격 조건은 `docs/adr/0002-runtime-promotion.md`.
+
+## 결정 기록
+
+| ADR | 내용 |
+|---|---|
+| [0001](docs/adr/0001-capability-structure.md) | Capability 축, 단계적 런타임화, 프로파일 분리, 생성 미러 |
+| [0002](docs/adr/0002-runtime-promotion.md) | 실행 코드화 승격 조건 |
+| [0003](docs/adr/0003-layer-harness-boundary.md) | 레이어는 단독 동작, 하네스는 묶고 검증하고 이관만 |
+
+이관 기록은 `docs/migration/inventory.md`.

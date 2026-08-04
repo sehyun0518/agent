@@ -1,0 +1,48 @@
+# 계약 고정 훅이 반드시 이렇게 판정해야 하는 결정론적 케이스.
+# 러너는 ADR-0002 이후. 그때까지는 훅 동작의 명세이자 회귀 목록이다.
+
+capability: specification
+hook: hooks/contract-freeze.md
+evidence: contract-diff
+
+cases:
+  - id: full-contract
+    given: 타입·props·API 스키마·훅 시그니처·test-id가 모두 파일로 산출됐다.
+    expect:
+      status: recorded
+
+  - id: contract-only-in-prose
+    given: 계약이 산출 요약 텍스트에만 있고 파일이 없다.
+    expect:
+      status: violated
+    why: 격리된 하류 실행자에게 대화는 존재하지 않는다. 파일이 아니면 계약이 아니다.
+
+  - id: missing-hook-signatures
+    given: props와 API 스키마는 있지만 데이터 접근 훅 시그니처가 없다.
+    expect:
+      status: violated
+    why: 구현이 실제 훅 없이도 코딩하려면 시그니처가 먼저 고정돼야 한다.
+
+  - id: missing-testids
+    given: test-id 규약이 없다.
+    expect:
+      status: violated
+    why: 테스터가 DOM 없이 E2E를 작성할 수 없게 된다.
+
+  - id: silent-refreeze
+    given: 이미 고정된 인터페이스가 재고정 절차 없이 바뀌었다.
+    expect:
+      status: violated
+      failureClass: contract-violation
+    why: 하류가 이전 계약에 기대 병렬 작업 중일 수 있다.
+
+  - id: recorded-refreeze
+    given: 되돌림을 거쳐 재고정했고 차이가 contract-diff에 기록됐다.
+    expect:
+      status: recorded
+
+  - id: unresolved-placeholder
+    given: 계약에 "TBD" 항목이 남아 있다.
+    expect:
+      status: violated
+    why: 하류는 부족한 계약을 추측으로 메우지 않고 되돌리게 돼 있다. 미정을 통과시키면 그 규칙이 무의미해진다.

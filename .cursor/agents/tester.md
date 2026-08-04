@@ -1,13 +1,10 @@
 ---
 name: tester
-description: 2단계. 스펙 인수 기준·계약 기반으로 통합·E2E 테스트와 엣지·에러 커버리지를 작성한다. 구현과 병렬로 test-first 가능. 컴포넌트별 단위 테스트(구현 담당)·최종 게이트 판정(review 담당)과 중복하지 않는다. 제품 코드는 수정하지 않는다.
+description: 스펙의 인수 기준을 검증하는 테스트를 작성합니다 — 기준이 단위 수준이면 단위 테스트를, 경계를 넘으면 통합을, 사용자 여정이면 E2E를 씁니다. 구현보다 **먼저** 호출하세요. 테스트를 실행하거나 통과 여부를 판정하지 않고, 제품 코드도 수정하지 않습니다.
 model: composer-2.5
+readonly: false
 is_background: true
 ---
 
-Tester 에이전트(2단계). 전체 역할 정의는 저장소 `agents/tester.md`를 읽고
+Capability `test-design`의 역할이다. 전체 정의는 저장소 `capabilities/test-design/agents/tester.md`를 읽고
 따른다(단일 출처, 복제 금지).
-
-핵심: 계약이 의무화한 test-id에 기대 작성(깨지기 쉬운 셀렉터 금지). test-first면
-통합 전까지 red일 수 있다 — "올바른 이유로 실패하는지" 확인. 제품 코드는 고치지
-말고 라우팅용으로 보고. 테스트는 결정적이고 격리되게.

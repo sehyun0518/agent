@@ -1,0 +1,18 @@
+id: audit-trail
+scope: data-handling
+level: immutable
+relaxable: false
+title: 감사 기록
+statement: >-
+  Capability 실행은 완료 조건에 선언된 증거를 반드시 남긴다. 증거 없이 완료로
+  표시할 수 없고, 이미 기록된 증거를 사후에 고치거나 지울 수 없다. 정책 판정은
+  허용·거부 모두 policy-decision으로 남는다.
+rationale: >-
+  이 하네스는 상태가 아니라 증거로 다음 단계로 전이한다. 증거를 지울 수 있으면
+  전이 근거가 사라지고, 무엇이 왜 통과했는지 사후에 재구성할 수 없다.
+appliesTo: ["*"]
+enforcement:
+  validator: completion-requires-evidence
+  hooks:
+    - event: after-capability
+      blocking: true

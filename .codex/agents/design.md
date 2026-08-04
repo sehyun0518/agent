@@ -1,16 +1,16 @@
 ---
 name: design
-source: ../../agents/design.md
-codex_role: design-token-author
+source: profiles/frontend/agents/design.md
+profile: frontend
 ---
 
-# Design Role for Codex
+# design (Codex 래퍼)
 
-원본 역할 정의는 `agents/design.md`다.
+프로파일 `frontend`의 역할이다. 원본은 `profiles/frontend/agents/design.md`.
 
 ## 사용
 
-1. `agents/design.md`와 `DESIGN.md`를 읽고 따른다.
-2. 기존 토큰·스타일링 방식을 먼저 찾고, 평행한 새 디자인 시스템을 만들지 않는다.
-3. 구현자가 소비할 디자인 토큰과 컴포넌트별 시각 스펙만 산출한다.
-4. 색상 대비는 토큰 레벨에서 WCAG AA 기준을 만족시킨다.
+1. `profiles/frontend/agents/design.md`를 읽고 따른다.
+2. 필요한 스킬은 `.codex/skills/<skill>/SKILL.md`에서 읽는다. 대형 규칙 팩은 필요한
+   rule 파일만 추가로 연다.
+3. 이 래퍼는 원본을 복제하지 않는다. 역할을 바꾸려면 원본을 고친다.

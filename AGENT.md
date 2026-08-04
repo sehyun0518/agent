@@ -1,29 +1,59 @@
 # AGENT.md — 프로젝트 기반 컨텍스트 (상시 로드)
 
-이 문서는 모든 실행 서브에이전트의 **세계의 바닥(base context)** 이다. 작업마다
-다시 묻지 않는 **느리게 변하는 프로젝트 상수**를 한곳에 박아둔다. 브리프에는
-*작업 고유* 정보만 담기고, 아래 상수는 담기지 않는다 — 실행자가 이미 이걸
-들고 있기 때문이다. (`requirements-spec` 스킬의 "디자인은 슬롯이 아니라
-참조다" 참고.)
+모든 실행자의 **세계의 바닥(base context)** 이다. 작업마다 다시 묻지 않는 **느리게
+변하는 프로젝트 상수**를 한곳에 둔다. 브리프에는 *작업 고유* 정보만 담기고 아래 상수는
+담기지 않는다 — 실행자가 이미 들고 있기 때문이다.
 
-## 디자인 시스템
+## 도메인 지식은 여기 없다
 
-디자인 토큰·시각 컨벤션의 단일 출처는 **[DESIGN.md](./DESIGN.md)** 다. 모든
-스타일링·구현·디자인 에이전트는 이 링크를 따라간다. 스펙의 `design_ref` 슬롯은
-"DESIGN.md 표준을 따른다"는 사실 + 이번 작업의 의도적 벗어남만 기록한다.
+디자인 토큰·프레임워크 규칙·컴포넌트 컨벤션 같은 **도메인 지식은 프로파일이 소유한다.**
+이 문서는 도메인 무관한 저장소 상수만 담는다.
 
-## 기술 스택 <!-- TODO: 실제 값으로 채울 것 -->
+| 필요한 것 | 어디에 |
+|---|---|
+| 디자인 토큰·시각 규칙 | `profiles/frontend/knowledge/DESIGN.md` |
+| 도메인 규칙 팩·패턴 스킬 | `profiles/frontend/skills/` |
+| 로스터·라우팅·워크플로 확장 | `profiles/frontend/profile.yaml` |
+| 작업별 계약 | `capabilities/<id>/capability.yaml` |
+| 선행조건·증거 어휘 | `docs/vocabulary.md` |
 
-- 프레임워크: <예: React 19 + TypeScript / React Native (Expo)>
-- 스타일링: <예: CSS 변수 / Tailwind / styled-components>
-- 서버 상태 / 클라이언트 상태: <예: TanStack Query / Zustand>
-- 고립 하네스: <예: Storybook>
-- 테스트: <예: vitest + Testing Library / Playwright(E2E) / MSW(목킹) / axe>
+프로파일이 `knowledge` 맵으로 지식 문서를 가리키고, 실행자가 그 경로를 직접 읽는다.
+오케스트레이터는 이 문서들을 읽지 않는다 — 구조만 다루고 내용은 모른다.
 
-## 컨벤션 <!-- TODO: 실제 값으로 채울 것 -->
+## 실행 명령은 여기 없다
 
-- 폴더 구조: <...>
-- 네이밍: <...>
-- test-id 규약: <...>
-- 검증 하네스(green 전 종료 금지): `tsc --noEmit` · `eslint` · `vitest run`
-  · Playwright · 비주얼 스냅샷 · `axe`
+빌드·테스트 명령은 **소비 저장소의 `.agent-harness/profile.yaml`** 이 제공한다.
+공용 하네스에 특정 저장소의 명령·경로를 넣지 않는다. `docs/consumer-profile.md` 참고.
+
+이 저장소 자체를 검사하는 명령은 예외다.
+
+```sh
+npm run validate   # 선언 검증
+npm run generate   # 플랫폼 미러 생성
+npm run check      # 둘 다 (CI가 도는 것)
+```
+
+## 기술 스택 <!-- TODO: 소비 저장소에서 채울 것 -->
+
+이 저장소는 하네스 자체이므로 제품 스택이 없다. 소비 저장소가 자기 `.agent-harness/`에
+채운다.
+
+- 프레임워크: `<소비 저장소가 채움>`
+- 스타일링: `<...>`
+- 상태 관리: `<...>`
+- 고립 하네스: `<...>`
+- 테스트: `<...>`
+
+## 지켜지는 불변식
+
+프롬프트가 아니라 **검증기와 훅이** 강제하는 것들이다.
+
+- 도구는 선언된 `permissions`를 넘을 수 없다.
+- 완료는 상태가 아니라 **증거**로 판정된다.
+- 구현은 `test.red-confirmed` 없이 시작할 수 없다.
+- `unit`·`integration`·`e2e`는 하나로 합쳐지지 않는다. 생략하려면 사유와 승인을 남긴다.
+- Git 작업은 서로 연쇄하지 않고 자동 진행되지 않는다.
+- 커밋·PR에 자동화 도구 출처 문구를 자동으로 넣지 않는다.
+- `.claude`·`.cursor`·`.codex`는 생성물이다. 직접 편집하면 CI가 되돌린다.
+
+전체 목록은 `policies/`와 `tooling/README.md`.

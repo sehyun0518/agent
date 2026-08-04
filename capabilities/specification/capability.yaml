@@ -1,0 +1,80 @@
+id: specification
+version: 1
+title: 계약 고정
+description: >
+  요구사항 스펙을 하류가 병렬로 기댈 수 있는 고정된 계약으로 바꾼다 — 타입·props
+  인터페이스·API 요청/응답 스키마·데이터 접근 훅 시그니처·test-id 규약.
+  계약을 고정한 뒤에는 되돌려 재고정하기 전까지 바꾸지 않는다.
+
+requires:
+  - requirements.spec
+  - requirements.completed
+
+produces:
+  - specification.contract
+  - specification.testids
+  - specification.completed
+
+permissions:
+  filesystem: write
+  network: none
+  destructive: false
+
+evidence:
+  - kind: changed-files
+    required: true
+    artifactRequired: true
+  - kind: contract-diff
+    required: true
+    artifactRequired: true
+
+completion:
+  requiresEvidence:
+    - changed-files
+    - contract-diff
+  expectedStatus:
+    contract-diff: recorded
+
+entrypoints:
+  agents:
+    - id: spec
+      file: agents/spec.md
+      # TODO(Phase 3): 도메인 무관 문장으로 고친다. Phase 2는 구조 이동만 하고
+      # 본문·설명의 의미 변경은 하지 않는다 — 생성 왕복 비교를 흐리지 않기 위해서다.
+      description: >-
+        프론트엔드 기능 요구사항을 컴포넌트 계획과 "고정된 계약"(TypeScript 인터페이스,
+        컴포넌트 props, API 요청/응답 스키마)으로 변환합니다. 구현·상태· 디자인 에이전트로
+        작업을 팬아웃하기 전, 모든 프론트엔드 기능의 첫 단계에서 proactively 사용하세요.
+        컴포넌트를 직접 구현하거나 스타일링하지는 않습니다.
+      tools: [Read, Grep, Glob, Bash, Write, Edit]
+      modelTier: strong
+      memory: project
+      color: purple
+  skills: []
+  hooks:
+    - event: after-capability
+      file: hooks/contract-freeze.md
+      blocking: true
+      description: 계약 산출물이 고정 가능한 파일로 존재하는지, 이전 고정본과의 차이가 기록됐는지 검사한다.
+
+failure:
+  transient:
+    action: retry
+    maxAttempts: 2
+  precondition-unmet:
+    action: return-to-producer
+  contract-violation:
+    action: escalate
+    escalateTo: requirements
+  policy-denied:
+    action: halt
+
+chaining:
+  autoInvoke: false
+
+# 컴포넌트 API 설계 스킬은 도메인마다 다르다. 프로파일이 주입한다.
+profileExtensible:
+  skills: true
+  agents: false
+  hooks: true
+  commands: true

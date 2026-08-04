@@ -1,0 +1,30 @@
+id: orchestrator
+version: 1
+title: 오케스트레이터
+description: >-
+  완결된 요구사항 스펙을 실행 가능한 작업 그래프로 나누고, 활성 프로파일의 로스터·DAG에
+  따라 실행자에 위임한 뒤 결과를 통합·검증한다. Capability가 아니라 횡단 조정자다.
+
+agent:
+  id: orchestration
+  file: orchestrator.md
+  description: >-
+    완결된 요구사항 스펙 또는 충분히 완결된 사용자 요구사항을 받아, 실행 가능한 작업
+    그래프로 분할하고 단위별 브리프를 생성해 실행자에 디스패치하는 최상위 조정 에이전트.
+    결과를 수집·통합·검증하고 실패를 진단한다. 요구사항이 미완결이면 requirements로
+    되돌린다. 코드는 직접 작성하지 않는다.
+  tools: [Read, Grep, Glob, Task]
+  modelTier: strong
+
+skills:
+  - contracts/requirements-spec
+
+# 본체가 도메인 무지 상태로 남아 있는지 검증기가 검사한다.
+# 여기 있는 문자열이 orchestrator.md에 등장하면 실패다.
+forbiddenReferences:
+  - 프론트엔드
+  - DESIGN.md
+  - subagent_type
+  - 스타일링
+  - 디자인 토큰
+  - 컴포넌트

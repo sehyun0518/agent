@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-harness/schemas/workflow.schema.json",
+  "title": "Workflow",
+  "description": "Capability들을 엮은 실행 흐름. 상태가 아니라 증거로 다음 단계로 전이한다. workflows/<id>.yaml에 둔다.",
+  "type": "object",
+  "required": ["id", "version", "title", "steps"],
+  "additionalProperties": false,
+
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "version": { "type": "integer", "minimum": 1 },
+    "title": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/step" }
+    }
+  },
+
+  "$defs": {
+    "token": {
+      "type": "string",
+      "pattern": "^([a-z][a-z0-9-]*:)?[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$"
+    },
+
+    "evidenceKind": {
+      "type": "string",
+      "pattern": "^([a-z][a-z0-9-]*:)?[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)*$"
+    },
+
+    "step": {
+      "type": "object",
+      "required": ["id", "capability", "trigger"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "capability": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+        "variant": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "description": "variants를 가진 Capability를 참조할 때 필수. unit/integration/e2e를 하나의 test 단계로 합치는 것을 막는다."
+        },
+
+        "trigger": {
+          "enum": ["automatic", "manual"],
+          "description": "automatic은 선행 조건이 충족되면 자동 진행. manual은 사람의 명시적 호출이 있어야 한다. chaining.autoInvoke가 false인 Capability는 manual만 가능하다."
+        },
+
+        "gate": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "description": "이관 게이트. workflows/gates/<gate>.md가 선행 증거를 검사한다. 레이어가 아니라 하네스가 소유하므로, 이 검사를 지우면 레이어는 그대로 단독 동작한다."
+        },
+
+        "dependsOn": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+          "uniqueItems": true,
+          "default": [],
+          "description": "선행 step id. 병렬 가능 여부는 이 그래프에서 유도한다."
+        },
+
+        "expect": {
+          "type": "array",
+          "description": "전이 조건. 선행 단계의 증거가 이 status일 때만 이 step이 진행된다. 상태 플래그가 아니라 증거를 본다.",
+          "items": {
+            "type": "object",
+            "required": ["evidence", "status"],
+            "additionalProperties": false,
+            "properties": {
+              "evidence": { "$ref": "#/$defs/evidenceKind" },
+              "status": { "type": "string" },
+              "from": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$",
+                "description": "그 증거를 낸 step id. 생략하면 dependsOn 전체에서 찾는다."
+              }
+            }
+          },
+          "default": []
+        },
+
+        "produces": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/token" },
+          "uniqueItems": true,
+          "default": [],
+          "description": "이 step이 낼 토큰. Capability의 produces를 좁힐 수는 있어도 넓힐 수는 없다."
+        },
+
+        "skippable": {
+          "type": "object",
+          "description": "생략 가능한 단계. 침묵 생략은 금지하고 사유를 증거로 남기게 한다.",
+          "additionalProperties": false,
+          "required": ["evidenceOnSkip"],
+          "properties": {
+            "evidenceOnSkip": {
+              "$ref": "#/$defs/evidenceKind",
+              "description": "생략 시 반드시 기록할 증거. 보통 test.skip-justification."
+            },
+            "reasonRequired": { "type": "boolean", "default": true },
+            "approvalRequired": {
+              "type": "boolean",
+              "default": false,
+              "description": "true면 사유 기록만으로 부족하고 approval-record가 granted여야 생략할 수 있다."
+            }
+          }
+        },
+
+        "onFailure": {
+          "type": "object",
+          "description": "Capability의 failure 기본 동작을 이 워크플로 맥락에서 좁힐 때만 쓴다. 넓힐 수는 없다.",
+          "additionalProperties": false,
+          "properties": {
+            "returnTo": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+            "note": { "type": "string" }
+          }
+        },
+
+        "note": { "type": "string" }
+      },
+
+      "allOf": [
+        {
+          "$comment": "manual 트리거 단계는 자동 진행하지 않으므로 expect가 비어 있어도 된다. automatic 단계 중 선행이 있는 것은 반드시 전이 조건을 명시해야 한다 — 그래야 '상태가 아니라 증거로 전이'가 강제된다.",
+          "if": {
+            "properties": {
+              "trigger": { "const": "automatic" },
+              "dependsOn": { "type": "array", "minItems": 1 }
+            },
+            "required": ["trigger", "dependsOn"]
+          },
+          "then": {
+            "properties": {
+              "expect": { "type": "array", "minItems": 1 }
+            },
+            "required": ["expect"]
+          }
+        }
+      ]
+    }
+  }
+}

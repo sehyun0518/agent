@@ -1,0 +1,73 @@
+id: review
+version: 1
+title: 통합 검토
+description: >-
+  병합된 통합 결과를 고정된 계약·스펙에 대조해 판정한다. 테스트를 직접 돌리지 않고
+  test-execution이 남긴 증거를 소비한다. 코드를 수정하지 않고 지적과 소유자 라우팅만 낸다.
+
+# 테스트 결과를 직접 만들지 않고 요구한다. integration·e2e는 명시적 생략이 가능하므로
+# 하드 선행조건에 넣지 않는다 — 생략 여부는 워크플로가 증거로 판정한다.
+requires:
+  - specification.contract
+  - specification.completed
+  - implementation.completed
+  - implementation.patch    # 본문이 diff를 보므로 계약에도 있어야 한다
+  - test.unit.completed
+
+produces:
+  - review.verdict
+  - review.completed
+
+# 읽기 전용. git diff와 증거 조회에 Bash가 필요하지만 쓰기 권한은 주지 않는다.
+permissions:
+  filesystem: read
+  network: none
+  destructive: false
+
+evidence:
+  - kind: review-findings
+    required: true
+    artifactRequired: true
+
+completion:
+  requiresEvidence:
+    - review-findings
+
+entrypoints:
+  agents:
+    - id: review
+      file: agents/review.md
+      description: >-
+        병합된 통합 결과를 고정된 계약·스펙에 대조해 통과/실패를 판정하는 최종 게이트입니다.
+        구현·상태·디자인 작업이 병합된 직후 사용하세요. 코드를 직접 수정하지 않고,
+        우선순위별 지적과 함께 어느 소유자가 고쳐야 하는지 라우팅 정보를 반환합니다.
+      tools: [Read, Grep, Glob, Bash]
+      modelTier: strong
+      memory: project
+      color: orange
+      readonly: true
+  skills:
+    - contracts/requirements-spec
+  # 이관 게이트는 workflows/gates/require-test-evidence.md가 소유한다.
+
+failure:
+  transient:
+    action: retry
+    maxAttempts: 2
+  precondition-unmet:
+    action: return-to-producer
+  contract-violation:
+    action: escalate
+    escalateTo: orchestrator
+  policy-denied:
+    action: halt
+
+chaining:
+  autoInvoke: false
+
+profileExtensible:
+  skills: true
+  agents: false
+  tools: true
+  hooks: true
+  commands: true

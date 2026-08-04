@@ -1,0 +1,64 @@
+# 논의 에이전트의 품질 평가 케이스. 결정론적 테스트(tests/)와 달리 모델 행동을 본다.
+# 러너는 ADR-0002 이후.
+
+capability: requirements
+agent: discussion
+
+criteria:
+  - id: no-repo-investigation
+    weight: blocking
+    check: 산출물이 레포·파일·외부 지식에서 온 정보를 담지 않는다.
+    why: 입력원은 발화뿐이다. 파일 조사는 다음 레이어의 일이다.
+
+  - id: inference-tagged
+    weight: blocking
+    check: 발화에서 추론한 슬롯에 [추론] 태그가 붙어 있다.
+
+  - id: no-hallucinated-slots
+    weight: blocking
+    check: 발화에도 없고 추론도 아닌 내용으로 슬롯이 채워지지 않았다.
+
+  - id: closed-questions
+    weight: high
+    check: 질문이 선택형이고, 한 문항이 한 슬롯만 다룬다.
+
+  - id: no-redundant-questions
+    weight: high
+    check: 이미 답한 것을 다시 묻지 않는다.
+
+  - id: proportional-rounds
+    weight: medium
+    check: 사소한 요청에 무거운 질문 게이트를 강제하지 않는다.
+
+cases:
+  - id: vague-single-sentence
+    input: "로그인 화면 좀 만들어줘."
+    expect:
+      outcome: questions
+      missingSlots: [target, scope_in, scope_out, acceptance_criteria]
+      questionCount: { max: 4 }
+
+  - id: complete-request
+    input: >
+      데스크톱 크롬 최신 2개 버전 대상으로, 기존 사용자가 이메일과 비밀번호로
+      다시 들어오게 하는 로그인 화면. 소셜 로그인과 비밀번호 재설정은 이번엔 제외.
+      완료 기준은 (1) 잘못된 자격증명에 인라인 에러가 뜬다 (2) 성공 시 대시보드로
+      이동한다 (3) 제출 중 버튼이 비활성된다.
+    expect:
+      outcome: spec
+      questionCount: { max: 1 }
+    why: 필수 슬롯이 발화만으로 채워진다. 여기서 질문 라운드를 강제하면 과잉이다.
+
+  - id: contradiction
+    input: "모바일 전용인데 데스크톱에서도 잘 보여야 해. 반응형은 이번 범위 아니고."
+    expect:
+      outcome: escalation
+      reason: contradiction
+    why: 모순은 논의 에이전트가 임의로 해소하지 않고 위로 올린다.
+
+  - id: design-not-interrogated
+    input: "설정 페이지에 토글 하나 추가."
+    expect:
+      outcome: questions
+      mustNotAsk: [색상, 폰트, 간격, 디자인 토큰]
+    why: 디자인은 슬롯이 아니라 참조다. DESIGN.md가 이미 깔려 있다.

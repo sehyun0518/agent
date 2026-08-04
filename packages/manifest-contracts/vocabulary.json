@@ -1,0 +1,141 @@
+{
+  "$comment": "docs/vocabulary.md의 기계 판독본. 두 파일은 항상 함께 갱신한다. 검증기는 이 파일을 읽어 접두사 없는(코어) 토큰의 등록 여부를 검사한다.",
+  "version": 1,
+  "tokenPattern": "^([a-z][a-z0-9-]*:)?[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$",
+  "evidenceKindPattern": "^([a-z][a-z0-9-]*:)?[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)*$",
+  "signals": {
+    "requirements.completed": {
+      "producedBy": "requirements"
+    },
+    "specification.completed": {
+      "producedBy": "specification"
+    },
+    "test-design.completed": {
+      "producedBy": "test-design"
+    },
+    "test.red-confirmed": {
+      "producedBy": "test-execution"
+    },
+    "implementation.completed": {
+      "producedBy": "implementation"
+    },
+    "review.completed": {
+      "producedBy": "review"
+    },
+    "test.unit.completed": {
+      "producedBy": "test-execution#unit"
+    },
+    "test.integration.completed": {
+      "producedBy": "test-execution#integration"
+    },
+    "test.e2e.completed": {
+      "producedBy": "test-execution#e2e"
+    }
+  },
+  "artifacts": {
+    "requirements.spec": {
+      "producedBy": "requirements"
+    },
+    "specification.contract": {
+      "producedBy": "specification"
+    },
+    "specification.testids": {
+      "producedBy": "specification"
+    },
+    "test-design.suite": {
+      "producedBy": "test-design"
+    },
+    "implementation.patch": {
+      "producedBy": "implementation"
+    },
+    "implementation.summary": {
+      "producedBy": "implementation"
+    },
+    "review.verdict": {
+      "producedBy": "review"
+    },
+    "git.commit-ref": {
+      "producedBy": "git-operations#commit"
+    },
+    "git.push-ref": {
+      "producedBy": "git-operations#push"
+    },
+    "git.pr-preview": {
+      "producedBy": "git-operations#pr-preview"
+    },
+    "git.pr-ref": {
+      "producedBy": "git-operations#pr-create"
+    },
+    "git.inspection": {
+      "producedBy": "git-operations#inspect"
+    }
+  },
+  "evidence": {
+    "completeness-check": {
+      "statuses": [
+        "passed",
+        "failed"
+      ]
+    },
+    "changed-files": {
+      "statuses": [
+        "recorded"
+      ]
+    },
+    "contract-diff": {
+      "statuses": [
+        "recorded",
+        "violated"
+      ]
+    },
+    "test.unit.result": {
+      "statuses": [
+        "passed",
+        "failed",
+        "errored"
+      ]
+    },
+    "test.integration.result": {
+      "statuses": [
+        "passed",
+        "failed",
+        "errored"
+      ]
+    },
+    "test.e2e.result": {
+      "statuses": [
+        "passed",
+        "failed",
+        "errored"
+      ]
+    },
+    "test.red-proof": {
+      "statuses": [
+        "confirmed",
+        "rejected"
+      ]
+    },
+    "test.skip-justification": {
+      "statuses": [
+        "recorded"
+      ]
+    },
+    "review-findings": {
+      "statuses": [
+        "recorded"
+      ]
+    },
+    "policy-decision": {
+      "statuses": [
+        "allowed",
+        "denied"
+      ]
+    },
+    "approval-record": {
+      "statuses": [
+        "granted",
+        "refused"
+      ]
+    }
+  }
+}

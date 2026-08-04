@@ -1,6 +1,8 @@
 ---
-name: architecture-compound-components
-description: Use Compound Components — enables flexible composition without prop drilling. Apply when working on: composition, compound-components, architecture.
+title: Use Compound Components
+impact: HIGH
+impactDescription: enables flexible composition without prop drilling
+tags: composition, compound-components, architecture
 ---
 
 ## Use Compound Components

@@ -1,0 +1,94 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-harness/schemas/policy.schema.json",
+  "title": "Policy",
+  "description": "policies/<scope>/<id>.yaml 하나의 정책. level:immutable 정책은 어떤 프로파일도 완화할 수 없다.",
+  "type": "object",
+  "required": ["id", "scope", "level", "title", "statement", "appliesTo", "enforcement"],
+  "additionalProperties": false,
+
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+    "scope": {
+      "enum": ["permissions", "data-handling", "destructive-actions"],
+      "description": "policies/ 아래 디렉터리와 일치해야 한다."
+    },
+    "level": {
+      "enum": ["immutable", "default"],
+      "description": "immutable은 프로파일이 완화할 수 없는 공통 보안 정책. default는 프로파일이 좁히거나 대체할 수 있는 기본값."
+    },
+    "title": { "type": "string", "minLength": 1 },
+    "statement": {
+      "type": "string",
+      "minLength": 1,
+      "description": "무엇을 금지/요구하는지 한 문단. 판정 가능한 문장으로 쓴다."
+    },
+    "rationale": { "type": "string" },
+
+    "appliesTo": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "pattern": "^(\\*|[a-z][a-z0-9-]*(#[a-z][a-z0-9-]*)?)$" },
+      "description": "'*' 또는 capability id 목록. variant 지정은 <capability>#<variant>."
+    },
+
+    "relaxable": {
+      "type": "boolean",
+      "default": false,
+      "description": "level이 immutable이면 반드시 false여야 한다."
+    },
+
+    "enforcement": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": false,
+      "description": "정책이 어떻게 강제되는지. 선언만 있고 강제 수단이 없는 정책은 만들지 않는다.",
+      "properties": {
+        "validator": {
+          "type": "string",
+          "description": "정적 검사 규칙 id. tooling/validators가 구현한다."
+        },
+        "hooks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["event"],
+            "additionalProperties": false,
+            "properties": {
+              "event": {
+                "enum": ["before-capability", "after-capability", "before-tool", "after-tool", "on-evidence", "on-failure"]
+              },
+              "file": { "type": "string" },
+              "blocking": { "const": true }
+            }
+          },
+          "description": "필수 검증 훅은 blocking만 허용한다."
+        },
+        "requiresEvidence": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "이 정책이 남겨야 하는 증거 종류. 예: policy-decision, approval-record."
+        },
+        "requiresApproval": {
+          "type": "boolean",
+          "default": false,
+          "description": "사람의 명시적 승인 없이는 진행 불가."
+        }
+      }
+    },
+
+    "supersedes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "default": []
+    }
+  },
+
+  "allOf": [
+    {
+      "$comment": "immutable 정책이 relaxable:true를 선언하는 것은 자기모순이다.",
+      "if": { "properties": { "level": { "const": "immutable" } }, "required": ["level"] },
+      "then": { "properties": { "relaxable": { "const": false } } }
+    }
+  ]
+}

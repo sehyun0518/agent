@@ -1,0 +1,39 @@
+name: harness
+
+# 선언 검증과 미러 드리프트 차단. 둘 중 하나라도 실패하면 병합을 막는다.
+# 경고만 하면 어긋난 생성물이 그대로 머지되고, 그러면 미러를 생성 산출물로 둔
+# 의미가 없어진다.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      # 스키마 · 어휘 · 참조 무결성 · 2계층 권한 · 워크플로 교차 검증
+      - name: 선언 검증
+        run: npm run validate
+
+      # 재생성 결과가 커밋 상태와 같은지. 손으로 고친 미러를 여기서 잡는다.
+      - name: 미러 드리프트
+        run: node tooling/generators/generate.mjs --check
+
+      # --check가 놓치는 경우를 위한 이중 확인:
+      # 미러를 지우고 다시 만들었을 때 git diff가 0이어야 한다.
+      - name: 전체 재생성 후 diff
+        run: |
+          rm -rf .claude .cursor .codex
+          node tooling/generators/generate.mjs
+          git diff --exit-code -- .claude .cursor .codex

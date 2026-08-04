@@ -1,0 +1,81 @@
+id: review
+version: 1
+title: 검토 전용
+description: >-
+  이미 만들어진 변경을 판정만 한다. 구현하지 않으므로 red 게이트가 없다. 대신
+  **테스트 증거가 없으면 판정하지 않는다** — 없는 증거를 review가 대신 만들지 않는다.
+
+steps:
+  - id: unit
+    capability: test-execution
+    variant: unit
+    trigger: manual
+    produces:
+      - test.unit.completed
+    note: >-
+      검토 대상 변경에 대해 테스트를 돌린다. 사람이 시작하는 진입점이다 —
+      이 워크플로에는 선행 구현 단계가 없다.
+
+  - id: integration
+    capability: test-execution
+    variant: integration
+    trigger: automatic
+    dependsOn: [unit]
+    expect:
+      - evidence: test.unit.result
+        status: passed
+        from: unit
+    produces:
+      - test.integration.completed
+    skippable:
+      evidenceOnSkip: test.skip-justification
+      reasonRequired: true
+      approvalRequired: true
+
+  - id: e2e
+    capability: test-execution
+    variant: e2e
+    trigger: automatic
+    dependsOn: [unit]
+    expect:
+      - evidence: test.unit.result
+        status: passed
+        from: unit
+    produces:
+      - test.e2e.completed
+    skippable:
+      evidenceOnSkip: test.skip-justification
+      reasonRequired: true
+      approvalRequired: true
+
+  - id: review
+    capability: review
+    gate: require-test-evidence
+    trigger: automatic
+    dependsOn: [unit, integration, e2e]
+    expect:
+      - evidence: test.unit.result
+        status: passed
+        from: unit
+    produces:
+      - review.verdict
+      - review.completed
+    note: >-
+      계약 대조와 증거 소비만 한다. 코드를 고치지 않고, 지적은 프로파일의 routing이
+      정한 소유자로 라우팅한다.
+
+  - id: inspect
+    capability: git-operations
+    variant: inspect
+    trigger: manual
+    produces:
+      - git.inspection
+    note: 읽기 전용. 다른 Git 작업 전에 대상을 확인한다.
+
+  - id: pr-preview
+    capability: git-operations
+    variant: pr-preview
+    trigger: manual
+    produces:
+      - git.pr-preview
+    note: 판정 결과를 PR 본문으로 정리해 보여주기만 한다. 게시하지 않는다.

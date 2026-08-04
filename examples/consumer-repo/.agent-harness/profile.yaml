@@ -1,0 +1,63 @@
+# 소비 저장소 로컬 profile 예시.
+#
+# 이 파일은 하네스 저장소가 아니라 **하네스를 쓰는 저장소**에 놓인다.
+# 여기 있는 이유는 하나다 — 스키마가 실제 소비 저장소 설정을 표현할 수 있는지
+# 지금 검증하기 위해서다. `npm run validate`가 이 파일도 검사한다.
+
+schemaVersion: 1
+id: acme-web
+kind: repository
+namespace: acme
+title: ACME 웹 저장소 profile
+description: >-
+  이 저장소의 실행 명령·컨벤션·권한 축소를 제공한다. 순서는 워크플로가, 로스터와
+  도메인 단계 삽입은 도메인 프로파일이 소유하므로 여기서 정의하지 않는다.
+
+# ---------------------------------------------------------------- 실행 명령
+# Capability variant의 commandKey가 여기를 찾는다.
+# 공용 하네스에는 명령 문자열이 없다 — 저장소마다 다르기 때문이다.
+commands:
+  test.unit:
+    command: pnpm vitest run --reporter=json
+    description: 단위 테스트. 생략 불가.
+  test.integration:
+    command: pnpm vitest run --project=integration --reporter=json
+  test.e2e:
+    command: pnpm playwright test --reporter=json
+    cwd: apps/web
+
+# ---------------------------------------------------------------- 컨벤션
+# 내용을 인라인하지 않고 경로만 가리킨다. 실행자가 필요할 때 직접 읽는다.
+conventions:
+  - ./conventions/code-review.md
+  - ./conventions/naming.md
+
+knowledge:
+  stack: ./conventions/stack.md
+
+# ---------------------------------------------------------------- 권한 축소
+# 좁힐 수만 있다. Capability나 불변 정책보다 넓게 선언하면 검증기가 거부한다.
+permissions:
+  network: none
+  destructive: false
+
+# ---------------------------------------------------------------- Git
+git:
+  commitConvention: conventional
+  automaticAttribution: forbidden
+  prTemplate: ./conventions/pr-template.md
+
+# ---------------------------------------------------------------- 관측
+# 코어 이벤트 → 이 저장소의 이벤트 이름. Adapter가 소비한다.
+# Capability 구현은 이 매핑을 알지 못한다.
+telemetry:
+  capability.started: acme.agent.step_start
+  capability.completed: acme.agent.step_end
+  evidence.recorded: acme.agent.evidence
+  policy.evaluated: acme.agent.policy
+
+fixtures:
+  - ./fixtures/users.json
+
+evals:
+  - ./evals/checkout-flow.eval.yaml

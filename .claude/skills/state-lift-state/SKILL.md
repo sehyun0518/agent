@@ -1,6 +1,8 @@
 ---
-name: state-lift-state
-description: Lift State into Provider Components — enables state sharing outside component boundaries. Apply when working on: composition, state, context, providers.
+title: Lift State into Provider Components
+impact: HIGH
+impactDescription: enables state sharing outside component boundaries
+tags: composition, state, context, providers
 ---
 
 ## Lift State into Provider Components
