@@ -7,7 +7,7 @@
 ## 한 줄 요약
 
 ```text
-requirements → specification → test-design → red 확인 → implementation → 테스트 실행 → review
+requirements → specification/test-plan → unit red/green → UI red/green → integration red/green → E2E red/green → review
 ```
 
 각 화살표는 **증거**로 건넌다. 상태 플래그가 아니라 증거가 전이 근거다.
@@ -46,7 +46,7 @@ requirements → specification → test-design → red 확인 → implementation
 
 ```diff
 - 테스트를 실행하지 않습니다 — `test-execution` Capability의 몫입니다.
-+ 테스트를 실행하지 않습니다. `test.red-proof` 증거는 이 층이 만드는 것이 아닙니다.
++ 테스트를 실행하지 않습니다. `test.<layer>.red-proof` 증거는 이 층이 만드는 것이 아닙니다.
 ```
 
 누가 그 토큰을 만드는지, 실패하면 어디로 보내는지는 워크플로의 `dependsOn`과 프로파일의
@@ -85,10 +85,10 @@ docs/                   vocabulary · adr · migration · consumer-profile
 | id | requires | produces | 비고 |
 |---|---|---|---|
 | `requirements` | — | `requirements.spec` | 도구 없음. 입력원은 발화뿐 |
-| `specification` | `requirements.*` | `specification.contract` · `.testids` | 고정 후 재고정 전까지 불변 |
-| `test-design` | `specification.*` | `test-design.suite` | 작성만. 실행·판정 안 함 |
-| `test-execution` | `test-design.completed` | `test.red-confirmed` | `unit`·`integration`·`e2e` 변형 |
-| `implementation` | `test.red-confirmed` | `implementation.patch` | red 증거 없이 착수 불가 |
+| `specification` | `requirements.*` | `specification.contract` · `.testids` · `.test-plan` | 책임 경계와 계층 적용 여부 고정 |
+| `test-design` | `specification.*` | `test-design.<layer>.suite` | 네 계층 변형. 작성만 수행 |
+| `test-execution` | 계층별 suite | `test.<layer>.red-confirmed` · `.completed` | `unit`·`ui`·`integration`·`e2e` 변형 |
+| `implementation` | 계층별 red 증거 | `implementation.patch` | 계층별 red 없이 동작 구현 불가 |
 | `review` | `test.unit.completed` | `review.verdict` | 증거 소비. 직접 안 돌림 |
 | `git-operations` | — | `git.*` | `inspect`·`commit`·`push`·`pr-*` 6변형, 전부 수동 |
 
@@ -112,14 +112,20 @@ evidence:
   한 토큰에 섞으면 "돌렸는데 실패"와 "아예 안 돌림"을 구분할 수 없다.
 - **red는 "빨갛다"가 아니라 "예상한 이유로 빨갛다"다.** 컴파일·import 실패는 `rejected`이며
   구현이 시작되지 않는다.
-- **침묵 생략이 없다.** `integration`·`e2e`를 건너뛰려면 사유(`test.skip-justification`)와
-  승인(`approval-record: granted`)을 남긴다.
+- **침묵 생략이 없다.** unit은 동작 변경에서 필수다. UI가 없는 작업은 test-plan에
+  구체적인 사유를 남기고, `integration`·`e2e`를 건너뛰려면 사유
+  (`test.skip-justification`)와 승인(`approval-record: granted`)을 모두 남긴다.
 
 어휘의 단일 출처는 `docs/vocabulary.md`, 기계 판독본은 `packages/manifest-contracts/vocabulary.json`.
 
 ## 프로파일
 
 Capability는 `profileExtensible`로 무엇을 주입받을지 선언하고, 프로파일이 그 축만 채운다.
+
+frontend 기본 테스트 스택은 unit=Vitest, UI=Vitest+React Testing Library+user-event,
+integration=Vitest+React Testing Library+MSW, E2E=Playwright다. 소비 저장소가
+`testing.layers.<layer>`를 선언하면 그 계층 객체 전체가 기본값을 대체한다. 내부 필드를
+merge하지 않으므로 서로 다른 러너와 파일 패턴이 섞이지 않는다.
 
 ```yaml
 # profiles/frontend/profile.yaml
@@ -207,6 +213,9 @@ CI가 재생성 결과와 커밋 상태를 대조하고, 다르면 병합을 막
 - 프로파일이 권한을 넓히거나 blocking 훅을 낮춤
 - 오케스트레이터 본체에 도메인 지식 유입
 - 워크플로가 변형을 안 쓰고 테스트 층을 합침
+- 중복 단계·의존 순환·선행 단계가 아닌 증거 참조
+- 계층별 red 생산자를 의존 그래프 조상으로 두지 않은 구현 단계
+- repository 테스트 계층에 대응하는 `commands.test.<layer>` 누락
 - 자동 진행 금지 Capability를 `automatic` 단계로 둠
 
 전체 목록은 `tooling/README.md`.
@@ -263,5 +272,6 @@ CI가 재생성 결과와 커밋 상태를 대조하고, 다르면 병합을 막
 | [0001](docs/adr/0001-capability-structure.md) | Capability 축, 단계적 런타임화, 프로파일 분리, 생성 미러 |
 | [0002](docs/adr/0002-runtime-promotion.md) | 실행 코드화 승격 조건 |
 | [0003](docs/adr/0003-layer-harness-boundary.md) | 레이어는 단독 동작, 하네스는 묶고 검증하고 이관만 |
+| [0004](docs/adr/0004-layered-red-green.md) | unit → UI → integration → E2E 계층별 red-green과 생략 규칙 |
 
 이관 기록은 `docs/migration/inventory.md`.

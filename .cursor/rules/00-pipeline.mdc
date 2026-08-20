@@ -13,38 +13,38 @@ alwaysApply: true
 | id | requires | produces |
 |---|---|---|
 | `git-operations` | — | 변형이 소유 |
-| `implementation` | specification.contract · specification.completed · test-design.completed · test.red-confirmed | implementation.patch · implementation.summary · implementation.completed |
+| `implementation` | specification.contract · specification.test-plan · specification.completed | implementation.patch · implementation.summary · implementation.completed |
 | `requirements` | — | requirements.spec · requirements.completed |
-| `review` | specification.contract · specification.completed · implementation.completed · implementation.patch · test.unit.completed | review.verdict · review.completed |
-| `specification` | requirements.spec · requirements.completed | specification.contract · specification.testids · specification.completed |
-| `test-design` | specification.contract · specification.testids · specification.completed | test-design.suite · test-design.completed |
-| `test-execution` | test-design.completed · test-design.suite | 변형이 소유 |
+| `review` | specification.contract · specification.test-plan · specification.completed · implementation.completed · implementation.patch · test.unit.completed | review.verdict · review.completed |
+| `specification` | requirements.spec · requirements.completed | specification.contract · specification.testids · specification.test-plan · specification.completed |
+| `test-design` | specification.contract · specification.testids · specification.test-plan · specification.completed | 변형이 소유 |
+| `test-execution` | specification.test-plan | 변형이 소유 |
 
 ## 워크플로
 
-### `bugfix` — 버그 수정
+### `bugfix` — 계층별 TDD 버그 수정
 
-자동 진행: specification → reproduction → red-check → fix → unit → integration → e2e → review
+자동 진행: specification → unit-reproduction → unit-red → logic-fix → unit-green → ui-scaffold → ui-reproduction → ui-red → ui-fix → ui-green → integration-reproduction → integration-red → integration-fix → integration-green → e2e-reproduction → e2e-red → e2e-fix → e2e-green → review
 
 사람이 호출: requirements · inspect · commit · push · pr-create · pr-update
 
-### `change` — 기본 변경 작업
+### `change` — 계층별 TDD 변경 작업
 
-자동 진행: specification → test-design → red-check → implementation → unit → integration → e2e → review
+자동 진행: specification → unit-design → unit-red → logic → unit-green → ui-scaffold → ui-design → ui-red → ui-implementation → ui-green → integration-design → integration-red → integration-implementation → integration-green → e2e-design → e2e-red → e2e-implementation → e2e-green → review
 
 사람이 호출: requirements · inspect · commit · push · pr-preview · pr-create · pr-update
 
 ### `review` — 검토 전용
 
-자동 진행: integration → e2e → review
+자동 진행: ui → integration → e2e → review
 
 사람이 호출: unit · inspect · pr-preview
 
 ## 전이 규칙
 
 - 상태가 아니라 **증거**로 다음 단계로 간다. 증거가 없으면 진행하지 않고 되돌린다.
-- 구현은 `test.red-confirmed` 없이 시작할 수 없다. 컴파일·import 실패로 빨간 것은 red가 아니다.
-- `unit`·`integration`·`e2e`를 하나의 `test` 단계로 합치지 않는다. 생략하려면 사유와
+- 동작 구현은 같은 계층의 `test.<layer>.red-confirmed` 없이 시작할 수 없다. 컴파일·import 실패는 red가 아니다.
+- `unit`·`ui`·`integration`·`e2e`를 하나의 `test` 단계로 합치지 않는다. 생략하려면 사유와
   승인을 증거로 남긴다.
 - Git 작업(`commit`·`push`·`pr-preview`·`pr-create`·`pr-update`)은 서로를 자동 호출하지
   않고, 워크플로가 자동 단계로 두지도 않는다. 각각 사람이 명시적으로 부른다.
@@ -53,6 +53,6 @@ alwaysApply: true
 ## 프로파일
 
 - `frontend` (namespace `frontend`) — 역할 3, 스킬 10, 바인딩 4
-  - 워크플로 확장: `design` → parallel-with `specification` · `state-data` → parallel-with `implementation` · `accessibility` → before `review`
+  - 워크플로 확장: `design` → parallel-with `specification` · `accessibility` → before `review` · `state-data` → parallel-with `implementation` · `state-data` → parallel-with `implementation`
 
 도메인 지식(토큰·규칙 팩·컨벤션)은 Capability가 아니라 프로파일이 소유한다.

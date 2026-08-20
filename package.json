@@ -6,8 +6,9 @@
   "description": "작업 Capability 기반 Agent Harness — 선언(manifest) 단일 출처와 검증·생성 툴링",
   "scripts": {
     "validate": "node tooling/validators/validate.mjs",
+    "test:contracts": "node --test tooling/validators/*.test.mjs",
     "generate": "node tooling/generators/generate.mjs",
-    "check": "npm run validate && node tooling/generators/generate.mjs --check"
+    "check": "npm run validate && npm run test:contracts && node tooling/generators/generate.mjs --check"
   },
   "devDependencies": {
     "ajv": "^8.17.1",

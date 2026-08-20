@@ -3,20 +3,20 @@
 - 소유: **하네스**. 레이어가 아니다.
 - 연결: 워크플로 step의 `gate: require-red-evidence`
 - blocking: 예. 통과하지 못하면 그 단계가 시작되지 않는다.
-- 소비 증거: `test.red-proof`
+- 소비 증거: `test.<layer>.red-proof`
 
 ## 왜 레이어 밖에 있나
 
 구현 레이어가 이 검사를 들고 있으면 그 레이어를 단독으로 쓸 수 없다. 그냥 구현 하나만
 시키려 해도 앞 단계의 증거를 요구하며 막힌다.
 
-레이어는 "나는 `test.red-confirmed`를 소비한다"까지만 선언하고, **그 조건이 실제로
+레이어는 "나는 `test.<layer>.red-confirmed`를 소비한다"까지만 선언하고, **그 조건이 실제로
 충족됐는지 검사하는 것은 이관을 담당하는 하네스의 일**이다. 이 파일을 지우면 레이어는
 그대로 단독 동작한다.
 
 ## 검사
 
-1. `test.red-proof` 증거가 존재하는가
+1. 구현 변형과 같은 계층의 `test.<layer>.red-proof` 증거가 존재하는가
 2. `status`가 `confirmed`인가 (`rejected`면 차단)
 3. 그 증거가 이번 작업의 인수 기준을 검증하는 테스트에 대한 것인가
 
@@ -33,5 +33,5 @@
 `precondition-unmet`으로 분류하고 `test-execution`으로 되돌린다. 재시도로 우회하지
 않는다 — 같은 상태로 다시 호출해도 증거는 여전히 없다.
 
-`test.red-proof`가 `rejected`면 되돌릴 곳은 `test-design`이다. 테스트 자체가 돌지
+`test.<layer>.red-proof`가 `rejected`면 되돌릴 곳은 같은 계층의 test-design이다. 테스트 자체가 돌지
 않는 상태이기 때문이다.

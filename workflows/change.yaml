@@ -1,190 +1,232 @@
 id: change
-version: 1
-title: 기본 변경 작업
+version: 2
+title: 계층별 TDD 변경 작업
 description: >-
-  요구사항에서 리뷰까지의 표준 흐름. 각 단계는 앞 단계의 상태가 아니라 **증거**를 보고
-  진행한다. Git 작업은 이 흐름에 자동으로 붙지 않는다 — 아래 manual 단계들이다.
+  설계가 순수 함수와 UI 책임을 먼저 고정하고, unit → ui → integration → e2e 각
+  계층에서 red 확인 뒤 구현하고 green을 확인한다. Git 작업은 자동으로 붙지 않는다.
 
 steps:
-  # ── 요구사항 ────────────────────────────────────────────────
   - id: requirements
     capability: requirements
     trigger: manual
-    produces:
-      - requirements.spec
-      - requirements.completed
-    note: 사람이 시작한다. 발화가 입력이므로 자동 진입점이 없다.
+    produces: [requirements.spec, requirements.completed]
 
-  # ── 계약 고정 ───────────────────────────────────────────────
   - id: specification
     capability: specification
     trigger: automatic
     dependsOn: [requirements]
     expect:
-      - evidence: completeness-check
-        status: passed
-        from: requirements
-    produces:
-      - specification.contract
-      - specification.testids
-      - specification.completed
+      - { evidence: completeness-check, status: passed, from: requirements }
+    produces: [specification.contract, specification.testids, specification.test-plan, specification.completed]
 
-  # ── 테스트 설계 ─────────────────────────────────────────────
-  - id: test-design
+  # unit — 동작 변경 작업에서 생략할 수 없다.
+  - id: unit-design
     capability: test-design
+    variant: unit
     trigger: automatic
     dependsOn: [specification]
     expect:
-      - evidence: contract-diff
-        status: recorded
-        from: specification
-    produces:
-      - test-design.suite
-      - test-design.completed
+      - { evidence: contract-diff, status: recorded, from: specification }
+    produces: [test-design.unit.suite, test-design.unit.completed]
 
-  # ── red 확인 (구현 착수의 유일한 관문) ──────────────────────
-  - id: red-check
+  - id: unit-red
     capability: test-execution
     variant: unit
     trigger: automatic
-    dependsOn: [test-design]
+    dependsOn: [unit-design]
     expect:
-      - evidence: changed-files
-        status: recorded
-        from: test-design
-    produces:
-      - test.red-confirmed
-    note: >-
-      여기서 실패가 "예상한 이유"인지 판정한다. 단위 층인 이유는 구현 전에 의미 있게
-      실패할 수 있는 유일한 층이기 때문이다 — 통합은 픽스처 미비로, E2E는 화면 부재로
-      errored가 되기 쉽고 그건 red가 아니다. 컴파일·import 실패도 rejected다.
+      - { evidence: changed-files, status: recorded, from: unit-design }
+    produces: [test.unit.red-confirmed]
 
-  # ── 구현 ────────────────────────────────────────────────────
-  - id: implementation
+  - id: logic
     capability: implementation
+    variant: logic
     gate: require-red-evidence
     trigger: automatic
-    dependsOn: [red-check]
+    dependsOn: [unit-red]
     expect:
-      - evidence: test.red-proof
-        status: confirmed
-        from: red-check
-    produces:
-      - implementation.patch
-      - implementation.summary
-      - implementation.completed
-    onFailure:
-      returnTo: specification
-      note: 계약이 부족하거나 모순이면 추측하지 않고 재고정한다.
+      - { evidence: test.unit.red-proof, status: confirmed, from: unit-red }
+    produces: [implementation.patch, implementation.summary, implementation.completed, implementation.logic.completed]
 
-  # ── 테스트 실행 (세 층을 합치지 않는다) ─────────────────────
-  - id: unit
+  - id: unit-green
     capability: test-execution
     variant: unit
     trigger: automatic
-    dependsOn: [implementation]
+    dependsOn: [logic]
     expect:
-      - evidence: changed-files
-        status: recorded
-        from: implementation
-    produces:
-      - test.unit.completed
-    note: 생략 불가.
+      - { evidence: changed-files, status: recorded, from: logic }
+    produces: [test.unit.completed]
 
-  # integration·e2e는 unit의 형제다. integration을 생략해도 e2e가 막히지 않는다.
-  - id: integration
+  # ui — test-plan에서 not-applicable이면 이 계층 전체가 같은 사유로 생략된다.
+  - id: ui-scaffold
+    capability: implementation
+    variant: ui-scaffold
+    trigger: automatic
+    dependsOn: [unit-green]
+    expect:
+      - { evidence: test.unit.result, status: passed, from: unit-green }
+    produces: [implementation.patch, implementation.summary, implementation.completed, implementation.ui-scaffold.completed]
+    skippable: &ui-skip
+      evidenceOnSkip: test.skip-justification
+      reasonRequired: true
+      approvalRequired: false
+
+  - id: ui-design
+    capability: test-design
+    variant: ui
+    trigger: automatic
+    dependsOn: [ui-scaffold]
+    expectAnyOf:
+      - conditions: [{ evidence: changed-files, status: recorded, from: ui-scaffold }]
+      - conditions: [{ evidence: test.skip-justification, status: recorded, from: ui-scaffold }]
+    produces: [test-design.ui.suite, test-design.ui.completed]
+    skippable: *ui-skip
+
+  - id: ui-red
+    capability: test-execution
+    variant: ui
+    trigger: automatic
+    dependsOn: [ui-design]
+    expectAnyOf:
+      - conditions: [{ evidence: changed-files, status: recorded, from: ui-design }]
+      - conditions: [{ evidence: test.skip-justification, status: recorded, from: ui-design }]
+    produces: [test.ui.red-confirmed]
+    skippable: *ui-skip
+
+  - id: ui-implementation
+    capability: implementation
+    variant: ui
+    gate: require-red-evidence
+    trigger: automatic
+    dependsOn: [ui-red]
+    expectAnyOf:
+      - conditions: [{ evidence: test.ui.red-proof, status: confirmed, from: ui-red }]
+      - conditions: [{ evidence: test.skip-justification, status: recorded, from: ui-red }]
+    produces: [implementation.patch, implementation.summary, implementation.completed, implementation.ui.completed]
+    skippable: *ui-skip
+
+  - id: ui-green
+    capability: test-execution
+    variant: ui
+    trigger: automatic
+    dependsOn: [ui-implementation]
+    expectAnyOf:
+      - conditions: [{ evidence: changed-files, status: recorded, from: ui-implementation }]
+      - conditions: [{ evidence: test.skip-justification, status: recorded, from: ui-implementation }]
+    produces: [test.ui.completed]
+    skippable: *ui-skip
+
+  # integration — 실행하지 않으면 사유와 승인 기록이 필요하다.
+  - id: integration-design
+    capability: test-design
+    variant: integration
+    trigger: automatic
+    dependsOn: [ui-green]
+    expectAnyOf:
+      - conditions: [{ evidence: test.ui.result, status: passed, from: ui-green }]
+      - conditions: [{ evidence: test.skip-justification, status: recorded, from: ui-green }]
+    produces: [test-design.integration.suite, test-design.integration.completed]
+    skippable: &integration-skip
+      evidenceOnSkip: test.skip-justification
+      reasonRequired: true
+      approvalRequired: true
+
+  - id: integration-red
     capability: test-execution
     variant: integration
     trigger: automatic
-    dependsOn: [unit]
-    expect:
-      - evidence: test.unit.result
-        status: passed
-        from: unit
-    produces:
-      - test.integration.completed
-    skippable:
+    dependsOn: [integration-design]
+    expectAnyOf:
+      - conditions: [{ evidence: changed-files, status: recorded, from: integration-design }]
+      - conditions: [{ evidence: test.skip-justification, status: recorded, from: integration-design }]
+    produces: [test.integration.red-confirmed]
+    skippable: *integration-skip
+
+  - id: integration-implementation
+    capability: implementation
+    variant: integration
+    gate: require-red-evidence
+    trigger: automatic
+    dependsOn: [integration-red]
+    expectAnyOf:
+      - conditions: [{ evidence: test.integration.red-proof, status: confirmed, from: integration-red }]
+      - conditions: [{ evidence: test.skip-justification, status: recorded, from: integration-red }]
+    produces: [implementation.patch, implementation.summary, implementation.completed, implementation.integration.completed]
+    skippable: *integration-skip
+
+  - id: integration-green
+    capability: test-execution
+    variant: integration
+    trigger: automatic
+    dependsOn: [integration-implementation]
+    expectAnyOf:
+      - conditions: [{ evidence: changed-files, status: recorded, from: integration-implementation }]
+      - conditions: [{ evidence: test.skip-justification, status: recorded, from: integration-implementation }]
+    produces: [test.integration.completed]
+    skippable: *integration-skip
+
+  # e2e — integration이 green이거나 승인된 생략이어야 시작한다.
+  - id: e2e-design
+    capability: test-design
+    variant: e2e
+    trigger: automatic
+    dependsOn: [integration-green]
+    expectAnyOf:
+      - conditions: [{ evidence: test.integration.result, status: passed, from: integration-green }]
+      - conditions: [{ evidence: test.skip-justification, status: recorded, from: integration-green }]
+    produces: [test-design.e2e.suite, test-design.e2e.completed]
+    skippable: &e2e-skip
       evidenceOnSkip: test.skip-justification
       reasonRequired: true
       approvalRequired: true
 
-  - id: e2e
+  - id: e2e-red
     capability: test-execution
     variant: e2e
     trigger: automatic
-    dependsOn: [unit]
-    expect:
-      - evidence: test.unit.result
-        status: passed
-        from: unit
-    produces:
-      - test.e2e.completed
-    skippable:
-      evidenceOnSkip: test.skip-justification
-      reasonRequired: true
-      approvalRequired: true
+    dependsOn: [e2e-design]
+    expectAnyOf:
+      - conditions: [{ evidence: changed-files, status: recorded, from: e2e-design }]
+      - conditions: [{ evidence: test.skip-justification, status: recorded, from: e2e-design }]
+    produces: [test.e2e.red-confirmed]
+    skippable: *e2e-skip
 
-  # ── 판정 ────────────────────────────────────────────────────
+  - id: e2e-implementation
+    capability: implementation
+    variant: e2e
+    gate: require-red-evidence
+    trigger: automatic
+    dependsOn: [e2e-red]
+    expectAnyOf:
+      - conditions: [{ evidence: test.e2e.red-proof, status: confirmed, from: e2e-red }]
+      - conditions: [{ evidence: test.skip-justification, status: recorded, from: e2e-red }]
+    produces: [implementation.patch, implementation.summary, implementation.completed, implementation.e2e.completed]
+    skippable: *e2e-skip
+
+  - id: e2e-green
+    capability: test-execution
+    variant: e2e
+    trigger: automatic
+    dependsOn: [e2e-implementation]
+    expectAnyOf:
+      - conditions: [{ evidence: changed-files, status: recorded, from: e2e-implementation }]
+      - conditions: [{ evidence: test.skip-justification, status: recorded, from: e2e-implementation }]
+    produces: [test.e2e.completed]
+    skippable: *e2e-skip
+
   - id: review
     capability: review
     gate: require-test-evidence
     trigger: automatic
-    dependsOn: [implementation, unit, integration, e2e]
+    dependsOn: [unit-green, ui-green, integration-green, e2e-green]
     expect:
-      - evidence: test.unit.result
-        status: passed
-        from: unit
-    produces:
-      - review.verdict
-      - review.completed
-    note: >-
-      테스트를 직접 돌리지 않는다. 증거를 소비한다. integration·e2e가 생략됐다면
-      생략 사유와 승인 기록을 함께 본다.
+      - { evidence: test.unit.result, status: passed, from: unit-green }
+    produces: [review.verdict, review.completed]
 
-  # ── Git 작업 (전부 manual, 서로 연쇄하지 않는다) ────────────
-  - id: inspect
-    capability: git-operations
-    variant: inspect
-    trigger: manual
-    produces:
-      - git.inspection
-    note: 읽기 전용. 다른 Git 작업 전에 대상을 확인한다.
-
-  - id: commit
-    capability: git-operations
-    variant: commit
-    trigger: manual
-    produces:
-      - git.commit-ref
-    note: push하지 않는다.
-
-  - id: push
-    capability: git-operations
-    variant: push
-    trigger: manual
-    produces:
-      - git.push-ref
-    note: 승인이 필요하다. PR을 만들지 않는다.
-
-  - id: pr-preview
-    capability: git-operations
-    variant: pr-preview
-    trigger: manual
-    produces:
-      - git.pr-preview
-    note: 읽기 전용. 아무것도 게시하지 않는다.
-
-  - id: pr-create
-    capability: git-operations
-    variant: pr-create
-    trigger: manual
-    produces:
-      - git.pr-ref
-    note: 기존 PR이 있으면 이걸 쓰지 않고 pr-update를 쓴다.
-
-  - id: pr-update
-    capability: git-operations
-    variant: pr-update
-    trigger: manual
-    produces:
-      - git.pr-ref
+  # Git 작업은 전부 수동이며 서로 연쇄하지 않는다.
+  - { id: inspect, capability: git-operations, variant: inspect, trigger: manual, produces: [git.inspection] }
+  - { id: commit, capability: git-operations, variant: commit, trigger: manual, produces: [git.commit-ref] }
+  - { id: push, capability: git-operations, variant: push, trigger: manual, produces: [git.push-ref] }
+  - { id: pr-preview, capability: git-operations, variant: pr-preview, trigger: manual, produces: [git.pr-preview] }
+  - { id: pr-create, capability: git-operations, variant: pr-create, trigger: manual, produces: [git.pr-ref] }
+  - { id: pr-update, capability: git-operations, variant: pr-update, trigger: manual, produces: [git.pr-ref] }

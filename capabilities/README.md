@@ -66,29 +66,22 @@ Capability는 도메인 무관이다. 프론트엔드 컴포넌트 API 패턴, R
 | id | 상태 | 비고 |
 |---|---|---|
 | `requirements` | 완료 | 발화 → 요구사항 스펙. 도구 없음 |
-| `specification` | 완료 | 스펙 → 고정된 계약 |
-| `test-design` | 완료 | 테스트 **작성**만. 실행·판정은 하지 않는다 |
-| `test-execution` | 완료 | 공유 에이전트 1개 + `unit`·`integration`·`e2e` 변형 |
-| `implementation` | 완료 | `test.red-confirmed` 없이는 착수 불가 |
+| `specification` | 완료 | 스펙 → 고정된 계약·계층별 테스트 계획 |
+| `test-design` | 완료 | `unit`·`ui`·`integration`·`e2e`별 테스트 작성 |
+| `test-execution` | 완료 | 네 계층의 red/green 실행과 증거 생산 |
+| `implementation` | 완료 | `logic`·`ui-scaffold`·`ui`·`integration`·`e2e` 변형 |
 | `review` | 완료 | 테스트를 돌리지 않고 증거를 소비한다 |
 | `git-operations` | 완료 | 6개 독립 변형. 나가는 호출·들어오는 자동 진행 둘 다 차단 |
 
 ## 흐름
 
 ```text
-requirements ──requirements.spec──▶ specification ──specification.contract──▶ test-design
-                                                                                   │
-                                                              test-design.completed │
-                                                                                   ▼
-                                        implementation ◀──test.red-confirmed── test-execution#unit
-                                              │
-                             implementation.completed
-                                              ▼
-                                      test-execution (unit·integration·e2e)
-                                              │
-                                       증거 (result·skip)
-                                              ▼
-                                           review
+requirements → specification/test-plan
+             → unit design → red → logic → green
+             → ui scaffold → ui design → red → ui → green
+             → integration design → red → integration → green
+             → e2e design → red → e2e → green
+             → review
 ```
 
 `git-operations`는 이 흐름에 자동으로 붙지 않는다. 커밋·푸시·PR은 각각 사람이 명시적으로

@@ -34,6 +34,7 @@ namespace: <토큰 접두사>
 | 필드 | 담는 것 |
 |---|---|
 | `commands` | 실행 명령. Capability variant의 `commandKey`가 여기를 찾는다 |
+| `testing.layers` | 계층별 라이브러리·파일 패턴. 같은 계층의 domain 기본값을 전체 대체 |
 | `conventions` | 컨벤션 문서 **경로**. 내용을 인라인하지 않는다 |
 | `knowledge` | 저장소 상수 문서 참조 |
 | `permissions` | 권한 **축소** |
@@ -44,7 +45,8 @@ namespace: <토큰 접두사>
 
 ## 명령이 왜 여기 있나
 
-`test-execution`의 각 변형은 `commandKey`만 갖는다.
+`test-execution`의 각 변형은 `commandKey`만 갖는다. 키는 `test.unit`·`test.ui`·
+`test.integration`·`test.e2e`로 분리한다.
 
 ```yaml
 # capabilities/test-execution/capability.yaml
@@ -64,6 +66,18 @@ commands:
 하네스를 여러 저장소가 공유한다.
 
 키가 없으면 실행자는 명령을 **추측하지 않고** `precondition-unmet`으로 되돌린다.
+
+## 계층별 라이브러리 우선순위
+
+domain 프로파일은 기본 테스트 스택을 제공하고 repository 프로파일은 필요한 계층을
+대체할 수 있다. 대체는 계층 내부 merge가 아니다. 예를 들어 repository가 `ui`를
+선언하면 domain의 UI `libraries`와 `filePatterns`는 함께 사라지고 repository의 `ui`
+객체 전체가 사용된다. 서로 다른 러너·패턴이 섞이는 것을 막기 위해서다.
+
+repository가 계층을 선언하면 같은 이름의 `commands.test.<layer>`도 반드시 선언한다.
+필요한 의존성이나 명령이 없으면 자동 설치하지 않는다.
+네 계층을 모두 선언한 예시는
+[`examples/consumer-repo/.agent-harness/profile.yaml`](../examples/consumer-repo/.agent-harness/profile.yaml)에 있다.
 
 ## 권한은 좁힐 수만 있다
 

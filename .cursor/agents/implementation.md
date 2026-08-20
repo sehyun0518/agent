@@ -1,6 +1,6 @@
 ---
 name: implementation
-description: 배정된 단일 단위를 구현합니다 — 고정된 계약(props·데이터 접근 인터페이스), 디자인 토큰, 상태·데이터 인터페이스를 소비해 산출물을 작성합니다. 이미 작성된 테스트를 초록으로 만드는 것이 목표이며, 인수 기준을 검증하는 테스트를 새로 쓰지 않습니다. 계약·데이터 레이어·디자인 토큰도 새로 정의하지 않습니다.
+description: 호출된 변형 하나만 구현합니다. logic은 순수 함수, ui-scaffold는 import 가능한 무동작 껍데기, ui는 실제 컴포넌트, integration과 e2e는 해당 경계의 연결만 담당합니다. 이미 작성된 현재 계층 테스트를 초록으로 만들고 새 테스트를 쓰지 않습니다.
 model: composer-2.5
 readonly: false
 is_background: true

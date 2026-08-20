@@ -20,11 +20,28 @@ commands:
   test.unit:
     command: pnpm vitest run --reporter=json
     description: 단위 테스트. 생략 불가.
+  test.ui:
+    command: pnpm vitest run --project=ui --reporter=json
   test.integration:
     command: pnpm vitest run --project=integration --reporter=json
   test.e2e:
     command: pnpm playwright test --reporter=json
     cwd: apps/web
+
+testing:
+  layers:
+    unit:
+      libraries: [vitest]
+      filePatterns: ["**/*.unit.test.ts"]
+    ui:
+      libraries: [vitest, "@testing-library/react", "@testing-library/user-event"]
+      filePatterns: ["**/*.ui.test.tsx"]
+    integration:
+      libraries: [vitest, "@testing-library/react", msw]
+      filePatterns: ["**/*.integration.test.tsx"]
+    e2e:
+      libraries: ["@playwright/test"]
+      filePatterns: ["e2e/**/*.spec.ts"]
 
 # ---------------------------------------------------------------- 컨벤션
 # 내용을 인라인하지 않고 경로만 가리킨다. 실행자가 필요할 때 직접 읽는다.

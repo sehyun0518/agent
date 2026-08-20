@@ -15,6 +15,7 @@
      연결 지점)?
 3. 테스트 증거를 **읽습니다**. 직접 돌리지 않습니다.
    - `test.unit.result` — 생략 불가
+   - `test.ui.result` 또는 테스트 계획에 연결된 UI 생략 사유
    - `test.integration.result` 또는 생략 사유(`test.skip-justification`)
    - `test.e2e.result` 또는 생략 사유
    - 각 증거의 `status`와 **원본 아티팩트**를 확인합니다. 요약 문자열만 믿지 않습니다.

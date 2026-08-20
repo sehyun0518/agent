@@ -1,19 +1,17 @@
 id: test-execution
-version: 1
+version: 2
 title: 테스트 실행
 description: >-
-  작성된 테스트를 실행하고 결과를 증거로 남긴다. unit·integration·e2e는 하나의
+  작성된 테스트를 실행하고 결과를 증거로 남긴다. unit·ui·integration·e2e는 하나의
   `test` 상태로 합치지 않고 각각 독립된 신호와 증거를 낸다. 실행 명령 자체는
   저장소 profile의 commands가 제공한다 — 공용 하네스는 명령 문자열을 담지 않는다.
 
 requires:
-  - test-design.completed
-  - test-design.suite      # 신호만이 아니라 실행할 파일도 받는다
+  - specification.test-plan
 
 # 루트는 아무것도 내지 않는다. 산출은 변형이 소유한다.
-# red 확인(test.red-confirmed)은 unit 변형만 낸다 — 구현 전에 의미 있게 실패할 수
-# 있는 유일한 층이기 때문이다. 루트에 두면 e2e도 red를 낼 수 있는 것처럼 읽히고,
-# 완료 조건이 모든 변형에 red 증거를 강요하게 된다.
+# 각 변형은 자기 계층의 suite를 받고 red/green 실행을 모두 담당한다. 워크플로가
+# 호출 시점과 산출을 좁혀 red 실행과 green 실행을 구분한다.
 produces: []
 
 permissions:
@@ -38,31 +36,53 @@ variants:
   unit:
     title: 단위 테스트 실행
     description: >-
-      구현 전 red 확인의 유일한 대상이다. 대상 함수·모듈이 없어 단언이 깨지므로
-      "구현이 없어서 실패"를 다른 이유와 구분할 수 있다.
+      순수 함수의 입출력을 검증한다. DOM이나 컴포넌트를 포함하지 않는다.
+    requires: [test-design.unit.completed, test-design.unit.suite]
     commandKey: test.unit
     produces:
       - test.unit.completed
-      - test.red-confirmed
+      - test.unit.red-confirmed
     evidence:
       - kind: test.unit.result
         required: true
         artifactRequired: true
-      - kind: test.red-proof
+      - kind: test.unit.red-proof
         required: false
         artifactRequired: true
     completion:
       requiresEvidence:
         - test.unit.result
 
+  ui:
+    title: UI 테스트 실행
+    requires: [test-design.ui.completed, test-design.ui.suite]
+    commandKey: test.ui
+    produces: [test.ui.completed, test.ui.red-confirmed]
+    evidence:
+      - kind: test.ui.result
+        required: true
+        artifactRequired: true
+      - kind: test.ui.red-proof
+        required: false
+        artifactRequired: true
+      - kind: test.skip-justification
+        required: false
+    completion:
+      requiresEvidence: [test.ui.result]
+
   integration:
     title: 통합 테스트 실행
+    requires: [test-design.integration.completed, test-design.integration.suite]
     commandKey: test.integration
     produces:
       - test.integration.completed
+      - test.integration.red-confirmed
     evidence:
       - kind: test.integration.result
         required: true
+        artifactRequired: true
+      - kind: test.integration.red-proof
+        required: false
         artifactRequired: true
       - kind: test.skip-justification
         required: false
@@ -72,12 +92,17 @@ variants:
 
   e2e:
     title: E2E 실행
+    requires: [test-design.e2e.completed, test-design.e2e.suite]
     commandKey: test.e2e
     produces:
       - test.e2e.completed
+      - test.e2e.red-confirmed
     evidence:
       - kind: test.e2e.result
         required: true
+        artifactRequired: true
+      - kind: test.e2e.red-proof
+        required: false
         artifactRequired: true
       - kind: test.skip-justification
         required: false

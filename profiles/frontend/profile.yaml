@@ -108,6 +108,7 @@ bindings:
     note: 시각 자가 점검용. RN 타깃이면 이 도구 대신 RN 프리뷰를 쓴다.
 
   - capability: test-design
+    variant: e2e
     tools: [mcp__playwright]
     mcpServers:
       - playwright:
@@ -125,6 +126,22 @@ bindings:
           args: ["-y", "@playwright/mcp@latest"]
     note: 통합 결과 시각 확인용. 테스트 실행에는 쓰지 않는다.
 
+testing:
+  layers:
+    unit:
+      libraries: [vitest]
+      filePatterns: ["**/*.unit.test.ts", "**/*.unit.test.tsx"]
+    ui:
+      libraries: [vitest, "@testing-library/react", "@testing-library/user-event"]
+      filePatterns: ["**/*.ui.test.tsx"]
+    integration:
+      libraries: [vitest, "@testing-library/react", msw]
+      filePatterns: ["**/*.integration.test.ts", "**/*.integration.test.tsx"]
+    e2e:
+      libraries: ["@playwright/test"]
+      filePatterns: ["e2e/**/*.spec.ts"]
+      note: React Native 타깃은 repository profile에서 이 계층 매핑을 대체한다.
+
 # ---------------------------------------------------------------- 로스터
 # generic 작업 단위 → 명명된 실행자. 오케스트레이터는 이 표를 통해서만 이름을 안다.
 # 순서는 여기 없다 — 워크플로와 workflowExtensions가 소유한다.
@@ -133,8 +150,14 @@ roster:
     runner: specification
   - unit: 토큰·시각 스펙
     runner: design
-  - unit: 경계 테스트 설계
-    runner: test-design
+  - unit: 순수 함수 테스트 설계
+    runner: test-design#unit
+  - unit: UI 테스트 설계
+    runner: test-design#ui
+  - unit: 통합 테스트 설계
+    runner: test-design#integration
+  - unit: E2E 테스트 설계
+    runner: test-design#e2e
   - unit: red 확인
     runner: test-execution#unit
   - unit: 상태·데이터 연결
@@ -162,19 +185,33 @@ workflowExtensions:
           계약 고정과 같은 시점에 토큰·시각 스펙을 낸다. 둘 다 끝나야 하류가 병렬로 간다.
           review 전용 흐름에는 계약 고정 단계가 없으므로 이 삽입은 건너뛰어진다.
 
-      - id: state-data
-        runner: state-data
-        mode: parallel-with
-        anchorCapability: implementation
-        background: true
-        isolation: worktree
-        note: 구현과 같은 시점에 데이터 레이어를 만든다. 고정된 계약에만 기댄다.
-
       - id: accessibility
         runner: accessibility
         mode: before
         anchorCapability: review
         note: 병합된 통합 빌드를 판정 전에 점검하고 접근성 범위만 직접 고친다.
+
+  - workflow: change
+    insert:
+      - id: state-data
+        runner: state-data
+        mode: parallel-with
+        anchorCapability: implementation
+        anchorStep: logic
+        background: true
+        isolation: worktree
+        note: 순수 로직 구현과 같은 시점에 데이터 레이어를 만들고 고정된 계약에만 기댄다.
+
+  - workflow: bugfix
+    insert:
+      - id: state-data
+        runner: state-data
+        mode: parallel-with
+        anchorCapability: implementation
+        anchorStep: logic-fix
+        background: true
+        isolation: worktree
+        note: 순수 로직 수정과 같은 시점에 데이터 레이어를 만들고 고정된 계약에만 기댄다.
 
 # ---------------------------------------------------------------- 라우팅
 routing:

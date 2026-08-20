@@ -70,7 +70,7 @@
         },
         "expectedStatus": {
           "type": "object",
-          "description": "특정 증거가 특정 status여야 완료인 경우. 예: test.red-proof는 confirmed여야 한다.",
+          "description": "특정 증거가 특정 status여야 완료인 경우. 예: 계층별 red-proof는 confirmed여야 한다.",
           "propertyNames": { "$ref": "#/$defs/evidenceKind" },
           "additionalProperties": { "type": "string" }
         }
