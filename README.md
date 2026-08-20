@@ -1,277 +1,182 @@
 # Agent Harness
 
-작업 유형(**Capability**)을 축으로 구성한 에이전트 하네스. 구성요소 종류가 아니라
-**하나의 작업**이 디렉터리 경계이고, 각 작업이 자기 agent·skill·tool·hook·test·eval을
-수직 슬라이스로 소유한다.
+Agent Harness는 에이전트 작업을 **Capability 단위의 레이어**로 나누고, 각 레이어를
+증거로 연결하는 선언형 하네스입니다. 각 레이어는 자신의 계약과 역할을 소유하고,
+워크플로는 레이어의 실행 순서와 이관 조건을 정의합니다.
 
-## 한 줄 요약
+> 현재 저장소는 선언, 정적 검증, 플랫폼별 설정 생성을 제공합니다. 워크플로 실행 엔진과
+> 증거 저장소는 아직 제공하지 않습니다. 실제 단계 호출과 증거 기록은 사람 또는 메인
+> 에이전트가 수행합니다.
+
+## 빠르게 이해하기
+
+하나의 변경 작업은 다음 순서로 진행합니다.
 
 ```text
-requirements → specification/test-plan → unit red/green → UI red/green → integration red/green → E2E red/green → review
+요구사항
+  → 계약과 테스트 계획
+  → Unit Red → 순수 로직 → Unit Green
+  → UI Red → 컴포넌트 → UI Green
+  → Integration Red → 연결 구현 → Integration Green
+  → E2E Red → 사용자 여정 연결 → E2E Green
+  → 최종 검토
 ```
 
-각 화살표는 **증거**로 건넌다. 상태 플래그가 아니라 증거가 전이 근거다.
+각 화살표는 상태 플래그가 아니라 **증거**를 전달합니다. 테스트가 실패했다는 사실만으로는
+구현을 시작하지 않습니다. 테스트가 예상한 단언 때문에 실패했다는 `red-proof`가 있어야
+같은 계층의 구현을 시작합니다.
 
-## 왜 이렇게 생겼나
+Git 작업은 위 흐름에 자동으로 연결하지 않습니다. 상태 확인, 커밋, 푸시, PR 생성은
+사용자가 각각 명시적으로 요청할 때만 수행합니다.
 
-두 가지가 이 구조를 결정한다.
+## 레이어 바로가기
 
-**1. 작업이 경계다.** 예전에는 `agents/`·`skills/`처럼 구성요소 종류로 나뉘어 있어,
-"테스트 설계"를 고치려면 여러 디렉터리를 열어야 했고 무엇이 무엇과 함께 도는지 구조에서
-읽히지 않았다. 이제 `capabilities/test-design/` 하나만 열면 된다.
+이 저장소에서는 Capability와 레이어를 같은 의미로 사용합니다. 각 링크에서 해당 레이어의
+입력, 출력, 실행 단위, 완료 조건을 확인할 수 있습니다.
 
-**2. 도메인은 교체 가능하다.** Capability는 프론트엔드를 모른다. 디자인 토큰·React 규칙
-팩·컴포넌트 API 패턴은 `profiles/frontend/`가 소유하고 바인딩으로 주입한다. 프로파일을
-갈아끼우면 같은 Capability가 다른 도메인에서 돈다.
+| 순서 | 레이어 | 담당하는 일 | 담당하지 않는 일 |
+|---:|---|---|---|
+| 1 | [Requirements](capabilities/requirements/README.md) | 사용자 발화를 실행 가능한 요구사항으로 정리합니다. | 저장소나 외부 자료를 조사하지 않습니다. |
+| 2 | [Specification](capabilities/specification/README.md) | 계약과 계층별 테스트 계획을 고정합니다. | 제품 코드나 테스트를 구현하지 않습니다. |
+| 3 | [Test Design](capabilities/test-design/README.md) | 계층별 테스트를 작성합니다. | 테스트를 실행하거나 제품 코드를 수정하지 않습니다. |
+| 4 | [Test Execution](capabilities/test-execution/README.md) | 테스트를 실행하고 red 또는 green 증거를 남깁니다. | 테스트나 제품 코드를 수정하지 않습니다. |
+| 5 | [Implementation](capabilities/implementation/README.md) | 확인된 red를 같은 계층의 구현으로 green으로 만듭니다. | 인수 기준 테스트를 새로 작성하지 않습니다. |
+| 6 | [Review](capabilities/review/README.md) | 계약과 테스트 증거를 읽고 최종 판정을 내립니다. | 테스트를 다시 실행하거나 코드를 수정하지 않습니다. |
+| 수동 | [Git Operations](capabilities/git-operations/README.md) | Git과 GitHub 작업을 한 번에 하나씩 수행합니다. | 다음 Git 작업을 자동으로 이어서 수행하지 않습니다. |
 
-## 레이어와 하네스
+레이어 공통 규칙과 새 레이어 추가 방법은
+[Capability 안내서](capabilities/README.md)에서 확인할 수 있습니다.
 
-**레이어(Capability)는 혼자서도 쓸 수 있어야 하고, 하네스는 일하지 않는다.**
-하네스는 묶고(bind) · 검증하고(gate) · 넘기는(handoff) 것만 한다. ([ADR-0003](docs/adr/0003-layer-harness-boundary.md))
+## 전체 구조
 
-이 원칙이 두 가지를 결정한다.
+```text
+capabilities/                 작업 레이어의 단일 출처입니다.
+  <id>/capability.yaml        입력, 출력, 권한, 증거, 완료 조건을 정의합니다.
+  <id>/README.md              사람이 읽는 레이어 안내서입니다.
+  <id>/agents/                역할의 실행 지침을 보관합니다.
+  <id>/hooks/ tests/ evals/   산출 검사와 평가 자료를 보관합니다.
 
-**훅에는 두 종류가 있고 소유자가 다르다.**
+workflows/                    change, bugfix, review 순서를 정의합니다.
+  gates/                      레이어 사이의 이관 조건을 검사합니다.
 
-| 종류 | 검사 대상 | 소유 | 예 |
+profiles/                     도메인별 도구와 규칙을 주입합니다.
+  frontend/                   프론트엔드 기본 프로파일을 제공합니다.
+
+packages/                     스키마, 어휘, 정책 계약, 조정자를 제공합니다.
+policies/                     권한과 데이터 처리 정책을 정의합니다.
+tooling/                      선언 검증기와 플랫폼 생성기를 제공합니다.
+docs/                         운영 문서, 결정 기록, 이관 문서를 보관합니다.
+
+.claude/ .cursor/ .codex/     소스에서 생성한 플랫폼별 산출물입니다.
+```
+
+## 설계 원칙
+
+### 레이어가 작업 경계를 소유합니다
+
+각 Capability는 agent, skill, hook, test, eval을 하나의 수직 슬라이스로 소유합니다.
+예를 들어 테스트 설계를 변경할 때는 `capabilities/test-design/`에서 관련 계약과 역할을
+함께 확인합니다.
+
+### 하네스는 연결만 담당합니다
+
+레이어는 단독으로 실행할 수 있어야 합니다. 하네스는 레이어를 바인딩하고, 이관 조건을
+검증하고, 다음 단계에 증거를 전달합니다. 레이어의 실제 작업을 하네스에 구현하지 않습니다.
+자세한 결정은 [ADR-0003](docs/adr/0003-layer-harness-boundary.md)에서 확인할 수 있습니다.
+
+### 워크플로만 순서를 정의합니다
+
+Capability는 자신의 입력과 출력만 압니다. 다음에 어떤 레이어가 실행되는지는
+`workflows/`가 정의합니다. 도메인 프로파일은 필요한 단계를 추가할 수 있지만 별도의 실행
+순서를 만들지 않습니다.
+
+### 프로파일은 도메인 지식을 주입합니다
+
+Capability는 프레임워크나 테스트 라이브러리를 직접 선택하지 않습니다.
+`profiles/frontend/profile.yaml`이 React 계열 규칙, 테스트 도구, 역할 로스터를
+주입합니다. 소비 저장소는 `.agent-harness/profile.yaml`에서 실행 명령과 파일 패턴을
+대체할 수 있습니다.
+
+## 테스트 계층
+
+| 계층 | 검증 대상 | 프론트엔드 기본 도구 | 생략 조건 |
 |---|---|---|---|
-| 자기 산출 검사 | 내 결과가 쓸 만한가 | 레이어 | `completeness-gate` · `contract-freeze` |
-| **이관 게이트** | 앞 레이어가 넘긴 게 조건을 만족하나 | **하네스** | `workflows/gates/require-red-evidence` |
+| Unit | DOM에 의존하지 않는 순수 함수의 입출력을 검증합니다. | Vitest를 사용합니다. | 동작 변경에서는 생략하지 않습니다. |
+| UI | 실제 컴포넌트의 렌더링과 상호작용을 검증합니다. | Vitest, React Testing Library, user-event를 사용합니다. | UI가 없다는 구체적인 테스트 계획이 있어야 합니다. |
+| Integration | 여러 모듈과 네트워크 경계의 연결을 검증합니다. | Vitest, React Testing Library, MSW를 사용합니다. | 구체적인 사유와 승인이 있어야 합니다. |
+| E2E | 브라우저에서 사용자의 핵심 여정을 검증합니다. | Playwright를 사용합니다. | 구체적인 사유와 승인이 있어야 합니다. |
 
-이관 게이트가 레이어 안에 있으면 그 레이어는 단독으로 못 쓴다. 구현 하나만 시키려 해도
-앞 단계 증거를 요구하며 막힌다. **게이트 파일을 지웠을 때 레이어가 그대로 도는가**가
-올바른 배치인지 판별하는 시험이다.
+새 UI는 Unit Green 이후에 import 가능한 무동작 scaffold를 먼저 만듭니다. UI 테스트는
+scaffold를 정상적으로 불러온 뒤 렌더링이나 상호작용 단언으로 실패해야 합니다. import,
+컴파일, 러너 설정 오류는 올바른 red로 인정하지 않습니다.
 
-**레이어는 토큰으로만 말한다.**
+계층별 결정의 배경은 [ADR-0004](docs/adr/0004-layered-red-green.md)에서 확인할 수 있습니다.
 
-```diff
-- 테스트를 실행하지 않습니다 — `test-execution` Capability의 몫입니다.
-+ 테스트를 실행하지 않습니다. `test.<layer>.red-proof` 증거는 이 층이 만드는 것이 아닙니다.
-```
+## 증거와 완료 판정
 
-누가 그 토큰을 만드는지, 실패하면 어디로 보내는지는 워크플로의 `dependsOn`과 프로파일의
-`routing`이 안다. 검증기가 Capability 본문의 이웃 이름을 실패로 잡는다.
-
-## 구조
-
-```text
-capabilities/           작업 유형별 수직 슬라이스 (단일 출처)
-  <id>/capability.yaml    계약 — 입력·출력·선행조건·권한·증거·완료조건·진입점·실패정책
-  <id>/agents/            역할 본문 (frontmatter 없음 — 메타는 manifest가 소유)
-  <id>/skills/ hooks/ tests/ evals/
-
-profiles/               도메인 바인딩 (교체 가능)
-  frontend/profile.yaml   로스터 · 라우팅 · 바인딩 · 워크플로 확장 · 지식 참조
-  frontend/agents/ skills/ knowledge/
-
-packages/               계약과 조정자 (Capability 아님)
-  manifest-contracts/     capability·profile·workflow·orchestrator JSON Schema + 어휘
-  policy-contracts/       정책 스키마 + 우선순위
-  telemetry-contracts/    공급자 독립 관측 이벤트 계약
-  boundary-contracts/     경계마다 검사되는 계약 (requirements-spec)
-  orchestrator/           도메인 무지 조정자 본체
-
-workflows/              change · bugfix · review
-  gates/                  이관 게이트 — 앞 레이어가 넘긴 증거를 검사
-policies/               permissions · data-handling · destructive-actions
-tooling/                validators · generators
-docs/                   vocabulary · adr · migration · consumer-profile
-
-.claude/ .cursor/ .codex/   생성 산출물 — 직접 편집 금지
-```
-
-## Capability
-
-| id | requires | produces | 비고 |
-|---|---|---|---|
-| `requirements` | — | `requirements.spec` | 도구 없음. 입력원은 발화뿐 |
-| `specification` | `requirements.*` | `specification.contract` · `.testids` · `.test-plan` | 책임 경계와 계층 적용 여부 고정 |
-| `test-design` | `specification.*` | `test-design.<layer>.suite` | 네 계층 변형. 작성만 수행 |
-| `test-execution` | 계층별 suite | `test.<layer>.red-confirmed` · `.completed` | `unit`·`ui`·`integration`·`e2e` 변형 |
-| `implementation` | 계층별 red 증거 | `implementation.patch` | 계층별 red 없이 동작 구현 불가 |
-| `review` | `test.unit.completed` | `review.verdict` | 증거 소비. 직접 안 돌림 |
-| `git-operations` | — | `git.*` | `inspect`·`commit`·`push`·`pr-*` 6변형, 전부 수동 |
-
-계약의 단일 출처는 각 `capabilities/<id>/capability.yaml`이다.
-
-## 증거로 전이한다
-
-이 하네스의 중심 규칙이다.
+Capability는 `requires`로 입력을 선언하고 `produces`로 출력을 선언합니다. 실행 결과는
+증거의 `kind`, `status`, `summary`, `artifact`, `producedBy`로 기록합니다.
 
 ```yaml
-evidence:
-  - kind: test.unit.result
-    status: failed              # 기계가 이걸 보고 전이를 판정한다
-    summary: "3 failed, 12 passed"
-    artifact: .harness/runs/{runId}/unit.json
-    producedBy: test-execution#unit
+kind: test.unit.result
+status: failed
+summary: "3 failed, 12 passed"
+artifact: .harness/runs/{runId}/unit.json
+producedBy: test-execution#unit
 ```
 
-- **완료는 증거로만 판정된다.** `capability.yaml`에 상태 플래그 필드가 없다.
-- **`test.*.completed`는 "실행됐다"만 뜻한다.** 통과 여부는 `status`가 담는다. 둘을
-  한 토큰에 섞으면 "돌렸는데 실패"와 "아예 안 돌림"을 구분할 수 없다.
-- **red는 "빨갛다"가 아니라 "예상한 이유로 빨갛다"다.** 컴파일·import 실패는 `rejected`이며
-  구현이 시작되지 않는다.
-- **침묵 생략이 없다.** unit은 동작 변경에서 필수다. UI가 없는 작업은 test-plan에
-  구체적인 사유를 남기고, `integration`·`e2e`를 건너뛰려면 사유
-  (`test.skip-justification`)와 승인(`approval-record: granted`)을 모두 남긴다.
+다음 규칙을 공통으로 적용합니다.
 
-어휘의 단일 출처는 `docs/vocabulary.md`, 기계 판독본은 `packages/manifest-contracts/vocabulary.json`.
+- 완료 여부는 선언된 증거로 판정합니다.
+- `test.<layer>.completed`는 실행 사실만 나타냅니다.
+- 통과와 실패는 `test.<layer>.result`의 상태로 판정합니다.
+- 구현 착수 여부는 `test.<layer>.red-proof`로 판정합니다.
+- 테스트 생략 여부는 사유와 필요한 승인 기록으로 판정합니다.
 
-## 프로파일
+통제 어휘는 [docs/vocabulary.md](docs/vocabulary.md)에서 확인할 수 있습니다.
 
-Capability는 `profileExtensible`로 무엇을 주입받을지 선언하고, 프로파일이 그 축만 채운다.
+## 저장소를 사용하는 방법
 
-frontend 기본 테스트 스택은 unit=Vitest, UI=Vitest+React Testing Library+user-event,
-integration=Vitest+React Testing Library+MSW, E2E=Playwright다. 소비 저장소가
-`testing.layers.<layer>`를 선언하면 그 계층 객체 전체가 기본값을 대체한다. 내부 필드를
-merge하지 않으므로 서로 다른 러너와 파일 패턴이 섞이지 않는다.
+### 하네스를 유지보수할 때
 
-```yaml
-# profiles/frontend/profile.yaml
-bindings:
-  - capability: implementation
-    skillsOneOf:                      # 택일 — 혼용 금지가 스키마로 표현된다
-      - frontend:react-best-practice
-      - frontend:react-native-skills
-    tools: [mcp__playwright]
-```
-
-프로파일은 **권한을 좁힐 수만 있다**. `none < read < write`, `none < allowlist < any`
-격자에서 Capability보다 넓으면 검증기가 거부한다.
-
-프로파일은 `<namespace>:` 접두사로 자기 토큰을 만든다. 코어 어휘를 건드리지 않고
-도메인 증거를 늘릴 수 있는 이유다.
-
-## 오케스트레이터는 이름을 모른다
-
-`packages/orchestrator/orchestrator.md`에는 특정 Capability도 명명 에이전트도 등장하지
-않는다. 검증기가 `forbiddenReferences`로 이걸 강제한다.
-
-실행자 이름은 프로파일의 `roster`가, 지적의 소유자는 `routing`이 정한다.
-그래서 Capability를 추가해도 중앙 문서를 고칠 필요가 없다.
-
-**순서는 워크플로만 안다.** 프로파일은 도메인 단계를 어디에 끼울지(`workflowExtensions`)만
-선언한다. 프로파일이 자기 순서를 따로 갖고 있으면 워크플로와 경쟁하는 정의가 둘이 되고,
-어느 쪽을 따르는지에 따라 게이트가 통째로 우회된다.
-
-```yaml
-workflowExtensions:
-  - workflow: "*"
-    insert:
-      - id: design
-        runner: design
-        mode: parallel-with
-        anchorCapability: specification   # step id가 아니라 Capability로 앵커
-```
-
-step id가 아니라 Capability로 앵커하는 이유는 워크플로마다 이름이 다르기 때문이다
-(`change`는 `implementation`, `bugfix`는 `fix`). 대상 워크플로에 그 Capability가 없으면
-삽입은 건너뛰어진다 — 그 흐름에 해당 단계가 없다는 뜻이다.
-
-## Git 작업은 연쇄하지 않는다
-
-```text
-commit ─╳→ push ─╳→ pr-create
-```
-
-- `commit`은 push하지 않고, `push`는 PR을 만들지 않고, `pr-create`는 commit도 push도 하지 않는다.
-- 기존 PR이 있으면 `pr-create` 대신 `pr-update`를 명시적으로 쓴다.
-- 커밋·PR에 자동화 도구 출처 문구를 자동으로 넣지 않는다.
-
-두 겹으로 막는다: `chaining.autoInvoke: false`(나가는 호출)와
-`chaining.autoTriggerable: false`(들어오는 자동 진행), 그리고 `before-tool` 훅.
-
-## 플랫폼 미러는 생성물이다
-
-`.claude` · `.cursor` · `.codex`를 **직접 편집하지 않는다.**
+소스 파일을 수정한 뒤 다음 명령을 실행합니다.
 
 ```sh
-npm run validate   # 선언 검증
-npm run generate   # 미러 생성
-npm run check      # 둘 다 (CI가 도는 것)
+npm run validate
+npm run generate
+npm run check
 ```
 
-CI가 재생성 결과와 커밋 상태를 대조하고, 다르면 병합을 막는다. 소스에 대응이 없는
-생성물(고아)은 제거된다. 손으로 고친 내용은 되돌아간다.
+`npm run validate`는 manifest와 워크플로 계약을 검사합니다. `npm run generate`는 플랫폼별
+산출물을 다시 만듭니다. `npm run check`는 계약 테스트와 생성물 드리프트까지 검사합니다.
 
-| 플랫폼 | 형태 |
+`.claude/`, `.cursor/`, `.codex/`는 직접 수정하지 않습니다. 이 디렉터리는
+Capability와 프로파일 소스에서 생성합니다.
+
+### 소비 저장소에 연결할 때
+
+소비 저장소는 `.agent-harness/profile.yaml`에 테스트 명령, 파일 패턴, 컨벤션, 권한을
+선언합니다. 전체 설정 방법은 [소비 저장소 프로파일 안내서](docs/consumer-profile.md)와
+[예제 프로파일](examples/consumer-repo/.agent-harness/profile.yaml)에서 확인할 수 있습니다.
+
+## 관련 문서
+
+| 문서 | 사용하는 시점 |
 |---|---|
-| `.claude/` | 본문 전문 인라인 + frontmatter |
-| `.cursor/` | 얇은 래퍼 + `rules/` 색인 |
-| `.codex/` | 얇은 래퍼 + `SKILL.md` 미러 + `AGENTS.md` 진입점 |
-
-## 검증기가 막는 것
-
-프롬프트가 아니라 `npm run validate`가 강제한다.
-
-- 미등록 어휘 토큰(오타), 허용되지 않은 증거 status
-- 선언하지 않은 증거를 완료 조건으로 요구
-- 없는 파일을 가리키는 진입점
-- 도구가 `permissions`를 초과 (`filesystem-boundary` · `network-access`)
-- 파괴적 작업인데 승인·증거 선언 없음
-- 프로파일이 권한을 넓히거나 blocking 훅을 낮춤
-- 오케스트레이터 본체에 도메인 지식 유입
-- 워크플로가 변형을 안 쓰고 테스트 층을 합침
-- 중복 단계·의존 순환·선행 단계가 아닌 증거 참조
-- 계층별 red 생산자를 의존 그래프 조상으로 두지 않은 구현 단계
-- repository 테스트 계층에 대응하는 `commands.test.<layer>` 누락
-- 자동 진행 금지 Capability를 `automatic` 단계로 둠
-
-전체 목록은 `tooling/README.md`.
-
-## 운영
-
-| 문서 | 언제 |
-|---|---|
-| **[docs/walkthrough.md](docs/walkthrough.md)** | 처음 쓸 때. 작업 하나가 발화에서 판정까지 가는 전 과정 |
-| **[docs/operations.md](docs/operations.md)** | 기준이 필요할 때. 게이트 조건, 되돌릴 곳, 무엇을 고치면 무엇을 돌리는지 |
-
-지금 **자동인 것은 선언 검사와 미러 드리프트 두 가지뿐**이다. 워크플로 순서와 게이트는
-문서상 규칙이고 실행 주체는 사람 또는 메인 에이전트다. 이 경계를 먼저 확인한다.
-
-## 유지보수
-
-### Capability 추가
-
-1. `capabilities/<id>/capability.yaml`을 쓴다 (`id` = 디렉터리명).
-2. 토큰이 `docs/vocabulary.md`에 있는지 본다. 도메인 전용이면 프로파일 네임스페이스로.
-3. 증거를 정한다. **증거 없이 완료되는 Capability는 만들지 않는다.**
-4. `npm run check`.
-
-중앙 registry나 오케스트레이터는 고치지 않는다.
-
-### 역할 본문 수정
-
-`capabilities/<id>/agents/*.md` 또는 `profiles/<id>/agents/*.md`를 고치고 재생성한다.
-본문에 frontmatter를 넣지 않는다 — 메타데이터는 manifest가 소유하고, 남아 있으면
-생성기가 오류로 잡는다.
-
-### 도메인 지식 수정
-
-`profiles/<id>/`에서 고친다. Capability 본문에 도메인 지식을 넣으면 프로파일을 교체해도
-그 도메인이 따라온다.
-
-### 소비 저장소 연결
-
-`docs/consumer-profile.md`와 `examples/consumer-repo/.agent-harness/profile.yaml`.
-실행 명령·컨벤션·권한 축소는 소비 저장소가 소유한다.
-
-## 아직 코드가 아니다
-
-`orchestrator`·`hook-runtime`·`policy-engine`·`execution-state`는 선언만 있고 실행
-코드가 없다. `tooling/`은 검증·생성 도구이지 하네스 런타임이 아니다.
-
-정책 7종 중 실제로 강제되는 것과 훅 런타임을 기다리는 것은 `policies/README.md`에
-✅/⏳로 구분해 뒀다. 승격 조건은 `docs/adr/0002-runtime-promotion.md`.
+| [작업 흐름 안내서](docs/walkthrough.md) | 요구사항부터 리뷰까지 전체 실행 예시가 필요할 때 사용합니다. |
+| [운영 안내서](docs/operations.md) | 게이트 조건과 실패 시 되돌릴 위치를 확인할 때 사용합니다. |
+| [통제 어휘](docs/vocabulary.md) | 신호, 아티팩트, 증거 이름을 확인할 때 사용합니다. |
+| [프로파일 안내서](profiles/README.md) | 도메인 바인딩 구조를 변경할 때 사용합니다. |
+| [정책 안내서](policies/README.md) | 권한과 데이터 처리 정책을 확인할 때 사용합니다. |
+| [도구 안내서](tooling/README.md) | 검증기와 생성기의 검사 범위를 확인할 때 사용합니다. |
 
 ## 결정 기록
 
-| ADR | 내용 |
+| ADR | 결정 내용 |
 |---|---|
-| [0001](docs/adr/0001-capability-structure.md) | Capability 축, 단계적 런타임화, 프로파일 분리, 생성 미러 |
-| [0002](docs/adr/0002-runtime-promotion.md) | 실행 코드화 승격 조건 |
-| [0003](docs/adr/0003-layer-harness-boundary.md) | 레이어는 단독 동작, 하네스는 묶고 검증하고 이관만 |
-| [0004](docs/adr/0004-layered-red-green.md) | unit → UI → integration → E2E 계층별 red-green과 생략 규칙 |
+| [ADR-0001](docs/adr/0001-capability-structure.md) | Capability 중심 구조와 단계적 런타임화를 결정합니다. |
+| [ADR-0002](docs/adr/0002-runtime-promotion.md) | 실행 코드로 승격할 조건을 결정합니다. |
+| [ADR-0003](docs/adr/0003-layer-harness-boundary.md) | 레이어와 하네스의 책임 경계를 결정합니다. |
+| [ADR-0004](docs/adr/0004-layered-red-green.md) | 계층별 red-green 순서와 생략 규칙을 결정합니다. |
 
-이관 기록은 `docs/migration/inventory.md`.
+구조 이관 내역은 [docs/migration/inventory.md](docs/migration/inventory.md)에서 확인할 수 있습니다.
