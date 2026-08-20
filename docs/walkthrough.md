@@ -119,88 +119,45 @@ artifact: .harness/runs/{runId}/contract-diff.md
 
 ---
 
-## 3. test-design — 인수 기준을 테스트로
+## 3. 계층별 Red-Green
 
-```
-호출: tester
-```
+계약 고정 단계가 `specification.test-plan`에 순수 함수, UI, 통합 경계, 사용자 여정과
+각 계층의 적용 여부를 기록한다. 이후 한 호출은 계층 하나만 다룬다.
 
-**층으로 분담하지 않는다.** 인수 기준마다 "이걸 무엇으로 판정하지?"를 묻고, 그 답이
-층을 정한다.
-
-| 인수 기준 | 층 |
-|---|---|
-| "꺼진 상태로 저장하면 API에 `notifications: false`가 간다" | 단위 |
-| "저장 실패 시 토글이 이전 상태로 돌아간다" | 통합 |
-| "토글을 끄고 새로고침해도 꺼져 있다" | E2E |
-
-요약에 **인수 기준 ↔ 테스트 대응표**를 남긴다. 이게 없으면 다음 단계가 "이 실패가
-인수 기준을 검증하는 실패인가"를 판정할 수 없다.
-
-```markdown
-| 인수 기준 | 테스트 | 층 |
-|---|---|---|
-| AC1 저장 요청 페이로드 | useNotificationSetting.test.ts:12 | unit |
-| AC2 실패 시 롤백 | settings-flow.test.tsx:34 | integration |
-| AC3 새로고침 후 유지 | e2e/settings.spec.ts:8 | e2e |
+```text
+test-design#unit → unit red → implementation#logic → unit green
+→ implementation#ui-scaffold → test-design#ui → ui red → implementation#ui → ui green
+→ test-design#integration → integration red → implementation#integration → integration green
+→ test-design#e2e → e2e red → implementation#e2e → e2e green
 ```
 
-**구현자는 이 테스트를 쓰지 않는다.** 코드를 쓴 뒤에 쓰는 테스트는 요구사항이 아니라
-구현을 확인하는 것이고, 결국 통과하는 테스트를 쓰게 된다.
+unit은 DOM을 import하지 않고 진도 계산·잠금 판정·데이터 변환 같은 순수 함수만
+검증한다. UI는 검증된 함수와 실제 컴포넌트를 결합한다. integration은 여러 실제 모듈의
+경계를, e2e는 브라우저 사용자 여정을 검증한다.
 
----
-
-## 4. red 확인 — 구현 착수의 유일한 관문
-
-```
-호출: test-runner (variant: unit)
-```
-
-여기가 이 공정의 핵심이다. **"빨갛다"와 "올바른 이유로 빨갛다"는 다르다.**
+신규 컴포넌트는 unit green 뒤에 계약된 export와 props만 가진 무동작 스캐폴드를 먼저
+만든다. 따라서 UI red는 import 오류가 아니라 렌더링·상호작용 단언 실패로 남는다.
 
 ```yaml
-kind: test.unit.result
+kind: test.ui.result
 status: failed
-summary: "1 failed — useNotificationSetting.test.ts > 저장 요청 페이로드"
-artifact: .harness/runs/{runId}/unit.json
+summary: "1 failed — NotificationToggle.ui.test.tsx > 저장 실패 시 원상 복구"
+artifact: .harness/runs/{runId}/ui.json
 
-kind: test.red-proof
+kind: test.ui.red-proof
 status: confirmed
-summary: "useNotificationSetting이 아직 없어 단언 실패. 컴파일은 통과."
+summary: "컴포넌트는 정상 렌더됐고 원상 복구 단언이 실패함"
 ```
 
-### confirmed 판정 기준
-
-| 실패 이유 | 판정 |
-|---|---|
-| 단언 실패, 기대값 불일치, 미구현 반환 | ✅ `confirmed` |
-| 컴파일·타입 에러 | ❌ `rejected` |
-| import·모듈 해석 실패 | ❌ `rejected` |
-| 테스트 파일 문법 오류 | ❌ `rejected` |
-| 픽스처·설정 누락 | ❌ `rejected` |
-| 러너가 아예 안 뜸 | ❌ `rejected` |
-
-`rejected`면 테스트가 **아직 돌지도 않는** 상태다. 이때 구현을 시작하면 나중에 초록이
-됐을 때 그게 요구사항을 만족해서인지 에러가 사라져서인지 구분할 수 없다.
-
-### 왜 unit만인가
-
-| 층 | 구현 전 |
-|---|---|
-| unit | 대상이 없어 단언이 깨진다 → 의미 있는 red |
-| integration | 픽스처·목킹 미비로 깨지기 쉽다 → `errored`가 red로 오인됨 |
-| e2e | 화면이 없어 러너가 못 뜬다 → **무조건 `errored`. red 확인 대상 아님** |
+컴파일·import·문법·픽스처·러너 오류는 어느 계층에서도 `rejected`다. 구현자는 현재
+계층 테스트를 쓰지 않고 이미 확인된 red를 green으로 만든다.
 
 ---
 
-## 5. implementation — 초록으로 만들기
+## 4. 구현과 증거
 
-```
-호출: implementation   (프로파일이 켜져 있으면 state-data와 동시에)
-게이트: workflows/gates/require-red-evidence.md
-```
-
-게이트가 먼저 본다. `test.red-proof`가 `confirmed`가 아니면 **여기서 멈춘다.**
+게이트는 구현 변형과 같은 계층의 `test.<layer>.red-proof: confirmed`를 요구한다.
+`ui-scaffold`만 예외이며 수용 기준 동작을 포함할 수 없다.
 
 구현자가 소비하는 세 가지 — 어느 것도 새로 정의하지 않는다:
 
@@ -222,10 +179,10 @@ artifact: .harness/runs/{runId}/changed-files.json
 
 ---
 
-## 6. 테스트 실행 — 세 층을 따로
+## 5. 계층별 green과 생략
 
 ```
-호출: test-runner (unit) → test-runner (integration) → test-runner (e2e)
+호출: test-runner (unit) → test-runner (ui) → test-runner (integration) → test-runner (e2e)
 ```
 
 **하나로 합치지 않는다.** 각 층이 자기 신호와 증거를 낸다.
@@ -235,6 +192,11 @@ artifact: .harness/runs/{runId}/changed-files.json
 kind: test.unit.result
 status: passed
 summary: "13 passed"
+
+# ui
+kind: test.ui.result
+status: passed
+summary: "6 passed"
 
 # integration
 kind: test.integration.result
@@ -249,7 +211,8 @@ summary: "2 passed"
 
 ### 생략하려면
 
-unit은 생략 불가. integration·e2e는 **사유와 승인**이 둘 다 있어야 한다.
+unit은 생략 불가다. UI가 없는 작업은 test-plan의 구체적 사유로 UI 체인을 생략할 수
+있다. integration·e2e는 **사유와 승인**이 둘 다 있어야 한다.
 
 ```yaml
 kind: test.skip-justification
@@ -270,7 +233,7 @@ status: granted
 
 ---
 
-## 7. accessibility — 프로파일이 끼워 넣은 단계
+## 6. accessibility — 프로파일이 끼워 넣은 단계
 
 ```
 호출: accessibility   (프론트엔드 프로파일이 review 앞에 삽입)
@@ -284,7 +247,7 @@ status: granted
 
 ---
 
-## 8. review — 판정
+## 7. review — 판정
 
 ```
 호출: review
@@ -305,6 +268,7 @@ status: granted
 
 ### 증거
 - test.unit.result: passed (13)
+- test.ui.result: passed (6)
 - test.integration.result: passed (4)
 - test.e2e.result: passed (2)
 
@@ -319,7 +283,7 @@ status: granted
 
 ---
 
-## 9. Git — 여기서 자동으로 이어지지 않는다
+## 8. Git — 여기서 자동으로 이어지지 않는다
 
 ```
 호출: git-operator (commit)     ← 사람이 명시적으로
@@ -373,7 +337,8 @@ commit ─╳→ push ─╳→ pr-create
 |---|---|
 | `discussion` | 요구사항이 이미 명확하면 생략 |
 | `spec` | 계약이 안 바뀌면 확인만 (차이 0으로 기록) |
-| `tester` → red 확인 → `implementation` | **줄이지 않는다.** 이 공정의 핵심 |
+| 적용되는 각 계층의 `tester` → red → `implementation` → green | **줄이지 않는다.** 이 공정의 핵심 |
+| `ui` | UI가 없다는 구체적 test-plan 사유가 있으면 생략 |
 | `integration`·`e2e` | 사유 + 승인이 있으면 생략 |
 | `unit` | 생략 불가 |
 | `review` | 가능하면 항상 |

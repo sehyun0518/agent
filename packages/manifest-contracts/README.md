@@ -35,7 +35,7 @@ Capability · Profile · Workflow 선언의 **스키마 단일 출처**. 실행 
 - **`policy-denied`는 `halt`만 가능하다.** `"action": {"const": "halt"}`. 정책 거부를
   재시도로 우회할 수 없다.
 - **완료는 증거로만 판정된다.** `completion`에 상태 플래그 필드가 없다.
-- **`test-execution` 참조는 variant를 요구한다.** 워크플로가 unit·integration·e2e를
+- **`test-execution` 참조는 variant를 요구한다.** 워크플로가 unit·ui·integration·e2e를
   하나의 `test` 단계로 합치지 못한다.
 - **자동 진행 단계는 전이 조건을 명시해야 한다.** `trigger: automatic`이고 선행이 있으면
   `expect`가 비어 있을 수 없다.

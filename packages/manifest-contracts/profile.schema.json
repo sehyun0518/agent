@@ -224,6 +224,26 @@
       "default": {}
     },
 
+    "testing": {
+      "type": "object",
+      "description": "테스트 계층별 라이브러리 계약. repository 프로파일의 계층 선언은 domain 기본값과 합치지 않고 해당 계층 전체를 대체한다.",
+      "additionalProperties": false,
+      "required": ["layers"],
+      "properties": {
+        "layers": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": false,
+          "properties": {
+            "unit": { "$ref": "#/$defs/testLayer" },
+            "ui": { "$ref": "#/$defs/testLayer" },
+            "integration": { "$ref": "#/$defs/testLayer" },
+            "e2e": { "$ref": "#/$defs/testLayer" }
+          }
+        }
+      }
+    },
+
     "conventions": {
       "type": "array",
       "default": [],
@@ -273,6 +293,29 @@
 
     "fixtures": { "type": "array", "items": { "type": "string" }, "default": [] },
     "evals": { "type": "array", "items": { "type": "string" }, "default": [] }
+  },
+
+  "$defs": {
+    "testLayer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["libraries"],
+      "properties": {
+        "libraries": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "filePatterns": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "note": { "type": "string" }
+      }
+    }
   },
 
   "allOf": [

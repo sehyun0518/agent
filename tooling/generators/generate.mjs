@@ -274,8 +274,8 @@ function renderCursorPipeline({ capabilities, profiles, workflows }) {
     `## 워크플로\n\n${flowLines}\n\n` +
     `## 전이 규칙\n\n` +
     `- 상태가 아니라 **증거**로 다음 단계로 간다. 증거가 없으면 진행하지 않고 되돌린다.\n` +
-    `- 구현은 \`test.red-confirmed\` 없이 시작할 수 없다. 컴파일·import 실패로 빨간 것은 red가 아니다.\n` +
-    `- \`unit\`·\`integration\`·\`e2e\`를 하나의 \`test\` 단계로 합치지 않는다. 생략하려면 사유와\n` +
+    `- 동작 구현은 같은 계층의 \`test.<layer>.red-confirmed\` 없이 시작할 수 없다. 컴파일·import 실패는 red가 아니다.\n` +
+    `- \`unit\`·\`ui\`·\`integration\`·\`e2e\`를 하나의 \`test\` 단계로 합치지 않는다. 생략하려면 사유와\n` +
     `  승인을 증거로 남긴다.\n` +
     `- Git 작업(\`commit\`·\`push\`·\`pr-preview\`·\`pr-create\`·\`pr-update\`)은 서로를 자동 호출하지\n` +
     `  않고, 워크플로가 자동 단계로 두지도 않는다. 각각 사람이 명시적으로 부른다.\n` +
@@ -387,7 +387,7 @@ function renderCodexEntry({ capabilities, workflows, profiles }) {
     `2. 스펙이 충분하면 \`packages/orchestrator/orchestrator.md\`를 기준으로 분해한다.\n` +
     `3. 역할 실행은 \`.codex/agents/<id>.md\`를 열고 그 \`source\` 원본을 함께 따른다.\n` +
     `4. **증거 없이 다음 단계로 가지 않는다.** 상태 플래그가 아니라 증거가 전이 근거다.\n` +
-    `5. 구현은 \`test.red-confirmed\` 없이 시작하지 않는다.\n` +
+    `5. 동작 구현은 같은 계층의 \`test.<layer>.red-confirmed\` 없이 시작하지 않는다.\n` +
     `6. Git 작업은 서로 연쇄하지 않는다. 커밋·푸시·PR을 각각 명시적으로 호출한다.\n` +
     `7. 커밋·PR에 자동화 도구 출처 문구를 자동으로 넣지 않는다.\n\n` +
     `## 드리프트 방지\n\n` +

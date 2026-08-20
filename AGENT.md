@@ -50,8 +50,8 @@ npm run check      # 둘 다 (CI가 도는 것)
 
 - 도구는 선언된 `permissions`를 넘을 수 없다.
 - 완료는 상태가 아니라 **증거**로 판정된다.
-- 구현은 `test.red-confirmed` 없이 시작할 수 없다.
-- `unit`·`integration`·`e2e`는 하나로 합쳐지지 않는다. 생략하려면 사유와 승인을 남긴다.
+- 동작 구현은 같은 계층의 `test.<layer>.red-confirmed` 없이 시작할 수 없다. 단 UI 계약 스캐폴드는 동작을 담지 않는다.
+- `unit`·`ui`·`integration`·`e2e`는 하나로 합쳐지지 않는다. 생략하려면 테스트 계획과 사유를 남기고, integration·e2e는 승인도 남긴다.
 - Git 작업은 서로 연쇄하지 않고 자동 진행되지 않는다.
 - 커밋·PR에 자동화 도구 출처 문구를 자동으로 넣지 않는다.
 - `.claude`·`.cursor`·`.codex`는 생성물이다. 직접 편집하면 CI가 되돌린다.

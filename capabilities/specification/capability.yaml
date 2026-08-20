@@ -1,9 +1,10 @@
 id: specification
-version: 1
+version: 2
 title: 계약 고정
 description: >
   요구사항 스펙을 하류가 병렬로 기댈 수 있는 고정된 계약으로 바꾼다 — 타입·props
-  인터페이스·API 요청/응답 스키마·데이터 접근 훅 시그니처·test-id 규약.
+  인터페이스·API 요청/응답 스키마·데이터 접근 훅 시그니처·test-id 규약과 계층별
+  테스트 계획. 순수 함수와 UI 책임 경계를 구현 전에 고정한다.
   계약을 고정한 뒤에는 되돌려 재고정하기 전까지 바꾸지 않는다.
 
 requires:
@@ -13,6 +14,7 @@ requires:
 produces:
   - specification.contract
   - specification.testids
+  - specification.test-plan
   - specification.completed
 
 permissions:
@@ -42,8 +44,8 @@ entrypoints:
       # TODO(Phase 3): 도메인 무관 문장으로 고친다. Phase 2는 구조 이동만 하고
       # 본문·설명의 의미 변경은 하지 않는다 — 생성 왕복 비교를 흐리지 않기 위해서다.
       description: >-
-        프론트엔드 기능 요구사항을 컴포넌트 계획과 "고정된 계약"(TypeScript 인터페이스,
-        컴포넌트 props, API 요청/응답 스키마)으로 변환합니다. 구현·상태· 디자인 에이전트로
+        기능 요구사항을 고정된 계약과 계층별 테스트 계획으로 변환합니다. 순수 함수의
+        입출력과 책임, UI 상태·상호작용, 통합 경계, 사용자 여정을 구현 전에 분리합니다. 구현·상태·디자인 에이전트로
         작업을 팬아웃하기 전, 모든 프론트엔드 기능의 첫 단계에서 proactively 사용하세요.
         컴포넌트를 직접 구현하거나 스타일링하지는 않습니다.
       tools: [Read, Grep, Glob, Bash, Write, Edit]

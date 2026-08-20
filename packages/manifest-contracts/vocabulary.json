@@ -1,6 +1,6 @@
 {
   "$comment": "docs/vocabulary.md의 기계 판독본. 두 파일은 항상 함께 갱신한다. 검증기는 이 파일을 읽어 접두사 없는(코어) 토큰의 등록 여부를 검사한다.",
-  "version": 1,
+  "version": 2,
   "tokenPattern": "^([a-z][a-z0-9-]*:)?[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$",
   "evidenceKindPattern": "^([a-z][a-z0-9-]*:)?[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)*$",
   "signals": {
@@ -9,12 +9,6 @@
     },
     "specification.completed": {
       "producedBy": "specification"
-    },
-    "test-design.completed": {
-      "producedBy": "test-design"
-    },
-    "test.red-confirmed": {
-      "producedBy": "test-execution"
     },
     "implementation.completed": {
       "producedBy": "implementation"
@@ -25,11 +19,53 @@
     "test.unit.completed": {
       "producedBy": "test-execution#unit"
     },
+    "test.ui.completed": {
+      "producedBy": "test-execution#ui"
+    },
     "test.integration.completed": {
       "producedBy": "test-execution#integration"
     },
     "test.e2e.completed": {
       "producedBy": "test-execution#e2e"
+    },
+    "test-design.unit.completed": {
+      "producedBy": "test-design#unit"
+    },
+    "test-design.ui.completed": {
+      "producedBy": "test-design#ui"
+    },
+    "test-design.integration.completed": {
+      "producedBy": "test-design#integration"
+    },
+    "test-design.e2e.completed": {
+      "producedBy": "test-design#e2e"
+    },
+    "test.unit.red-confirmed": {
+      "producedBy": "test-execution#unit"
+    },
+    "test.ui.red-confirmed": {
+      "producedBy": "test-execution#ui"
+    },
+    "test.integration.red-confirmed": {
+      "producedBy": "test-execution#integration"
+    },
+    "test.e2e.red-confirmed": {
+      "producedBy": "test-execution#e2e"
+    },
+    "implementation.logic.completed": {
+      "producedBy": "implementation#logic"
+    },
+    "implementation.ui-scaffold.completed": {
+      "producedBy": "implementation#ui-scaffold"
+    },
+    "implementation.ui.completed": {
+      "producedBy": "implementation#ui"
+    },
+    "implementation.integration.completed": {
+      "producedBy": "implementation#integration"
+    },
+    "implementation.e2e.completed": {
+      "producedBy": "implementation#e2e"
     }
   },
   "artifacts": {
@@ -42,8 +78,20 @@
     "specification.testids": {
       "producedBy": "specification"
     },
-    "test-design.suite": {
-      "producedBy": "test-design"
+    "specification.test-plan": {
+      "producedBy": "specification"
+    },
+    "test-design.unit.suite": {
+      "producedBy": "test-design#unit"
+    },
+    "test-design.ui.suite": {
+      "producedBy": "test-design#ui"
+    },
+    "test-design.integration.suite": {
+      "producedBy": "test-design#integration"
+    },
+    "test-design.e2e.suite": {
+      "producedBy": "test-design#e2e"
     },
     "implementation.patch": {
       "producedBy": "implementation"
@@ -95,6 +143,13 @@
         "errored"
       ]
     },
+    "test.ui.result": {
+      "statuses": [
+        "passed",
+        "failed",
+        "errored"
+      ]
+    },
     "test.integration.result": {
       "statuses": [
         "passed",
@@ -109,7 +164,25 @@
         "errored"
       ]
     },
-    "test.red-proof": {
+    "test.unit.red-proof": {
+      "statuses": [
+        "confirmed",
+        "rejected"
+      ]
+    },
+    "test.ui.red-proof": {
+      "statuses": [
+        "confirmed",
+        "rejected"
+      ]
+    },
+    "test.integration.red-proof": {
+      "statuses": [
+        "confirmed",
+        "rejected"
+      ]
+    },
+    "test.e2e.red-proof": {
       "statuses": [
         "confirmed",
         "rejected"

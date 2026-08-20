@@ -28,8 +28,8 @@
 
 ## 워크플로
 
-- `bugfix` — 버그 수정
-- `change` — 기본 변경 작업
+- `bugfix` — 계층별 TDD 버그 수정
+- `change` — 계층별 TDD 변경 작업
 - `review` — 검토 전용
 
 ## 프로파일
@@ -42,7 +42,7 @@
 2. 스펙이 충분하면 `packages/orchestrator/orchestrator.md`를 기준으로 분해한다.
 3. 역할 실행은 `.codex/agents/<id>.md`를 열고 그 `source` 원본을 함께 따른다.
 4. **증거 없이 다음 단계로 가지 않는다.** 상태 플래그가 아니라 증거가 전이 근거다.
-5. 구현은 `test.red-confirmed` 없이 시작하지 않는다.
+5. 동작 구현은 같은 계층의 `test.<layer>.red-confirmed` 없이 시작하지 않는다.
 6. Git 작업은 서로 연쇄하지 않는다. 커밋·푸시·PR을 각각 명시적으로 호출한다.
 7. 커밋·PR에 자동화 도구 출처 문구를 자동으로 넣지 않는다.
 

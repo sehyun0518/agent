@@ -83,6 +83,24 @@
           "default": []
         },
 
+        "expectAnyOf": {
+          "type": "array",
+          "minItems": 1,
+          "description": "대안 전이 조건 묶음. 바깥 배열은 OR, 각 묶음의 conditions는 AND다. 테스트 실행 결과 또는 승인된 생략처럼 둘 중 하나가 유효한 경우에 쓴다.",
+          "items": {
+            "type": "object",
+            "required": ["conditions"],
+            "additionalProperties": false,
+            "properties": {
+              "conditions": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "$ref": "#/$defs/expectation" }
+              }
+            }
+          }
+        },
+
         "produces": {
           "type": "array",
           "items": { "$ref": "#/$defs/token" },
@@ -134,13 +152,28 @@
             "required": ["trigger", "dependsOn"]
           },
           "then": {
-            "properties": {
-              "expect": { "type": "array", "minItems": 1 }
-            },
-            "required": ["expect"]
+            "anyOf": [
+              { "required": ["expect"], "properties": { "expect": { "type": "array", "minItems": 1 } } },
+              { "required": ["expectAnyOf"] }
+            ]
           }
         }
       ]
+    },
+
+    "expectation": {
+      "type": "object",
+      "required": ["evidence", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "evidence": { "$ref": "#/$defs/evidenceKind" },
+        "status": { "type": "string" },
+        "from": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "description": "그 증거를 낸 선행 step id."
+        }
+      }
     }
   }
 }

@@ -3,7 +3,7 @@
 - 소유: **하네스**. 레이어가 아니다.
 - 연결: 워크플로 step의 `gate: require-test-evidence`
 - blocking: 예.
-- 소비 증거: `test.unit.result` · `test.integration.result` · `test.e2e.result` ·
+- 소비 증거: `test.unit.result` · `test.ui.result` · `test.integration.result` · `test.e2e.result` ·
   `test.skip-justification`
 
 ## 검사
@@ -11,10 +11,13 @@
 | 층 | 통과 조건 |
 |---|---|
 | unit | `test.unit.result`가 존재한다. 생략 불가 |
+| ui | UI가 적용되면 `test.ui.result`, 아니면 테스트 계획에 연결된 구체적 생략 사유 |
 | integration | `test.integration.result`가 있거나, `test.skip-justification`이 사유와 함께 기록됨 |
 | e2e | `test.e2e.result`가 있거나, `test.skip-justification`이 사유와 함께 기록됨 |
 
-증거가 없는데 생략 기록도 없으면 차단한다.
+증거가 없는데 생략 기록도 없으면 차단한다. 생략 기록은 `specification.test-plan`의
+해당 계층 `not-applicable` 판정과 연결되어야 하며, integration·e2e는
+`approval-record: granted`도 함께 있어야 한다.
 
 ## 왜 판정 레이어가 직접 돌리지 않는가
 

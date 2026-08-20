@@ -35,25 +35,27 @@ Capability manifest의 `requires`·`produces`·`evidence[].kind`에 쓰이는 �
 |---|---|---|
 | `requirements.completed` | 요구사항 스펙이 완결성 게이트를 통과함 | `requirements` |
 | `specification.completed` | 기술 계약이 고정됨 (변경하려면 되돌려 재고정) | `specification` |
-| `test-design.completed` | 인수 기준을 검증하는 테스트가 작성됨 | `test-design` |
-| `test.red-confirmed` | 그 테스트가 **예상한 이유로** 실패함이 확인됨 | `test-execution` |
+| `test-design.<layer>.completed` | 해당 계층 테스트가 작성됨 (`unit`·`ui`·`integration`·`e2e`) | `test-design#<layer>` |
+| `test.<layer>.red-confirmed` | 해당 계층 테스트가 **예상한 이유로** 실패함이 확인됨 | `test-execution#<layer>` |
 | `test.unit.completed` | 단위 테스트가 실행됨 (통과 여부가 아니라 실행 사실) | `test-execution#unit` |
+| `test.ui.completed` | UI 테스트가 실행됨 | `test-execution#ui` |
 | `test.integration.completed` | 통합 테스트가 실행됨 | `test-execution#integration` |
 | `test.e2e.completed` | E2E가 실행됨 | `test-execution#e2e` |
 | `implementation.completed` | 구현이 끝나고 변경 파일이 확정됨 | `implementation` |
+| `implementation.<phase>.completed` | 계층 구현 단계가 완료됨 (`logic`·`ui-scaffold`·`ui`·`integration`·`e2e`) | `implementation#<phase>` |
 | `review.completed` | 최종 판정이 내려짐 (통과 여부는 verdict가 담음) | `review` |
 
 `test.*.completed`는 "실행됐다"만 뜻한다. 통과/실패는 증거의 `status`가 담고, 그 판정은
 워크플로의 전이 조건이 본다. 실행 사실과 판정 결과를 한 토큰에 섞으면 "돌렸는데 실패"와
 "아예 안 돌림"을 구분할 수 없게 된다.
 
-`test.red-confirmed`는 구현 착수의 유일한 관문이다. "테스트를 썼다"(`test-design.completed`)와
-"테스트가 올바른 이유로 실패한다"(`test.red-confirmed`)를 분리한 이유는, 컴파일 에러나
+`test.<layer>.red-confirmed`는 같은 계층 동작 구현의 관문이다. "테스트를 썼다"와
+"테스트가 올바른 이유로 실패한다"를 분리한 이유는, 컴파일 에러나
 import 실패로 빨간 것을 구현 착수 근거로 삼지 않기 위해서다.
 
-이 신호는 **구현 전에 의미 있게 실패할 수 있는 층**에서만 나온다 — 실무적으로 단위 층이다.
-통합은 픽스처·목킹 미비로, E2E는 화면 부재로 `errored`가 되기 쉽고 그건 실패가 아니라
-실행 불가다. 그래서 E2E는 red 확인 대상이 아니다.
+unit은 순수 함수 구현 전에, UI는 import 가능한 무동작 스캐폴드 뒤에, integration과
+E2E는 선행 계층 green 뒤에 red를 확인한다. 모든 계층에서 러너 수집·컴파일 오류는
+`rejected`이며 단언 실패만 `confirmed`다.
 
 ## 2. 아티팩트 (artifact) — 다음 단계가 소비하는 산출물
 
@@ -62,7 +64,8 @@ import 실패로 빨간 것을 구현 착수 근거로 삼지 않기 위해서�
 | `requirements.spec` | `requirements-spec` 포맷의 요구사항 스펙 문서 | `requirements` |
 | `specification.contract` | 타입·props·API 스키마·훅 시그니처 | `specification` |
 | `specification.testids` | 컴포넌트가 붙일 test-id 규약 | `specification` |
-| `test-design.suite` | 작성된 테스트 파일 집합 | `test-design` |
+| `specification.test-plan` | 책임 경계·순수 함수 입출력·UI·통합·사용자 여정과 계층 적용 여부 | `specification` |
+| `test-design.<layer>.suite` | 해당 계층에 작성된 테스트 파일 집합 | `test-design#<layer>` |
 | `implementation.patch` | 변경 diff | `implementation` |
 | `implementation.summary` | 변경 요약 (오케스트레이터가 받는 것) | `implementation` |
 | `review.verdict` | PASS/FAIL + 지적 + 소유자 라우팅 | `review` |
@@ -82,9 +85,10 @@ import 실패로 빨간 것을 구현 착수 근거로 삼지 않기 위해서�
 | `changed-files` | 이 단계가 만든/고친 파일 목록 | `recorded` |
 | `contract-diff` | 계약이 이전 고정본에서 어떻게 달라졌는지 | `recorded` · `violated` |
 | `test.unit.result` | 단위 테스트 실행 결과 | `passed` · `failed` · `errored` |
+| `test.ui.result` | UI 렌더링·상호작용 테스트 결과 | `passed` · `failed` · `errored` |
 | `test.integration.result` | 통합 테스트 실행 결과 | `passed` · `failed` · `errored` |
 | `test.e2e.result` | E2E 실행 결과 | `passed` · `failed` · `errored` |
-| `test.red-proof` | 실패가 **예상한 이유**임을 보이는 근거 (실패 테스트명 + 실패 메시지) | `confirmed` · `rejected` |
+| `test.<layer>.red-proof` | 해당 계층 실패가 예상한 단언 때문임을 보이는 근거 | `confirmed` · `rejected` |
 | `test.skip-justification` | 어떤 테스트 층을 왜 생략했는지 | `recorded` |
 | `review-findings` | 지적 목록 + 우선순위 + 소유자 | `recorded` |
 | `policy-decision` | 정책 판정 기록 (허용/거부 + 근거 정책 id) | `allowed` · `denied` |

@@ -11,6 +11,8 @@ import { fileURLToPath } from 'node:url'
 import Ajv from 'ajv/dist/2020.js' // 스키마가 draft 2020-12를 쓴다
 import addFormats from 'ajv-formats'
 import { parse as parseYaml } from 'yaml'
+import { librarySignature } from './profile-testing.mjs'
+import { createWorkflowGraph } from './workflow-graph.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const SCHEMA_DIR = join(ROOT, 'packages', 'manifest-contracts')
@@ -410,23 +412,52 @@ function checkWorkflowSteps(file, doc) {
 
 function checkWorkflowTokens(file, doc) {
   checkWorkflowSteps(file, doc)
-  const stepIds = new Set((doc.steps ?? []).map((s) => s.id))
-  for (const step of doc.steps ?? []) {
+  const steps = doc.steps ?? []
+  const stepIds = new Set(steps.map((step) => step.id))
+  const graph = createWorkflowGraph(steps)
+  for (const id of graph.duplicates) fail(file, `step id "${id}"가 중복됐다.`)
+  for (const { step, dependency } of graph.unknownDependencies) {
+    fail(file, `step:${step}.dependsOn: 알 수 없는 step "${dependency}".`)
+  }
+  for (const cycle of graph.cycles) fail(file, `dependsOn 순환이 있다: ${cycle.join(' → ')}`)
+
+  function checkExpectation(step, item, context) {
+    checkToken(file, item.evidence, CORE_EVIDENCE, context)
+    checkEvidenceStatus(file, item.evidence, item.status, context)
+    if (item.from && !stepIds.has(item.from)) {
+      fail(file, `${context}.from: 알 수 없는 step "${item.from}".`)
+    } else if (item.from && !graph.ancestorsOf(step.id).has(item.from)) {
+      fail(file, `${context}.from: step "${item.from}"은 "${step.id}"의 선행 단계가 아니다.`)
+    }
+  }
+
+  for (const step of steps) {
     for (const token of step.produces ?? []) {
       checkToken(file, token, new Set([...CORE_SIGNALS, ...CORE_ARTIFACTS]), `step:${step.id}.produces`)
     }
     for (const item of step.expect ?? []) {
-      checkToken(file, item.evidence, CORE_EVIDENCE, `step:${step.id}.expect`)
-      checkEvidenceStatus(file, item.evidence, item.status, `step:${step.id}.expect`)
-      if (item.from && !stepIds.has(item.from)) {
-        fail(file, `step:${step.id}.expect.from: 알 수 없는 step "${item.from}".`)
-      }
+      checkExpectation(step, item, `step:${step.id}.expect`)
     }
-    for (const dep of step.dependsOn ?? []) {
-      if (!stepIds.has(dep)) fail(file, `step:${step.id}.dependsOn: 알 수 없는 step "${dep}".`)
+    for (const [groupIndex, group] of (step.expectAnyOf ?? []).entries()) {
+      for (const item of group.conditions ?? []) {
+        checkExpectation(step, item, `step:${step.id}.expectAnyOf[${groupIndex}]`)
+      }
     }
     if (step.skippable) {
       checkToken(file, step.skippable.evidenceOnSkip, CORE_EVIDENCE, `step:${step.id}.skippable`)
+    }
+
+    const capability = CAPABILITIES.get(step.capability)
+    const scope = capability?.variants?.[step.variant] ?? capability
+    const requiredTokens = [...(capability?.requires ?? []), ...(scope?.requires ?? [])]
+    for (const token of new Set(requiredTokens)) {
+      const candidates = graph.producerIds(token)
+      if (candidates.length > 0 && !graph.hasAncestorProducer(step.id, token)) {
+        fail(
+          file,
+          `step:${step.id}: 선행 토큰 "${token}"의 생산 단계(${candidates.join(', ')})가 의존 그래프 조상이 아니다.`,
+        )
+      }
     }
   }
 }
@@ -555,6 +586,25 @@ function checkWorkflowExtensions(file, doc) {
 function checkProfilePermissions(file, doc) {
   checkWorkflowExtensions(file, doc)
 
+  const testLayers = doc.testing?.layers ?? {}
+  const layerNames = ['unit', 'ui', 'integration', 'e2e']
+  if (doc.kind === 'domain' && doc.testing) {
+    for (const layer of layerNames) {
+      if (!testLayers[layer]) fail(file, `testing.layers.${layer}: domain 기본값이 없다.`)
+    }
+  }
+  const signatures = new Map()
+  for (const [layer, config] of Object.entries(testLayers)) {
+    const signature = librarySignature(config)
+    if (signatures.has(signature)) {
+      fail(file, `testing.layers.${layer}: ${signatures.get(signature)}와 같은 라이브러리 집합이다. 계층을 도구로 구분할 수 없다.`)
+    }
+    signatures.set(signature, layer)
+    if (doc.kind === 'repository' && !doc.commands?.[`test.${layer}`]) {
+      fail(file, `testing.layers.${layer}: repository override에는 commands.test.${layer}가 필요하다.`)
+    }
+  }
+
   checkAgentPermissions(file, doc.agents, doc.permissions ?? { filesystem: 'write', network: 'allowlist' }, 'profile')
 
   for (const binding of doc.bindings ?? []) {
@@ -564,6 +614,11 @@ function checkProfilePermissions(file, doc) {
       continue
     }
     const extensible = capability.profileExtensible ?? {}
+    const variant = binding.variant ? capability.variants?.[binding.variant] : null
+    if (binding.variant && !variant) {
+      fail(file, `binding "${binding.capability}#${binding.variant}": 알 수 없는 variant.`)
+      continue
+    }
     if ((binding.skills?.length || binding.skillsOneOf?.length) && extensible.skills === false) {
       fail(file, `binding "${binding.capability}": 스킬 주입이 허용되지 않았다.`)
     }
@@ -592,7 +647,7 @@ function checkProfilePermissions(file, doc) {
     checkAgentPermissions(
       file,
       [{ id: `${binding.capability}(주입)`, tools: binding.tools }],
-      capability.permissions,
+      variant?.permissions ?? capability.permissions,
       'binding',
     )
   }
