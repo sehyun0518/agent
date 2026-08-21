@@ -26,6 +26,11 @@
       "pattern": "^([a-z][a-z0-9-]*:)?[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)+$"
     },
 
+    "gateName": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+
     "evidenceKind": {
       "type": "string",
       "pattern": "^([a-z][a-z0-9-]*:)?[a-z][a-z0-9-]*(\\.[a-z][a-z0-9-]*)*$"
@@ -50,9 +55,16 @@
         },
 
         "gate": {
-          "type": "string",
-          "pattern": "^[a-z][a-z0-9-]*$",
-          "description": "이관 게이트. workflows/gates/<gate>.md가 선행 증거를 검사한다. 레이어가 아니라 하네스가 소유하므로, 이 검사를 지우면 레이어는 그대로 단독 동작한다."
+          "description": "이관 게이트. workflows/gates/<gate>.md가 선행 증거를 검사한다. 레이어가 아니라 하네스가 소유하므로, 이 검사를 지우면 레이어는 그대로 단독 동작한다. 판정 축이 둘 이상이면 배열로 나열한다 — 게이트 하나가 여러 축을 겸하면 이름과 실제 책임이 어긋난다(ADR-0005 결정 6).",
+          "anyOf": [
+            { "$ref": "#/$defs/gateName" },
+            {
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "$ref": "#/$defs/gateName" }
+            }
+          ]
         },
 
         "dependsOn": {

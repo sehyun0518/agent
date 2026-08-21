@@ -43,6 +43,7 @@ Capability manifest의 `requires`·`produces`·`evidence[].kind`에 쓰이는 �
 | `test.e2e.completed` | E2E가 실행됨 | `test-execution#e2e` |
 | `implementation.completed` | 구현이 끝나고 변경 파일이 확정됨 | `implementation` |
 | `implementation.<phase>.completed` | 계층 구현 단계가 완료됨 (`logic`·`ui-scaffold`·`ui`·`integration`·`e2e`) | `implementation#<phase>` |
+| `documentation.completed` | 문서 갱신이 끝나고 변경 파일이 확정됨 | `documentation` |
 | `review.completed` | 최종 판정이 내려짐 (통과 여부는 verdict가 담음) | `review` |
 
 `test.*.completed`는 "실행됐다"만 뜻한다. 통과/실패는 증거의 `status`가 담고, 그 판정은
@@ -68,6 +69,7 @@ E2E는 선행 계층 green 뒤에 red를 확인한다. 모든 계층에서 러�
 | `test-design.<layer>.suite` | 해당 계층에 작성된 테스트 파일 집합 | `test-design#<layer>` |
 | `implementation.patch` | 변경 diff | `implementation` |
 | `implementation.summary` | 변경 요약 (오케스트레이터가 받는 것) | `implementation` |
+| `documentation.changeset` | 갱신한 문서 목록과 각 문서를 왜 고쳤는지 | `documentation` |
 | `review.verdict` | PASS/FAIL + 지적 + 소유자 라우팅 | `review` |
 | `git.inspection` | 현재 저장소·브랜치·변경·원격·PR·참조 이슈·컨벤션 상태 | `git-operations#inspect` |
 | `git.commit-ref` | 생성된 커밋 SHA | `git-operations#commit` |
@@ -90,12 +92,19 @@ E2E는 선행 계층 green 뒤에 red를 확인한다. 모든 계층에서 러�
 | `test.e2e.result` | E2E 실행 결과 | `passed` · `failed` · `errored` |
 | `test.<layer>.red-proof` | 해당 계층 실패가 예상한 단언 때문임을 보이는 근거 | `confirmed` · `rejected` |
 | `test.skip-justification` | 어떤 테스트 층을 왜 생략했는지 | `recorded` |
+| `documentation-impact` | 이 변경이 어떤 문서에 영향을 주는지, 없다면 왜 없는지 | `required` · `not-applicable` |
+| `documentation.skip-justification` | 문서를 왜 고치지 않았는지 | `recorded` |
 | `review-findings` | 지적 목록 + 우선순위 + 소유자 | `recorded` |
 | `policy-decision` | 정책 판정 기록 (허용/거부 + 근거 정책 id) | `allowed` · `denied` |
 | `approval-record` | 파괴적 작업에 대한 사람의 승인 기록 | `granted` · `refused` |
 
 `test.skip-justification`이 있어야 integration·e2e를 생략할 수 있다. 침묵 생략은
 "전부 통과"처럼 읽히므로 워크플로가 생략 사유를 증거로 남기도록 강제한다.
+
+문서도 같은 구조를 쓴다. `documentation-impact`는 **계약 고정 단계가** 남긴다 —
+문서화 레이어가 자기 일의 유무를 스스로 선언하면 그 판정을 검증할 근거가 사라지기
+때문이다(ADR-0005 결정 1). 판정이 `not-applicable`이면 `documentation.skip-justification`이
+구체적 사유와 함께 있어야 하고, `required`면 `documentation.changeset`이 있어야 한다.
 
 ## 4. 프로파일 확장 예시
 
