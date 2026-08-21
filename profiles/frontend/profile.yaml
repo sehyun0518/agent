@@ -168,6 +168,8 @@ roster:
     runner: test-execution
   - unit: 접근성·반응형 마감
     runner: accessibility
+  - unit: 문서 갱신
+    runner: documentation
   - unit: 통합 검증·게이트 판정
     runner: review
 
@@ -188,8 +190,12 @@ workflowExtensions:
       - id: accessibility
         runner: accessibility
         mode: before
-        anchorCapability: review
-        note: 병합된 통합 빌드를 판정 전에 점검하고 접근성 범위만 직접 고친다.
+        anchorCapability: documentation
+        note: >-
+          병합된 통합 빌드를 문서 갱신 전에 점검하고 접근성 범위만 직접 고친다.
+          앵커가 review가 아닌 이유는, accessibility가 코드를 직접 고치므로 문서 갱신
+          뒤에 놓이면 문서를 쓴 다음 코드가 바뀌기 때문이다 (ADR-0005 결정 7).
+          review 전용 흐름에는 문서 단계가 없으므로 이 삽입은 건너뛰어진다.
 
   - workflow: change
     insert:
@@ -227,6 +233,9 @@ routing:
     owner: test-design
   - symptom: 테스트가 돌지 않음·red 판정 rejected
     owner: test-design
+  - symptom: 문서 누락·설명과 계약 불일치
+    owner: documentation
+    exception: manifest가 단일 출처다. 계약 자체가 틀렸으면 specification으로 넘긴다.
   - symptom: 키보드·포커스·ARIA·모션
     owner: accessibility
     exception: accessibility는 이 범위를 직접 고친다. 단 대비의 뿌리가 토큰이면 design으로 넘긴다.
