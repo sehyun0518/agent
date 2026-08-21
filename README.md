@@ -19,6 +19,7 @@ Agent Harness는 에이전트 작업을 **Capability 단위의 레이어**로 �
   → UI Red → 컴포넌트 → UI Green
   → Integration Red → 연결 구현 → Integration Green
   → E2E Red → 사용자 여정 연결 → E2E Green
+  → 문서 갱신
   → 최종 검토
 ```
 
@@ -41,7 +42,8 @@ Git 작업은 위 흐름에 자동으로 연결하지 않습니다. 상태 확�
 | 3 | [Test Design](capabilities/test-design/README.md) | 계층별 테스트를 작성합니다. | 테스트를 실행하거나 제품 코드를 수정하지 않습니다. |
 | 4 | [Test Execution](capabilities/test-execution/README.md) | 테스트를 실행하고 red 또는 green 증거를 남깁니다. | 테스트나 제품 코드를 수정하지 않습니다. |
 | 5 | [Implementation](capabilities/implementation/README.md) | 확인된 red를 같은 계층의 구현으로 green으로 만듭니다. | 인수 기준 테스트를 새로 작성하지 않습니다. |
-| 6 | [Review](capabilities/review/README.md) | 계약과 테스트 증거를 읽고 최종 판정을 내립니다. | 테스트를 다시 실행하거나 코드를 수정하지 않습니다. |
+| 6 | [Documentation](capabilities/documentation/README.md) | 변경 때문에 낡은 문서를 갱신하고 근거를 남깁니다. | 문서 영향 범위를 스스로 판정하거나 제품 코드를 수정하지 않습니다. |
+| 7 | [Review](capabilities/review/README.md) | 계약과 테스트·문서 증거를 읽고 최종 판정을 내립니다. | 테스트를 다시 실행하거나 코드를 수정하지 않습니다. |
 | 수동 | [Git Operations](capabilities/git-operations/README.md) | Git과 GitHub 작업을 한 번에 하나씩 수행합니다. | 다음 Git 작업을 자동으로 이어서 수행하지 않습니다. |
 
 레이어 공통 규칙과 새 레이어 추가 방법은
@@ -178,5 +180,6 @@ Capability와 프로파일 소스에서 생성합니다.
 | [ADR-0002](docs/adr/0002-runtime-promotion.md) | 실행 코드로 승격할 조건을 결정합니다. |
 | [ADR-0003](docs/adr/0003-layer-harness-boundary.md) | 레이어와 하네스의 책임 경계를 결정합니다. |
 | [ADR-0004](docs/adr/0004-layered-red-green.md) | 계층별 red-green 순서와 생략 규칙을 결정합니다. |
+| [ADR-0005](docs/adr/0005-documentation-capability.md) | 문서화를 독립 Capability로 분리하고 강제 수단을 결정합니다. |
 
 구조 이관 내역은 [docs/migration/inventory.md](docs/migration/inventory.md)에서 확인할 수 있습니다.

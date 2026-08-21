@@ -117,6 +117,19 @@ artifact: .harness/runs/{runId}/contract-diff.md
 `status: violated`는 이미 고정된 계약이 재고정 절차 없이 바뀐 경우다. 하류가 이전
 계약에 기대 작업 중일 수 있으므로 `contract-violation`으로 분류한다.
 
+여기서 **문서 영향도 함께 판정한다.**
+
+```yaml
+kind: documentation-impact
+status: required          # 또는 not-applicable
+summary: "레이어가 늘어 README 색인과 walkthrough가 낡음"
+artifact: docs/specs/{feature}.md#documentation-impact
+```
+
+`required`면 영향받는 문서를 경로로 나열한다. "문서 갱신 필요"는 판정이 아니다.
+문서화 레이어가 이 판정을 스스로 하지 않는 이유는 ADR-0005 결정 1에 있다 — 자기 일의
+유무를 자기가 선언하면 그 판정을 검증할 근거가 사라진다.
+
 ---
 
 ## 3. 계층별 Red-Green
@@ -236,7 +249,7 @@ status: granted
 ## 6. accessibility — 프로파일이 끼워 넣은 단계
 
 ```
-호출: accessibility   (프론트엔드 프로파일이 review 앞에 삽입)
+호출: accessibility   (프론트엔드 프로파일이 documentation 앞에 삽입)
 ```
 
 자동 검사 너머를 본다 — 키보드 조작, 포커스 관리, 스크린리더 시맨틱, 명도 대비,
@@ -245,16 +258,60 @@ status: granted
 이 역할은 **접근성 범위만 직접 고친다.** 대비 문제의 뿌리가 토큰이면 고치지 않고
 `design`으로 라우팅한다.
 
+문서 갱신 **앞**에 놓이는 이유는 이 역할이 코드를 직접 고치기 때문이다. 문서를 쓴 다음
+코드가 바뀌면 방금 쓴 문서가 낡는다.
+
 ---
 
-## 7. review — 판정
+## 7. documentation — 문서 갱신
+
+```
+호출: documentation
+```
+
+2번에서 고정한 `documentation-impact` 판정이 범위를 정한다. 문서화 역할은 무엇을 고칠지
+**스스로 정하지 않는다.**
+
+```yaml
+changeset:
+  - path: README.md
+    reason: 레이어가 7개에서 8개로 늘어 바로가기 표에 행 추가
+  - path: capabilities/README.md
+    reason: 같은 이유로 레이어 목록 표에 행 추가
+```
+
+고친 문서마다 **왜 고쳤는지** 적는다. "README 갱신"은 근거가 아니다.
+
+manifest가 단일 출처다. 문서와 `capability.yaml`이 다르면 문서를 고친다. 문서가 코드와
+다른데 코드가 틀린 것으로 보이면 고치지 않고 지적으로 남긴다.
+
+`.claude`·`.cursor`·`.codex`는 생성물이라 직접 고치지 않는다. 소스를 고치고
+`npm run generate`로 다시 만든다.
+
+**생략하려면**
+
+판정이 `not-applicable`이어야 하고, 구체적인 사유가 필요하다.
+
+```yaml
+kind: documentation.skip-justification
+status: recorded
+summary: "내부 헬퍼 시그니처만 변경. 외부에서 관찰되는 계약이 그대로라 낡는 문서 없음"
+```
+
+승인은 필요 없다. UI 계층과 같은 등급이다.
+
+---
+
+## 8. review — 판정
 
 ```
 호출: review
 게이트: workflows/gates/require-test-evidence.md
+      workflows/gates/require-documentation-evidence.md
 ```
 
 게이트가 먼저 본다. 증거가 없거나 생략 사유가 비어 있으면 **판정하지 않고 되돌린다.**
+판정 축이 둘이라 게이트도 둘이다 — 하나가 두 축을 겸하면 이름과 실제 책임이 어긋난다.
 
 `review`는 **테스트를 돌리지 않는다.** 증거를 읽는다.
 
@@ -283,7 +340,7 @@ status: granted
 
 ---
 
-## 8. Git — 여기서 자동으로 이어지지 않는다
+## 9. Git — 여기서 자동으로 이어지지 않는다
 
 ```
 호출: git-operator (commit)     ← 사람이 명시적으로
@@ -326,6 +383,8 @@ commit ─╳→ push ─╳→ pr-create
 | 마크업·렌더 상태 | `implementation` |
 | 데이터 페칭·상태 로직 | `state-data` |
 | 커버리지 누락 | `tester` |
+| 문서 누락·설명과 계약 불일치 | `documentation` |
+| 문서 영향 판정이 없음 | `spec` |
 
 ---
 
@@ -341,6 +400,8 @@ commit ─╳→ push ─╳→ pr-create
 | `ui` | UI가 없다는 구체적 test-plan 사유가 있으면 생략 |
 | `integration`·`e2e` | 사유 + 승인이 있으면 생략 |
 | `unit` | 생략 불가 |
+| `documentation` | 판정이 `not-applicable`이고 구체적 사유가 있으면 생략 |
+| 문서 영향 판정 자체 | **생략 불가.** 판정 없이는 문서 단계로 갈 수 없다 |
 | `review` | 가능하면 항상 |
 
 ---
