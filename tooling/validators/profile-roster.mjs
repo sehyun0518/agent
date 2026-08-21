@@ -49,3 +49,45 @@ export function findUnresolvedRunners(profile, runners) {
 
   return problems
 }
+
+/**
+ * 한 워크플로에 같은 id가 두 번 삽입되는지 본다.
+ *
+ * `workflow: "*"`는 모든 워크플로를 대상으로 하므로, 특정 워크플로 블록과 겹치면 같은
+ * 단계가 두 번 들어간다. 기존 검사는 삽입 하나씩만 보기 때문에 이 겹침을 놓친다.
+ *
+ * 워크플로 파일에 같은 step id를 두 번 쓰면 createWorkflowGraph가 잡는다. 프로파일
+ * 삽입은 step으로 실체화되지 않아 그 검사에 걸리지 않는다 — 같은 규칙을 여기서 적용한다.
+ *
+ * 같은 runner가 서로 다른 id로 두 번 들어가는 것은 막지 않는다. 한 흐름에서 같은 역할을
+ * 다른 지점에 두는 것이 의도일 수 있다. id 중복은 의도일 수 없다.
+ *
+ * @param {{workflowExtensions?: Array}} profile
+ * @param {Map<string, any>|Iterable<[string, any]>} workflows 워크플로 id → 문서
+ * @returns {Array<{workflowId: string, insertId: string, count: number}>}
+ */
+export function findDuplicateInserts(profile, workflows) {
+  const all = workflows instanceof Map ? workflows : new Map(workflows)
+  const seen = new Map() // workflowId → Map<insertId, count>
+
+  for (const extension of profile.workflowExtensions ?? []) {
+    const targets =
+      extension.workflow === '*' ? [...all.keys()] : all.has(extension.workflow) ? [extension.workflow] : []
+
+    for (const insert of extension.insert ?? []) {
+      for (const workflowId of targets) {
+        const counts = seen.get(workflowId) ?? new Map()
+        counts.set(insert.id, (counts.get(insert.id) ?? 0) + 1)
+        seen.set(workflowId, counts)
+      }
+    }
+  }
+
+  const problems = []
+  for (const [workflowId, counts] of seen) {
+    for (const [insertId, count] of counts) {
+      if (count > 1) problems.push({ workflowId, insertId, count })
+    }
+  }
+  return problems
+}

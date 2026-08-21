@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { resolveTestingLayers } from './profile-testing.mjs'
 import { createWorkflowGraph } from './workflow-graph.mjs'
-import { resolveRunners, findUnresolvedRunners } from './profile-roster.mjs'
+import { resolveRunners, findUnresolvedRunners, findDuplicateInserts } from './profile-roster.mjs'
 import { findDocumentationBypass } from './documentation-gate.mjs'
 
 test('계층별 red 생산자가 구현의 조상이면 전이를 허용한다', () => {
@@ -142,4 +142,72 @@ test('routing owner가 실행자로 해석되지 않으면 검출한다', () => 
   assert.deepEqual(findUnresolvedRunners(profile, runners), [
     { field: 'routing', index: 1, name: 'accessibility', label: '키보드·포커스' },
   ])
+})
+
+// ---------------------------------------------------------------- 삽입 겹침
+// workflow "*"는 모든 워크플로를 대상으로 하므로 특정 워크플로 블록과 겹칠 수 있다.
+// 삽입 하나씩 보는 검사는 이 겹침을 놓친다.
+
+const WORKFLOWS = new Map([
+  ['change', {}],
+  ['bugfix', {}],
+  ['review', {}],
+])
+
+test('서로 다른 워크플로에 같은 id를 넣는 것은 중복이 아니다', () => {
+  const profile = {
+    workflowExtensions: [
+      { workflow: 'change', insert: [{ id: 'state-data', runner: 'state-data' }] },
+      { workflow: 'bugfix', insert: [{ id: 'state-data', runner: 'state-data' }] },
+    ],
+  }
+
+  assert.deepEqual(findDuplicateInserts(profile, WORKFLOWS), [])
+})
+
+test('"*"와 특정 워크플로가 같은 id를 넣으면 중복으로 판정한다', () => {
+  const profile = {
+    workflowExtensions: [
+      { workflow: '*', insert: [{ id: 'state-data', runner: 'state-data' }] },
+      { workflow: 'change', insert: [{ id: 'state-data', runner: 'state-data' }] },
+    ],
+  }
+
+  assert.deepEqual(findDuplicateInserts(profile, WORKFLOWS), [
+    { workflowId: 'change', insertId: 'state-data', count: 2 },
+  ])
+})
+
+test('한 블록 안에서 같은 id를 두 번 넣어도 중복으로 판정한다', () => {
+  const profile = {
+    workflowExtensions: [
+      {
+        workflow: 'change',
+        insert: [
+          { id: 'design', runner: 'design' },
+          { id: 'design', runner: 'design' },
+        ],
+      },
+    ],
+  }
+
+  assert.deepEqual(findDuplicateInserts(profile, WORKFLOWS), [
+    { workflowId: 'change', insertId: 'design', count: 2 },
+  ])
+})
+
+test('같은 runner를 다른 id로 넣는 것은 막지 않는다', () => {
+  const profile = {
+    workflowExtensions: [
+      {
+        workflow: 'change',
+        insert: [
+          { id: 'a11y-early', runner: 'accessibility' },
+          { id: 'a11y-final', runner: 'accessibility' },
+        ],
+      },
+    ],
+  }
+
+  assert.deepEqual(findDuplicateInserts(profile, WORKFLOWS), [])
 })

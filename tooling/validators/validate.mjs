@@ -13,7 +13,7 @@ import addFormats from 'ajv-formats'
 import { parse as parseYaml } from 'yaml'
 import { librarySignature } from './profile-testing.mjs'
 import { createWorkflowGraph } from './workflow-graph.mjs'
-import { resolveRunners, findUnresolvedRunners } from './profile-roster.mjs'
+import { resolveRunners, findUnresolvedRunners, findDuplicateInserts } from './profile-roster.mjs'
 import { findDocumentationBypass } from './documentation-gate.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -558,6 +558,12 @@ function checkWorkflowExtensions(file, doc) {
   // 런타임에 끊긴다 — 삽입 지점과 같은 규칙으로 선언 시점에 잡는다.
   for (const { field, index, name, label } of findUnresolvedRunners(doc, runners)) {
     fail(file, `${field}[${index}] "${label}": 실행자 "${name}"가 없다.`)
+  }
+
+  // 삽입 하나씩 보는 아래 검사는 겹침을 놓친다. workflow "*"가 특정 워크플로 블록과
+  // 겹치면 같은 단계가 두 번 들어가는데, 각각은 모든 조건을 만족하기 때문이다.
+  for (const { workflowId, insertId, count } of findDuplicateInserts(doc, WORKFLOWS)) {
+    fail(file, `workflowExtensions/${insertId}: 워크플로 "${workflowId}"에 ${count}번 삽입된다. step id는 하나여야 한다.`)
   }
 
   for (const extension of doc.workflowExtensions ?? []) {
