@@ -1,0 +1,72 @@
+id: documentation
+version: 1
+title: 문서화
+description: >-
+  고정된 계약과 병합된 구현 diff를 읽고, 영향을 받은 문서를 갱신한다. 무엇을 고칠지는
+  스스로 정하지 않고 계약 고정 단계가 남긴 documentation-impact 판정을 따른다.
+  제품 코드와 테스트를 고치지 않고, 생성물 미러를 직접 편집하지 않는다.
+
+# 판정 근거(documentation-impact)는 증거이므로 requires에 넣지 않는다 — 워크플로의
+# expect가 status까지 대조한다. 여기에는 문서를 쓰기 위해 반드시 읽어야 하는 것만 둔다.
+requires:
+  - specification.contract
+  - specification.completed
+  - implementation.completed
+  - implementation.patch    # 무엇이 바뀌었는지 봐야 무엇을 고칠지 안다
+
+produces:
+  - documentation.changeset
+  - documentation.completed
+
+# 문서를 고쳐야 하므로 쓰기가 필요하다. 네트워크는 필요 없다 — 저장소 안의 문서만 다룬다.
+# .claude·.cursor·.codex 미러를 고치지 않는다는 것은 역할 문서의 규칙이다.
+# 현재 정책 계약은 경로 단위 금지를 표현하지 못한다 (ADR-0005 「현재 강제 범위」).
+permissions:
+  filesystem: write
+  network: none
+  destructive: false
+
+evidence:
+  - kind: changed-files
+    required: true
+    artifactRequired: true
+
+completion:
+  requiresEvidence:
+    - changed-files
+
+entrypoints:
+  agents:
+    - id: documentation
+      file: agents/documentation.md
+      description: >-
+        고정된 계약과 병합된 구현 diff를 읽고 영향을 받은 문서를 갱신합니다. 계층별 green이
+        모두 끝난 뒤 판정 직전에 사용하세요. 무엇을 고칠지 스스로 정하지 않고 계약 고정
+        단계의 문서 영향 판정을 따르며, 제품 코드와 테스트는 수정하지 않습니다.
+      tools: [Read, Grep, Glob, Bash, Write, Edit]
+      modelTier: strong
+      memory: project
+      color: green
+  # 이관 게이트는 workflows/gates/require-documentation-evidence.md가 소유한다.
+
+failure:
+  transient:
+    action: retry
+    maxAttempts: 2
+  precondition-unmet:
+    action: return-to-producer
+  contract-violation:
+    action: escalate
+    escalateTo: orchestrator
+  policy-denied:
+    action: halt
+
+chaining:
+  autoInvoke: false
+
+profileExtensible:
+  skills: true
+  agents: false
+  tools: true
+  hooks: true
+  commands: true

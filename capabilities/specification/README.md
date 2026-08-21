@@ -33,6 +33,7 @@ Specification의 산출물은 이후 테스트와 구현이 공유하는 기준�
 | 출력 | `specification.test-plan` | 계층별 책임과 테스트 적용 여부를 생성합니다. |
 | 완료 신호 | `specification.completed` | 계약 고정이 완료됐음을 알립니다. |
 | 증거 | `changed-files`, `contract-diff` | 계약 파일과 이전 고정본의 차이를 기록합니다. |
+| 증거 | `documentation-impact` | 이 변경이 어떤 문서를 낡게 만드는지 판정합니다. |
 
 ## 실행 단위
 
@@ -41,8 +42,13 @@ Specification의 산출물은 이후 테스트와 구현이 공유하는 기준�
 
 ## 완료와 실패
 
-`changed-files`와 `contract-diff: recorded`가 모두 기록되어야 레이어를 완료합니다.
-`contract-freeze` hook은 계약 산출물이 파일로 존재하는지와 차이가 기록됐는지를 검사합니다.
+`changed-files`, `contract-diff: recorded`, `documentation-impact`가 모두 기록되어야
+레이어를 완료합니다. `contract-freeze` hook은 계약 산출물이 파일로 존재하는지와 차이가
+기록됐는지를 검사합니다.
+
+문서 영향 판정을 이 레이어가 소유하는 이유는
+[ADR-0005](../../docs/adr/0005-documentation-capability.md) 결정 1이 설명합니다. 실행
+주체가 자기 일의 유무를 스스로 선언하면 그 판정을 검증할 근거가 사라집니다.
 
 | 상황 | 처리 방식 |
 |---|---|
