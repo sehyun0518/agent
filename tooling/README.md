@@ -35,7 +35,7 @@ npm run check      # 검증 + 드리프트 검사 (CI가 도는 것)
 ## generators/
 
 `generate.mjs`가 `capabilities/` + `profiles/` + `packages/orchestrator/`를 읽어
-`.claude` · `.cursor` · `.codex`를 만든다.
+`.claude` · `.codex`를 만든다.
 
 - **에이전트 frontmatter는 manifest에서 나온다.** 소스 `.md`에 frontmatter가 남아
   있으면 오류다.

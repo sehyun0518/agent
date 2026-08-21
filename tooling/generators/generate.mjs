@@ -4,7 +4,7 @@
 //   node tooling/generators/generate.mjs           미러를 쓴다
 //   node tooling/generators/generate.mjs --check   쓰지 않고 드리프트만 보고한다 (CI 게이트)
 //
-// 생성 대상(.claude · .cursor · .codex)은 직접 편집하지 않는다. 소스를 고치고 다시 생성한다.
+// 생성 대상(.claude · .codex)은 직접 편집하지 않는다. 소스를 고치고 다시 생성한다.
 // 생성 집합에 없는데 관리 디렉터리에 남아 있는 파일은 고아로 보고하고 제거한다.
 
 import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, statSync, rmSync } from 'node:fs'
@@ -195,7 +195,7 @@ function renderClaudeAgent(agent, config) {
   return `---\n${stringifyYaml(front, { lineWidth: 0 })}---\n\n${body}`
 }
 
-// ------------------------------------------------------------------ Cursor
+// ------------------------------------------------------------------ 공통
 
 function sourcePathOf(agent) {
   return relative(ROOT, join(agent.dir, agent.file))
@@ -205,138 +205,6 @@ function ownerLabel(agent) {
   if (agent.owner === 'orchestrator') return '조정자 (Capability 아님)'
   if (agent.profile) return `프로파일 \`${agent.profile}\``
   return `Capability \`${agent.capability}\``
-}
-
-function renderCursorAgent(agent, config) {
-  const front = {
-    name: agent.id,
-    description: agent.description,
-    model: config.modelMap[agent.modelTier ?? 'inherit'],
-    readonly: agent.readonly === true,
-  }
-  if (agent.background) front.is_background = true
-
-  const skills = [...new Set((agent.skills ?? []).map(skillName))]
-  const skillLine =
-    skills.length > 0
-      ? `\n\n스킬: ${skills.map((s) => `\`${s}\``).join(' · ')} (색인은 \`.cursor/rules/10-skills-index.mdc\`)`
-      : ''
-
-  return (
-    `---\n${stringifyYaml(front, { lineWidth: 0 })}---\n\n` +
-    `${ownerLabel(agent)}의 역할이다. 전체 정의는 저장소 \`${sourcePathOf(agent)}\`를 읽고\n` +
-    `따른다(단일 출처, 복제 금지).${skillLine}\n`
-  )
-}
-
-function renderCursorPipeline({ capabilities, profiles, workflows }) {
-  const front = {
-    description: '작업 Capability 기반 하네스 개요 — 흐름, 증거 기반 전이, 프로파일 바인딩, Git 작업 비연쇄 규칙.',
-    alwaysApply: true,
-  }
-
-  const capTable = capabilities
-    .map((c) => `| \`${c.id}\` | ${(c.requires ?? []).join(' · ') || '—'} | ${(c.produces ?? []).join(' · ') || '변형이 소유'} |`)
-    .join('\n')
-
-  const flowLines = workflows
-    .map((w) => {
-      const auto = (w.steps ?? []).filter((s) => s.trigger === 'automatic')
-      const manual = (w.steps ?? []).filter((s) => s.trigger === 'manual')
-      return (
-        `### \`${w.id}\` — ${w.title}\n\n` +
-        `자동 진행: ${auto.map((s) => s.id).join(' → ') || '없음'}\n\n` +
-        `사람이 호출: ${manual.map((s) => s.id).join(' · ') || '없음'}`
-      )
-    })
-    .join('\n\n')
-
-  const profileLines = profiles
-    .map((p) => {
-      const inserts = (p.workflowExtensions ?? []).flatMap((e) =>
-        (e.insert ?? []).map((i) => `\`${i.runner}\` → ${i.mode} \`${i.anchorCapability}\``),
-      )
-      return (
-        `- \`${p.id}\` (namespace \`${p.namespace}\`) — 역할 ${(p.agents ?? []).length}, ` +
-        `스킬 ${(p.skills ?? []).length}, 바인딩 ${(p.bindings ?? []).length}` +
-        (inserts.length > 0 ? `\n  - 워크플로 확장: ${inserts.join(' · ')}` : '')
-      )
-    })
-    .join('\n')
-
-  return (
-    `---\n${stringifyYaml(front, { lineWidth: 0 })}---\n\n` +
-    `# 작업 Capability 하네스 (Cursor)\n\n` +
-    `이 규칙은 생성물이다. 고치려면 \`capabilities/\`·\`profiles/\`·\`workflows/\`를 고치고\n` +
-    `\`npm run generate\`를 돌린다.\n\n` +
-    `## Capability\n\n` +
-    `| id | requires | produces |\n|---|---|---|\n${capTable}\n\n` +
-    `## 워크플로\n\n${flowLines}\n\n` +
-    `## 전이 규칙\n\n` +
-    `- 상태가 아니라 **증거**로 다음 단계로 간다. 증거가 없으면 진행하지 않고 되돌린다.\n` +
-    `- 동작 구현은 같은 계층의 \`test.<layer>.red-confirmed\` 없이 시작할 수 없다. 컴파일·import 실패는 red가 아니다.\n` +
-    `- \`unit\`·\`ui\`·\`integration\`·\`e2e\`를 하나의 \`test\` 단계로 합치지 않는다. 생략하려면 사유와\n` +
-    `  승인을 증거로 남긴다.\n` +
-    `- Git 작업(\`commit\`·\`push\`·\`pr-preview\`·\`pr-create\`·\`pr-update\`)은 서로를 자동 호출하지\n` +
-    `  않고, 워크플로가 자동 단계로 두지도 않는다. 각각 사람이 명시적으로 부른다.\n` +
-    `- 커밋·PR에 자동화 도구 출처 문구를 자동으로 넣지 않는다.\n\n` +
-    `## 프로파일\n\n${profileLines}\n\n` +
-    `도메인 지식(토큰·규칙 팩·컨벤션)은 Capability가 아니라 프로파일이 소유한다.\n`
-  )
-}
-
-function renderCursorSkillsIndex({ skills, profiles }) {
-  const front = {
-    description: '스킬 색인. 스킬 본문은 저장소 소스에 있고 여기서 복제하지 않는다.',
-    alwaysApply: false,
-  }
-
-  const rows = [...skills.entries()].map(([name, dir]) => `- \`${name}\` → \`${relative(ROOT, dir)}/SKILL.md\``).join('\n')
-
-  const oneOf = profiles
-    .flatMap((p) => (p.bindings ?? []).filter((b) => b.skillsOneOf?.length).map((b) => ({ p, b })))
-    .map(
-      ({ p, b }) =>
-        `- \`${b.capability}\`: ${b.skillsOneOf.map((s) => `\`${skillName(s)}\``).join(' 또는 ')} ` +
-        `— **택일. 섞지 않는다.** (프로파일 \`${p.id}\`)`,
-    )
-    .join('\n')
-
-  return (
-    `---\n${stringifyYaml(front, { lineWidth: 0 })}---\n\n` +
-    `# 스킬 색인 (참조)\n\n` +
-    `필요할 때 해당 파일을 연다. 복제하지 않는다.\n\n${rows}\n\n` +
-    `## 택일 주입\n\n${oneOf || '없음'}\n`
-  )
-}
-
-function renderCursorReadme({ agents, capabilities }, config) {
-  const rows = agents
-    .map(
-      (a) =>
-        `| \`${a.id}\` | ${ownerLabel(a).replace(/`/g, '')} | ${config.modelMap[a.modelTier ?? 'inherit']} | ` +
-        `${a.readonly ? '읽기 전용' : '쓰기'} |`,
-    )
-    .join('\n')
-
-  return (
-    `# .cursor — 생성된 미러\n\n` +
-    `**이 디렉터리는 생성물이다. 직접 편집하지 않는다.** 소스는 \`capabilities/\`·\`profiles/\`·\n` +
-    `\`packages/orchestrator/\`이고, \`npm run generate\`가 여기를 만든다. CI가 재생성 결과와\n` +
-    `커밋 상태를 대조하므로 손으로 고친 내용은 되돌아간다.\n\n` +
-    `## 구성\n\n` +
-    '```text\n.cursor/\n  README.md\n  agents/     역할 래퍼 (본문은 소스를 참조)\n' +
-    '  rules/\n    00-pipeline.mdc      항상 로드 — Capability 흐름과 전이 규칙\n' +
-    '    10-skills-index.mdc  스킬 색인\n```\n\n' +
-    `## 로스터\n\n| 에이전트 | 소유 | 모델 | 권한 |\n|---|---|---|---|\n${rows}\n\n` +
-    `## 매핑 메모\n\n` +
-    `- Cursor는 frontmatter \`tools\`를 쓰지 않는다. 권한 경계는 소스의 \`permissions\`가 선언하고\n` +
-    `  검증기가 검사한다.\n` +
-    `- \`background: true\` → \`is_background: true\`.\n` +
-    `- 모델 이름은 티어(\`cheap\`/\`strong\`)를 이 플랫폼 값으로 옮긴 것이다. 바꾸려면\n` +
-    `  \`tooling/generators/platforms.json\`을 고친다.\n\n` +
-    `Capability ${capabilities.length}종의 계약은 각 \`capabilities/<id>/capability.yaml\`이 단일 출처다.\n`
-  )
 }
 
 // ------------------------------------------------------------------ Codex
@@ -426,11 +294,6 @@ for (const [platform, config] of Object.entries(platforms)) {
     for (const [name, dir] of skills) {
       for (const { rel, path } of skillFiles(dir)) emit(out(config.skillDir, name, rel), readFileSync(path, 'utf8'))
     }
-  } else if (platform === 'cursor') {
-    for (const agent of agents) emit(out(config.agentDir, `${agent.id}.md`), renderCursorAgent(agent, config))
-    emit(out('rules', '00-pipeline.mdc'), renderCursorPipeline(sources))
-    emit(out('rules', '10-skills-index.mdc'), renderCursorSkillsIndex(sources))
-    emit(out('README.md'), renderCursorReadme(sources, config))
   } else if (platform === 'codex') {
     for (const agent of agents) emit(out(config.agentDir, `${agent.id}.md`), renderCodexAgent(agent))
     for (const [name, dir] of skills) {

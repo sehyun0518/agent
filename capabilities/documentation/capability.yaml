@@ -19,7 +19,7 @@ produces:
   - documentation.completed
 
 # 문서를 고쳐야 하므로 쓰기가 필요하다. 네트워크는 필요 없다 — 저장소 안의 문서만 다룬다.
-# .claude·.cursor·.codex 미러를 고치지 않는다는 것은 역할 문서의 규칙이다.
+# .claude·.codex 미러를 고치지 않는다는 것은 역할 문서의 규칙이다.
 # 현재 정책 계약은 경로 단위 금지를 표현하지 못한다 (ADR-0005 「현재 강제 범위」).
 permissions:
   filesystem: write

@@ -51,7 +51,7 @@ documentation-impact + contract + implementation patch → Documentation → cha
 분할은 워크플로 단계를 유형 수만큼 늘리고 각각 생략 처리를 요구하므로, 필요해질 때
 추가합니다([ADR-0005](../../docs/adr/0005-documentation-capability.md) 결정 2).
 
-agent는 쓰기 권한을 갖지만 대상은 문서로 한정합니다. `.claude`, `.cursor`, `.codex`는
+agent는 쓰기 권한을 갖지만 대상은 문서로 한정합니다. `.claude`, `.codex`는
 생성물이므로 소스를 고치고 `npm run generate`로 다시 만듭니다.
 
 ## 완료와 실패

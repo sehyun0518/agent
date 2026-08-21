@@ -69,7 +69,7 @@ policies/                     권한과 데이터 처리 정책을 정의합니�
 tooling/                      선언 검증기와 플랫폼 생성기를 제공합니다.
 docs/                         운영 문서, 결정 기록, 이관 문서를 보관합니다.
 
-.claude/ .cursor/ .codex/     소스에서 생성한 플랫폼별 산출물입니다.
+.claude/ .codex/              소스에서 생성한 플랫폼별 산출물입니다.
 ```
 
 ## 설계 원칙
@@ -152,7 +152,7 @@ npm run check
 `npm run validate`는 manifest와 워크플로 계약을 검사합니다. `npm run generate`는 플랫폼별
 산출물을 다시 만듭니다. `npm run check`는 계약 테스트와 생성물 드리프트까지 검사합니다.
 
-`.claude/`, `.cursor/`, `.codex/`는 직접 수정하지 않습니다. 이 디렉터리는
+`.claude/`, `.codex/`는 직접 수정하지 않습니다. 이 디렉터리는
 Capability와 프로파일 소스에서 생성합니다.
 
 ### 소비 저장소에 연결할 때

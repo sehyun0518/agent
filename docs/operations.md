@@ -156,7 +156,7 @@ integration·e2e를 생략하려면 **사유와 승인**이 있어야 한다.
 | 새 토큰 | `docs/vocabulary.md` **+** `vocabulary.json` | `npm run check` |
 | 플랫폼 모델 이름 | `tooling/generators/platforms.json` | `npm run generate` |
 
-**`.claude`·`.cursor`·`.codex`는 절대 직접 고치지 않는다.** 고쳐도 다음 생성 때
+**`.claude`·`.codex`는 절대 직접 고치지 않는다.** 고쳐도 다음 생성 때
 되돌아가고, CI가 병합을 막는다.
 
 ### 2.2 어디에 넣을지 판단하는 기준

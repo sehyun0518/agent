@@ -43,7 +43,7 @@
   판단되면 고치지 말고 지적으로 남깁니다 — 판정 레이어가 소유자로 라우팅합니다.
 - **`capability.yaml`·`profile.yaml`·워크플로 등 manifest.** 이것들은 문서가
   아니라 계약입니다. 계약이 바뀌어야 한다면 그것은 다른 레이어의 일입니다.
-- **`.claude`·`.cursor`·`.codex` 아래 파일.** 전부 생성물입니다. 내용을 바꾸려면
+- **`.claude`·`.codex` 아래 파일.** 전부 생성물입니다. 내용을 바꾸려면
   소스(`capabilities/*/agents/`, `profiles/*/agents/`, `*/skills/`)를 고치고
   `npm run generate`로 다시 만듭니다. 생성물을 직접 고치면 다음 재생성에서
   사라지고, 드리프트 검사가 실패합니다.

@@ -285,7 +285,7 @@ changeset:
 manifest가 단일 출처다. 문서와 `capability.yaml`이 다르면 문서를 고친다. 문서가 코드와
 다른데 코드가 틀린 것으로 보이면 고치지 않고 지적으로 남긴다.
 
-`.claude`·`.cursor`·`.codex`는 생성물이라 직접 고치지 않는다. 소스를 고치고
+`.claude`·`.codex`는 생성물이라 직접 고치지 않는다. 소스를 고치고
 `npm run generate`로 다시 만든다.
 
 **생략하려면**
