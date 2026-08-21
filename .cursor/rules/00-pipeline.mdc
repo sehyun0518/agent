@@ -12,6 +12,7 @@ alwaysApply: true
 
 | id | requires | produces |
 |---|---|---|
+| `documentation` | specification.contract · specification.completed · implementation.completed · implementation.patch | documentation.changeset · documentation.completed |
 | `git-operations` | — | 변형이 소유 |
 | `implementation` | specification.contract · specification.test-plan · specification.completed | implementation.patch · implementation.summary · implementation.completed |
 | `requirements` | — | requirements.spec · requirements.completed |
@@ -24,13 +25,13 @@ alwaysApply: true
 
 ### `bugfix` — 계층별 TDD 버그 수정
 
-자동 진행: specification → unit-reproduction → unit-red → logic-fix → unit-green → ui-scaffold → ui-reproduction → ui-red → ui-fix → ui-green → integration-reproduction → integration-red → integration-fix → integration-green → e2e-reproduction → e2e-red → e2e-fix → e2e-green → review
+자동 진행: specification → unit-reproduction → unit-red → logic-fix → unit-green → ui-scaffold → ui-reproduction → ui-red → ui-fix → ui-green → integration-reproduction → integration-red → integration-fix → integration-green → e2e-reproduction → e2e-red → e2e-fix → e2e-green → documentation → review
 
 사람이 호출: requirements · inspect · commit · push · pr-create · pr-update
 
 ### `change` — 계층별 TDD 변경 작업
 
-자동 진행: specification → unit-design → unit-red → logic → unit-green → ui-scaffold → ui-design → ui-red → ui-implementation → ui-green → integration-design → integration-red → integration-implementation → integration-green → e2e-design → e2e-red → e2e-implementation → e2e-green → review
+자동 진행: specification → unit-design → unit-red → logic → unit-green → ui-scaffold → ui-design → ui-red → ui-implementation → ui-green → integration-design → integration-red → integration-implementation → integration-green → e2e-design → e2e-red → e2e-implementation → e2e-green → documentation → review
 
 사람이 호출: requirements · inspect · commit · push · pr-preview · pr-create · pr-update
 
@@ -53,6 +54,6 @@ alwaysApply: true
 ## 프로파일
 
 - `frontend` (namespace `frontend`) — 역할 3, 스킬 10, 바인딩 4
-  - 워크플로 확장: `design` → parallel-with `specification` · `accessibility` → before `review` · `state-data` → parallel-with `implementation` · `state-data` → parallel-with `implementation`
+  - 워크플로 확장: `design` → parallel-with `specification` · `accessibility` → before `documentation` · `state-data` → parallel-with `implementation` · `state-data` → parallel-with `implementation`
 
 도메인 지식(토큰·규칙 팩·컨벤션)은 Capability가 아니라 프로파일이 소유한다.
