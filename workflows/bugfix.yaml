@@ -204,12 +204,34 @@ steps:
     produces: [test.e2e.completed]
     skippable: *e2e-skip
 
-  - id: review
-    capability: review
-    gate: require-test-evidence
+  # 문서 — 판정은 계약 고정 단계가 했고 여기서는 실행만 한다.
+  - id: documentation
+    capability: documentation
     trigger: automatic
     dependsOn: [unit-green, ui-green, integration-green, e2e-green]
-    expect: [{ evidence: test.unit.result, status: passed, from: unit-green }]
+    expectAnyOf:
+      - conditions: [{ evidence: documentation-impact, status: required, from: specification }]
+      - conditions: [{ evidence: documentation-impact, status: not-applicable, from: specification }]
+    produces: [documentation.changeset, documentation.completed]
+    skippable:
+      evidenceOnSkip: documentation.skip-justification
+      reasonRequired: true
+      approvalRequired: false
+
+  - id: review
+    capability: review
+    gate: [require-test-evidence, require-documentation-evidence]
+    trigger: automatic
+    dependsOn: [documentation]
+    # 문서 단계는 생략될 수 있으므로 결과와 생략 기록 둘 다 전이 근거가 된다.
+    # unit 통과는 어느 쪽에서도 빠지지 않는다 — 생략할 수 없는 유일한 계층이다.
+    expectAnyOf:
+      - conditions:
+          - { evidence: test.unit.result, status: passed, from: unit-green }
+          - { evidence: changed-files, status: recorded, from: documentation }
+      - conditions:
+          - { evidence: test.unit.result, status: passed, from: unit-green }
+          - { evidence: documentation.skip-justification, status: recorded, from: documentation }
     produces: [review.verdict, review.completed]
 
   - { id: inspect, capability: git-operations, variant: inspect, trigger: manual, produces: [git.inspection] }
