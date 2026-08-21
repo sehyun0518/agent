@@ -23,7 +23,7 @@ codex는 소스를 참조한다. 둘 다 해석이 들어가지 않는다. 반�
 실제로 그런 일이 있었다. `renderCursorPipeline`이 `workflowExtensions`를 `flatMap`으로
 평탄화하면서 각 삽입이 어느 워크플로 소속인지와 `anchorStep`을 버렸다.
 
-```
+```text
 워크플로 확장: ... `state-data` → parallel-with `implementation` ·
                   `state-data` → parallel-with `implementation`
 ```

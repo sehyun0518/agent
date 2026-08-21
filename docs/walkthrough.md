@@ -29,7 +29,7 @@ cat workflows/change.yaml     # 대본. 자동으로 돌지 않는다
 
 ## 1. requirements — 발화를 스펙으로
 
-```
+```text
 호출: discussion
 입력: "설정 페이지에 알림 토글 추가해줘"
 ```
@@ -37,7 +37,7 @@ cat workflows/change.yaml     # 대본. 자동으로 돌지 않는다
 이 역할은 **도구가 없다.** 레포를 뒤지지 않고 발화만 본다. 필수 슬롯 6개를 채우려 하고,
 못 채우면 묻는다.
 
-```
+```text
 Q1. 대상 디바이스와 브라우저 하한은?
 Q2. 토글을 끄면 기존 알림도 취소되나, 새 알림만 안 오나?
 Q3. 이번에 제외할 것은? (예: 알림 종류별 세분화)
@@ -57,7 +57,7 @@ summary: "필수 슬롯 6/6, 수용 기준 3개, 미확인 추론 0"
 **자주 걸리는 것** — 수용 기준이 "사용성이 좋다" 같은 문장이면 `failed`다. 글자가
 들어있다고 채워진 게 아니다. 판정 가능해야 한다.
 
-```
+```text
 ✅ "토글을 끄고 새로고침해도 꺼진 상태가 유지된다"
 ❌ "설정이 잘 저장된다"
 ```
@@ -66,7 +66,7 @@ summary: "필수 슬롯 6/6, 수용 기준 3개, 미확인 추론 0"
 
 ## 2. specification — 스펙을 계약으로
 
-```
+```text
 호출: spec   (프로파일이 켜져 있으면 design과 동시에)
 ```
 
@@ -194,7 +194,7 @@ artifact: .harness/runs/{runId}/changed-files.json
 
 ## 5. 계층별 green과 생략
 
-```
+```text
 호출: test-runner (unit) → test-runner (ui) → test-runner (integration) → test-runner (e2e)
 ```
 
@@ -237,7 +237,7 @@ kind: approval-record
 status: granted
 ```
 
-```
+```text
 ✅ "이번 변경은 순수 함수만 건드리고 UI 경로가 없음"
 ❌ "이번엔 필요 없어서"
 ```
@@ -248,7 +248,7 @@ status: granted
 
 ## 6. accessibility — 프로파일이 끼워 넣은 단계
 
-```
+```text
 호출: accessibility   (프론트엔드 프로파일이 documentation 앞에 삽입)
 ```
 
@@ -265,7 +265,7 @@ status: granted
 
 ## 7. documentation — 문서 갱신
 
-```
+```text
 호출: documentation
 ```
 
@@ -304,7 +304,7 @@ summary: "내부 헬퍼 시그니처만 변경. 외부에서 관찰되는 계약
 
 ## 8. review — 판정
 
-```
+```text
 호출: review
 게이트: workflows/gates/require-test-evidence.md
       workflows/gates/require-documentation-evidence.md
@@ -342,14 +342,14 @@ summary: "내부 헬퍼 시그니처만 변경. 외부에서 관찰되는 계약
 
 ## 9. Git — 여기서 자동으로 이어지지 않는다
 
-```
+```text
 호출: git-operator (commit)     ← 사람이 명시적으로
 ```
 
 `review`가 PASS를 냈다고 커밋이 자동으로 되지 않는다. 그리고 커밋이 됐다고 푸시가
 자동으로 되지 않는다.
 
-```
+```text
 commit ─╳→ push ─╳→ pr-create
 ```
 
