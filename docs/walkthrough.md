@@ -25,6 +25,10 @@ cat workflows/change.yaml     # 대본. 자동으로 돌지 않는다
 
 이건 `profiles/frontend/profile.yaml`의 `workflowExtensions`가 정한다.
 
+**끼우지 않는 역할도 있다.** `project-design-inspect`·`decide`·`scaffold`는 삽입 선언이
+없어서 어느 흐름에도 안 들어간다. 그것이 곧 수동 전용이라는 뜻이다 — 기능 요청이
+프로젝트 골격을 다시 정하게 두지 않는다(ADR-0010).
+
 ---
 
 ## 1. requirements — 발화를 스펙으로
@@ -381,6 +385,7 @@ commit ─╳→ push ─╳→ pr-create
 | 증상 | 되돌릴 곳 |
 |---|---|
 | 수용 기준이 모호 | `discussion` |
+| 프로젝트 상수 부재·암묵 규약 충돌 | `project-design-decide` |
 | 계약 드리프트·타입 불일치 | `spec` |
 | 토큰 부재·대비 부족 | `design` |
 | 테스트가 안 돌음·red `rejected` | `tester` |
