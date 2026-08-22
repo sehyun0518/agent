@@ -19,7 +19,10 @@
     "**/skills/react-best-practice/**",
     "**/skills/react-native-skills/**",
     "**/skills/reactlynx-best-practices/**",
-    "**/skills/vanilla-lynx/**"
+    "**/skills/vanilla-lynx/**",
+    "**/skills/lynx-api-docs/**",
+    "**/skills/lynx-typescript/**",
+    "**/skills/rspeedy-bundle-size/**"
   ],
   "config": {
     "default": false,

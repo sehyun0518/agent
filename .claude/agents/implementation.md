@@ -4,6 +4,9 @@ description: 호출된 변형 하나만 구현합니다. logic은 순수 함수,
 model: sonnet
 tools: Read, Grep, Glob, Bash, Write, Edit, mcp__playwright
 skills:
+  - lynx-api-docs
+  - lynx-typescript
+  - rspeedy-bundle-size
   - react-best-practice
   - react-native-skills
   - reactlynx-best-practices

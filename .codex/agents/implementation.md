@@ -3,6 +3,9 @@ name: implementation
 source: capabilities/implementation/agents/implementation.md
 capability: implementation
 skills:
+  - lynx-api-docs
+  - lynx-typescript
+  - rspeedy-bundle-size
   - react-best-practice
   - react-native-skills
   - reactlynx-best-practices
