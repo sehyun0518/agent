@@ -85,6 +85,12 @@ skills:
   - id: react-native-skills
     path: skills/react-native-skills
     description: React Native/Expo 성능 규칙 팩
+  - id: reactlynx-best-practices
+    path: skills/reactlynx-best-practices
+    description: ReactLynx 이중 스레드 규칙 팩
+  - id: vanilla-lynx
+    path: skills/vanilla-lynx
+    description: Vanilla Lynx(Element PAPI) 작성 규칙 팩
 
 # ---------------------------------------------------------------- Capability 바인딩
 bindings:
@@ -98,10 +104,17 @@ bindings:
     note: 컴포넌트 API를 계약으로 고정할 때 보는 설계 규칙.
 
   - capability: implementation
-    # 택일. 웹 컴포넌트에 RN 규칙을, RN 컴포넌트에 웹 규칙을 적용하지 않는다.
+    # 택일. 타깃이 다른 규칙 팩을 섞지 않는다 — 웹 컴포넌트에 RN 규칙을, ReactLynx에
+    # 웹 렌더링 규칙을 적용하면 스레드 경계나 플랫폼 API를 어긴다.
+    # 어느 팩을 쓸지는 실행 에이전트가 저장소 의존성으로 판별한다. 프로파일에
+    # target 같은 필드를 두지 않는다 — 그 사실은 소비 저장소의 package.json에
+    # 이미 있고, 여기 다시 적으면 두 곳이 어긋난다. 판별 근거는 각 SKILL.md의
+    # 상단 배너가 소유한다.
     skillsOneOf:
       - frontend:react-best-practice
       - frontend:react-native-skills
+      - frontend:reactlynx-best-practices
+      - frontend:vanilla-lynx
     tools: [mcp__playwright]
     mcpServers:
       - playwright:

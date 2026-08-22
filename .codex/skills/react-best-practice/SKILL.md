@@ -7,7 +7,10 @@ metadata:
   version: "1.0.0"
 ---
 
-> **⚠️ Web React / Next.js only.** React Native(Expo) 컴포넌트면 이 스킬을 건너뛰고 `react-native-skills`를 쓰세요.
+> **⚠️ Web React / Next.js only.** React Native(Expo)면 `react-native-skills`,
+> ReactLynx면 `reactlynx-best-practices`, Vanilla Lynx(Element PAPI)면
+> `vanilla-lynx`를 쓰세요. 네 팩은 혼용하지 않습니다.
+> 어느 팩인지는 저장소 의존성으로 판별합니다 — `react` + `next` / `react-dom`.
 
 # React Best Practices
 
