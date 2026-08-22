@@ -50,6 +50,7 @@
 | 6 | integration → e2e 계층별 red/green | 각 층이 독립적인 증거를 남겼는가 |
 | 7 | `documentation` | 2번의 문서 영향 판정이 지목한 문서를 다 고쳤는가 |
 | 8 | `review` | 6·7번 증거가 다 있는가 |
+| — | `project-design-inspect` → `decide` → `scaffold` | **사람이 명시적으로.** 프로젝트당 한 번 |
 | — | `commit` · `push` · `pr-create` | **사람이 명시적으로** |
 
 1단계를 건너뛰어도 된다. 요구사항이 이미 명확하면 `discussion` 없이 2번부터 시작한다.
@@ -122,6 +123,7 @@ integration·e2e를 생략하려면 **사유와 승인**이 있어야 한다.
 | 증상 | 되돌릴 곳 |
 |---|---|
 | 요구사항 슬롯 부족·수용 기준 모호 | `discussion` |
+| 프로젝트 상수 부재·암묵 규약 충돌 | `project-design-decide` |
 | 계약 드리프트·타입 불일치 | `spec` |
 | 토큰 부재·대비 부족 | `design` |
 | 테스트가 돌지 않음·red rejected | `tester` |

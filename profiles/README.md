@@ -67,4 +67,4 @@ namespace: frontend
 
 | id | 담는 것 |
 |---|---|
-| `frontend` | design·accessibility·state-data 역할, React/RN 규칙 팩, 컴포넌트 API 패턴 스킬, 워크플로 확장 3건 |
+| `frontend` | design·accessibility·state-data 역할, project-design 3종(수동), React/RN/Lynx 규칙 팩, Lynx 레퍼런스, 컴포넌트 API 패턴 스킬, 워크플로 확장 3건 |
