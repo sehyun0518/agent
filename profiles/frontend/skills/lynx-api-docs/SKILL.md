@@ -14,6 +14,7 @@ metadata:
 > 씁니다. 웹 React나 React Native 프로젝트에는 해당하지 않습니다.
 
 
+<!-- vendored:begin -->
 # Using Lynx API Docs
 
 ## Overview
@@ -76,6 +77,7 @@ The compact layout decision rules and key CSS constraints are documented in `qui
 - Writing plain text without `<text>` wrapper → Invalid in Lynx
 - Using web pseudo-classes without checking `css/pseudo-classes.md`
 - Assuming standard HTML flow layout → Lynx uses linear layout by default
+<!-- vendored:end -->
 
 ## 출처
 

@@ -20,6 +20,7 @@ metadata:
 > 씁니다.
 
 
+<!-- vendored:begin -->
 # TypeScript @ Lynx
 
 This Skill summarizes common TypeScript issues and their solutions in Lynx development, mainly covering environment configuration, type extending, event handling, components, and ReactLynx advanced usages.
@@ -281,6 +282,7 @@ lynx.registerDataProcessors({
   -> Ensure the project contains the reference `import {} from "@lynx-js/react"`.
 
 - When using `declare module '@lynx-js/types'` in a `d.ts` file, make sure to export an empty object `export {}` to avoid global pollution.
+<!-- vendored:end -->
 
 ## 출처
 
