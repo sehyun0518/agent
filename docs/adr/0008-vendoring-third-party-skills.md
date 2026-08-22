@@ -56,9 +56,10 @@
 현재 분포다.
 
 ```text
-A  64개  전부 일치
-B   4개  vanilla-lynx · lynx-api-docs · lynx-typescript · rspeedy-bundle-size
-C   1개  reactlynx-best-practices
+A  172개  전부 일치
+B    6개  vanilla-lynx · lynx-api-docs · lynx-typescript · rspeedy-bundle-size
+          react-best-practice · react-native-skills
+C    1개  reactlynx-best-practices
 ```
 
 #### 종류 A — 파일 전체
@@ -164,7 +165,9 @@ metadata:
 `skills/`인데, `main`에는 같은 내용이 `packages/skills/`에 있다. 어느 쪽을 봤는지
 적어두지 않으면 다음 동기화 때 다른 곳을 본다.
 
-Vercel 팩 2개에는 이 필드가 없어서 원본을 찾지 못하고 있다(#28).
+Vercel 팩 2개에는 이 필드가 없어 원본을 찾지 못했다. #28에서 찾아 채웠다 —
+[vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills)의
+`skills/react-best-practices`와 `skills/react-native-skills`다.
 
 ### 6. 실행 코드를 포함할 수 있다
 
@@ -214,7 +217,7 @@ Vercel 팩 2개에는 이 필드가 없어서 원본을 찾지 못하고 있다(
 종류 C는 제외. 정규화 규칙도 거기 있다.
 
 네트워크에 의존하므로 `npm run check`가 아니라 별도 스크립트나 정기 작업이 맞다.
-Vercel 팩 2개는 `source`가 없어 그 검사에 들어가지도 못한다(#28).
+지금은 일곱 팩 모두 `source`가 있어 검사 대상이 된다.
 
 마커를 지우거나 옮기는 것도 지금은 아무도 막지 않는다. 마커가 없으면 종류 B가 종류 C로
 조용히 바뀐다.

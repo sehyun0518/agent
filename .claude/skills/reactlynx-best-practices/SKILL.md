@@ -4,7 +4,8 @@ description: ReactLynx dual-thread best practices for writing, reviewing, and re
 license: Apache-2.0
 metadata:
   author: lynx-community
-  source: https://github.com/lynx-community/skills
+  source: https://github.com/lynx-community/skills/tree/release/skills/reactlynx-best-practices
+  vendored: body-rewritten
   version: "1.0.0"
 ---
 
