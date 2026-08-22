@@ -1,5 +1,10 @@
 # Agent Harness
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/hero-dark.svg">
+  <img alt="요구사항 → 계약과 테스트 계획 → 계층별 red → green → 문서 갱신 → 최종 검토로 이어지는 흐름. Unit·UI·Integration·E2E 네 계층은 각각 red 증거(red-proof)를 받아 구현을 시작하고 green으로 끝나며, 앞 계층이 green이어야 다음 계층을 시작합니다." src="docs/assets/hero-light.svg">
+</picture>
+
 Agent Harness는 에이전트 작업을 **Capability 단위의 레이어**로 나누고, 각 레이어를
 증거로 연결하는 선언형 하네스입니다. 각 레이어는 자신의 계약과 역할을 소유하고,
 워크플로는 레이어의 실행 순서와 이관 조건을 정의합니다.

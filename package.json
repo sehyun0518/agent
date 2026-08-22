@@ -1,9 +1,9 @@
 {
   "name": "agent-harness",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "작업 Capability 기반 Agent Harness — 선언(manifest) 단일 출처와 검증·생성 툴링",
+  "description": "증거로 레이어를 잇는 선언형 에이전트 하네스 — Capability 선언 하나로 Claude Code·Codex 설정을 생성하고 정적 검증합니다",
   "scripts": {
     "validate": "node tooling/validators/validate.mjs",
     "test:contracts": "node --test tooling/validators/*.test.mjs",

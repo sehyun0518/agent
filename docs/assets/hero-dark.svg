@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="420" viewBox="0 0 1000 420" role="img">
+<text x="40" y="58" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif" font-size="30" font-weight="700" fill="#f0f6fc" text-anchor="start">Agent Harness</text>
+<text x="40" y="86" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif" font-size="13.5" font-weight="400" fill="#9198a1" text-anchor="start">증거로 레이어를 잇는 선언형 에이전트 하네스</text>
+<rect x="40" y="116" width="110" height="32" rx="16" fill="#0d1117" stroke="#3d444d" stroke-width="1"/>
+<text x="95.0" y="137" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif" font-size="13" font-weight="400" fill="#f0f6fc" text-anchor="middle">요구사항</text>
+<path d="M164 132.0 H181" stroke="#3d444d" stroke-width="1.5" fill="none"/><path d="M180 128.5 L186 132.0 L180 135.5Z" fill="#3d444d"/>
+<rect x="200" y="116" width="180" height="32" rx="16" fill="#0d1117" stroke="#3d444d" stroke-width="1"/>
+<text x="290.0" y="137" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif" font-size="13" font-weight="400" fill="#f0f6fc" text-anchor="middle">계약과 테스트 계획</text>
+<path d="M394 132.0 H411" stroke="#3d444d" stroke-width="1.5" fill="none"/><path d="M410 128.5 L416 132.0 L410 135.5Z" fill="#3d444d"/>
+<rect x="430" y="116" width="190" height="32" rx="16" fill="#121d2f" stroke="#4493f8" stroke-width="1"/>
+<text x="525.0" y="137" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif" font-size="13" font-weight="600" fill="#4493f8" text-anchor="middle">계층별 red → green</text>
+<path d="M634 132.0 H651" stroke="#3d444d" stroke-width="1.5" fill="none"/><path d="M650 128.5 L656 132.0 L650 135.5Z" fill="#3d444d"/>
+<path d="M525.0 154 V177" stroke="#4493f8" stroke-width="1.5"/><path d="M521.5 177 L525.0 183 L528.5 177Z" fill="#4493f8"/>
+<rect x="670" y="116" width="120" height="32" rx="16" fill="#0d1117" stroke="#3d444d" stroke-width="1"/>
+<text x="730.0" y="137" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif" font-size="13" font-weight="400" fill="#f0f6fc" text-anchor="middle">문서 갱신</text>
+<path d="M804 132.0 H821" stroke="#3d444d" stroke-width="1.5" fill="none"/><path d="M820 128.5 L826 132.0 L820 135.5Z" fill="#3d444d"/>
+<rect x="840" y="116" width="120" height="32" rx="16" fill="#0d1117" stroke="#3d444d" stroke-width="1"/>
+<text x="900.0" y="137" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif" font-size="13" font-weight="400" fill="#f0f6fc" text-anchor="middle">최종 검토</text>
+<rect x="40" y="186" width="920" height="196" rx="10" fill="#151b23" stroke="#3d444d" stroke-width="1"/>
+<text x="72" y="230.5" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif" font-size="14" font-weight="600" fill="#f0f6fc" text-anchor="start">Unit</text>
+<circle cx="214" cy="226" r="4.5" fill="#f85149"/>
+<text x="228" y="230" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="400" fill="#f85149" text-anchor="start">red</text>
+<text x="358" y="218" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9198a1" text-anchor="middle">red-proof</text>
+<path d="M286 226 H425" stroke="#3d444d" stroke-width="1.5" fill="none"/><path d="M424 222.5 L430 226 L424 229.5Z" fill="#3d444d"/>
+<rect x="442" y="212" width="150" height="28" rx="6" fill="#0d1117" stroke="#3d444d"/>
+<text x="517" y="230.5" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif" font-size="13" font-weight="400" fill="#f0f6fc" text-anchor="middle">순수 로직</text>
+<path d="M604 226 H695" stroke="#3d444d" stroke-width="1.5" fill="none"/><path d="M694 222.5 L700 226 L694 229.5Z" fill="#3d444d"/>
+<circle cx="712" cy="226" r="4.5" fill="#3fb950"/>
+<text x="726" y="230" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="400" fill="#3fb950" text-anchor="start">green</text>
+<text x="72" y="268.5" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif" font-size="14" font-weight="600" fill="#f0f6fc" text-anchor="start">UI</text>
+<circle cx="214" cy="264" r="4.5" fill="#f85149"/>
+<text x="228" y="268" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="400" fill="#f85149" text-anchor="start">red</text>
+<text x="358" y="256" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9198a1" text-anchor="middle">red-proof</text>
+<path d="M286 264 H425" stroke="#3d444d" stroke-width="1.5" fill="none"/><path d="M424 260.5 L430 264 L424 267.5Z" fill="#3d444d"/>
+<rect x="442" y="250" width="150" height="28" rx="6" fill="#0d1117" stroke="#3d444d"/>
+<text x="517" y="268.5" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif" font-size="13" font-weight="400" fill="#f0f6fc" text-anchor="middle">컴포넌트</text>
+<path d="M604 264 H695" stroke="#3d444d" stroke-width="1.5" fill="none"/><path d="M694 260.5 L700 264 L694 267.5Z" fill="#3d444d"/>
+<circle cx="712" cy="264" r="4.5" fill="#3fb950"/>
+<text x="726" y="268" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="400" fill="#3fb950" text-anchor="start">green</text>
+<text x="72" y="306.5" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif" font-size="14" font-weight="600" fill="#f0f6fc" text-anchor="start">Integration</text>
+<circle cx="214" cy="302" r="4.5" fill="#f85149"/>
+<text x="228" y="306" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="400" fill="#f85149" text-anchor="start">red</text>
+<text x="358" y="294" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9198a1" text-anchor="middle">red-proof</text>
+<path d="M286 302 H425" stroke="#3d444d" stroke-width="1.5" fill="none"/><path d="M424 298.5 L430 302 L424 305.5Z" fill="#3d444d"/>
+<rect x="442" y="288" width="150" height="28" rx="6" fill="#0d1117" stroke="#3d444d"/>
+<text x="517" y="306.5" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif" font-size="13" font-weight="400" fill="#f0f6fc" text-anchor="middle">연결 구현</text>
+<path d="M604 302 H695" stroke="#3d444d" stroke-width="1.5" fill="none"/><path d="M694 298.5 L700 302 L694 305.5Z" fill="#3d444d"/>
+<circle cx="712" cy="302" r="4.5" fill="#3fb950"/>
+<text x="726" y="306" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="400" fill="#3fb950" text-anchor="start">green</text>
+<text x="72" y="344.5" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif" font-size="14" font-weight="600" fill="#f0f6fc" text-anchor="start">E2E</text>
+<circle cx="214" cy="340" r="4.5" fill="#f85149"/>
+<text x="228" y="344" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="400" fill="#f85149" text-anchor="start">red</text>
+<text x="358" y="332" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" font-size="11" font-weight="400" fill="#9198a1" text-anchor="middle">red-proof</text>
+<path d="M286 340 H425" stroke="#3d444d" stroke-width="1.5" fill="none"/><path d="M424 336.5 L430 340 L424 343.5Z" fill="#3d444d"/>
+<rect x="442" y="326" width="150" height="28" rx="6" fill="#0d1117" stroke="#3d444d"/>
+<text x="517" y="344.5" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif" font-size="13" font-weight="400" fill="#f0f6fc" text-anchor="middle">사용자 여정</text>
+<path d="M604 340 H695" stroke="#3d444d" stroke-width="1.5" fill="none"/><path d="M694 336.5 L700 340 L694 343.5Z" fill="#3d444d"/>
+<circle cx="712" cy="340" r="4.5" fill="#3fb950"/>
+<text x="726" y="344" font-family="ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace" font-size="12.5" font-weight="400" fill="#3fb950" text-anchor="start">green</text>
+<path d="M850 226 V334" stroke="#3d444d" stroke-width="1.5"/><path d="M846.5 334 L850 340 L853.5 334Z" fill="#3d444d"/>
+<text x="862" y="287.0" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif" font-size="11.5" font-weight="400" fill="#9198a1" text-anchor="start">다음 계층</text>
+<text x="40" y="406" font-family="ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif" font-size="12.5" font-weight="400" fill="#9198a1" text-anchor="start">각 화살표는 상태 플래그가 아니라 증거를 전달합니다. 앞 계층이 green이어야 다음 계층을 시작합니다.</text>
+</svg>
