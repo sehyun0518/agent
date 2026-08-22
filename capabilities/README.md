@@ -13,6 +13,7 @@ Capability는 하네스가 수행하는 하나의 작업 유형입니다. 이 �
 | `test-design` | 적용할 계층의 테스트를 작성합니다. | [Test Design](test-design/README.md) |
 | `test-execution` | 테스트를 실행하고 결과 증거를 기록합니다. | [Test Execution](test-execution/README.md) |
 | `implementation` | 확인된 red를 구현으로 green으로 만듭니다. | [Implementation](implementation/README.md) |
+| `documentation` | 변경 때문에 낡은 문서를 갱신합니다. | [Documentation](documentation/README.md) |
 | `review` | 계약과 증거를 바탕으로 최종 판정을 내립니다. | [Review](review/README.md) |
 | `git-operations` | Git과 GitHub 작업을 수동으로 수행합니다. | [Git Operations](git-operations/README.md) |
 

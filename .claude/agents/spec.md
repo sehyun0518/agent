@@ -58,7 +58,29 @@ color: purple
    다시 적지 않고 어떤 함수 결과를 렌더링하는지만 적습니다. 동작 변경 작업의 unit은
    `not-applicable`로 둘 수 없습니다.
 
-4. 계약 고정 요약 — 최종 메시지로 오케스트레이터에 반환
+4. 문서 영향 판정 — `documentation-impact` 증거로 기록
+
+   이 변경이 어떤 문서를 낡게 만드는지 **당신이 판정합니다.** 문서화 레이어가
+   자기 일의 유무를 스스로 선언하면 그 판정을 검증할 근거가 사라지기 때문입니다
+   (ADR-0005 결정 1).
+
+   ```yaml
+   kind: documentation-impact
+   status: required          # 또는 not-applicable
+   summary: "레이어가 늘어 README 색인과 walkthrough가 낡음"
+   artifact: docs/specs/<feature>.md#documentation-impact
+   producedBy: specification
+   ```
+
+   `required`면 영향받는 문서를 **경로로** 나열합니다. "문서 갱신 필요"는 판정이
+   아닙니다. `not-applicable`이면 왜 어떤 문서도 낡지 않는지 적습니다 —
+   "해당 없음" 수준의 사유는 게이트가 차단합니다.
+
+   판정 기준: 계약·워크플로·통제 어휘·권한·레이어 구성이 바뀌면 거의 항상
+   `required`입니다. 내부 구현만 바뀌고 외부에서 관찰되는 계약이 그대로면
+   `not-applicable`일 수 있습니다.
+
+5. 계약 고정 요약 — 최종 메시지로 오케스트레이터에 반환
    - 작성한 파일 경로 목록
    - 핵심 인터페이스 이름과 한 줄 설명
    - "이제 병렬로 진행 가능한 작업" 목록(구현 ×N, 상태·데이터로 나눠서)

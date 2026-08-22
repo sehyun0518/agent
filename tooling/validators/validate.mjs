@@ -13,6 +13,8 @@ import addFormats from 'ajv-formats'
 import { parse as parseYaml } from 'yaml'
 import { librarySignature } from './profile-testing.mjs'
 import { createWorkflowGraph } from './workflow-graph.mjs'
+import { resolveRunners, findUnresolvedRunners, findDuplicateInserts } from './profile-roster.mjs'
+import { findDocumentationBypass } from './documentation-gate.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const SCHEMA_DIR = join(ROOT, 'packages', 'manifest-contracts')
@@ -333,6 +335,12 @@ function loadCapabilities() {
 
 const CAPABILITIES = loadCapabilities()
 
+/** step.gate는 문자열 하나 또는 배열이다. 둘을 같은 목록으로 다룬다. */
+function gateNames(gate) {
+  if (!gate) return []
+  return Array.isArray(gate) ? gate : [gate]
+}
+
 /**
  * 워크플로 단계가 실제 Capability 계약과 맞는지 본다.
  * 여기가 없으면 manifest는 통과하는데 워크플로가 계약을 어기는 상태가 가능해진다.
@@ -399,8 +407,11 @@ function checkWorkflowSteps(file, doc) {
     }
 
     // 이관 게이트는 하네스가 소유한다. 파일이 실재해야 한다.
-    if (step.gate && !existsSync(join(ROOT, 'workflows', 'gates', `${step.gate}.md`))) {
-      fail(file, `step:${step.id}: 게이트 "workflows/gates/${step.gate}.md"가 없다.`)
+    // 판정 축이 둘 이상이면 배열로 나열한다. 어느 표기든 각 게이트의 파일이 실재해야 한다.
+    for (const gate of gateNames(step.gate)) {
+      if (!existsSync(join(ROOT, 'workflows', 'gates', `${gate}.md`))) {
+        fail(file, `step:${step.id}: 게이트 "workflows/gates/${gate}.md"가 없다.`)
+      }
     }
 
     // 승인이 필요한 생략은 승인 증거를 남길 수 있어야 한다.
@@ -459,6 +470,17 @@ function checkWorkflowTokens(file, doc) {
         )
       }
     }
+  }
+
+  // 위 검사는 생산 단계가 이미 있을 때만 조상 여부를 본다. 단계를 통째로 뺀 우회는
+  // 그 검사에 걸리지 않으므로 따로 본다.
+  for (const { stepId, reason } of findDocumentationBypass(steps, graph)) {
+    fail(
+      file,
+      reason === 'missing'
+        ? `step:${stepId}: 판정 단계가 있는데 documentation 단계가 없다. 문서 결과 없이 판정으로 갈 수 없다.`
+        : `step:${stepId}: documentation 단계가 판정 단계의 의존 그래프 조상이 아니다.`,
+    )
   }
 }
 
@@ -529,12 +551,19 @@ const WORKFLOWS = loadWorkflows()
  * 경쟁하는 순서 정의를 두지 않기 위해서다.
  */
 function checkWorkflowExtensions(file, doc) {
-  const runners = new Set([
-    ...CAPABILITIES.keys(),
-    ...(doc.agents ?? []).map((a) => a.id),
-  ])
-  for (const [id, capability] of CAPABILITIES) {
-    for (const variant of Object.keys(capability.variants ?? {})) runners.add(`${id}#${variant}`)
+  const runners = resolveRunners(CAPABILITIES, doc.agents ?? [])
+
+  // roster는 오케스트레이터가 실행자 이름을 아는 유일한 통로이고, routing은 판정 결과가
+  // 되돌아갈 소유자를 정한다. 둘 중 하나라도 실재하지 않는 이름을 담으면 그 경로는
+  // 런타임에 끊긴다 — 삽입 지점과 같은 규칙으로 선언 시점에 잡는다.
+  for (const { field, index, name, label } of findUnresolvedRunners(doc, runners)) {
+    fail(file, `${field}[${index}] "${label}": 실행자 "${name}"가 없다.`)
+  }
+
+  // 삽입 하나씩 보는 아래 검사는 겹침을 놓친다. workflow "*"가 특정 워크플로 블록과
+  // 겹치면 같은 단계가 두 번 들어가는데, 각각은 모든 조건을 만족하기 때문이다.
+  for (const { workflowId, insertId, count } of findDuplicateInserts(doc, WORKFLOWS)) {
+    fail(file, `workflowExtensions/${insertId}: 워크플로 "${workflowId}"에 ${count}번 삽입된다. step id는 하나여야 한다.`)
   }
 
   for (const extension of doc.workflowExtensions ?? []) {

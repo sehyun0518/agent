@@ -13,6 +13,9 @@
     "implementation.completed": {
       "producedBy": "implementation"
     },
+    "documentation.completed": {
+      "producedBy": "documentation"
+    },
     "review.completed": {
       "producedBy": "review"
     },
@@ -98,6 +101,9 @@
     },
     "implementation.summary": {
       "producedBy": "implementation"
+    },
+    "documentation.changeset": {
+      "producedBy": "documentation"
     },
     "review.verdict": {
       "producedBy": "review"
@@ -189,6 +195,17 @@
       ]
     },
     "test.skip-justification": {
+      "statuses": [
+        "recorded"
+      ]
+    },
+    "documentation-impact": {
+      "statuses": [
+        "required",
+        "not-applicable"
+      ]
+    },
+    "documentation.skip-justification": {
       "statuses": [
         "recorded"
       ]

@@ -54,6 +54,6 @@ npm run check      # 둘 다 (CI가 도는 것)
 - `unit`·`ui`·`integration`·`e2e`는 하나로 합쳐지지 않는다. 생략하려면 테스트 계획과 사유를 남기고, integration·e2e는 승인도 남긴다.
 - Git 작업은 서로 연쇄하지 않고 자동 진행되지 않는다.
 - 커밋·PR에 자동화 도구 출처 문구를 자동으로 넣지 않는다.
-- `.claude`·`.cursor`·`.codex`는 생성물이다. 직접 편집하면 CI가 되돌린다.
+- `.claude`·`.codex`는 생성물이다. 직접 편집하면 CI가 되돌린다.
 
 전체 목록은 `policies/`와 `tooling/README.md`.

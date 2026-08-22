@@ -14,18 +14,6 @@
     },
     "$comment": "루트 agents/*.md와 바이트 동일한 전문 복제가 현재 관행이다. 생성기는 같은 의미를 canonical 포맷으로 낸다."
   },
-  "cursor": {
-    "enabled": true,
-    "outputDir": ".cursor",
-    "agentDir": "agents",
-    "bodyMode": "reference",
-    "modelMap": {
-      "cheap": "composer-2.5",
-      "strong": "gpt-5.5",
-      "inherit": "gpt-5.5"
-    },
-    "$comment": "얇은 래퍼 + rules 색인. tools frontmatter를 쓰지 않는다."
-  },
   "codex": {
     "enabled": true,
     "outputDir": ".codex",

@@ -15,7 +15,7 @@ Codex 전용 진입점은 `.codex/AGENTS.md`다. 그 문서는 **생성물**이�
 | 통제 어휘 | `docs/vocabulary.md` |
 | 프로젝트 상수 | `AGENT.md` · `DESIGN.md` |
 
-`.claude/` · `.cursor/` · `.codex/`는 전부 생성 산출물이다. 소스를 고치고
+`.claude/` · `.codex/`는 전부 생성 산출물이다. 소스를 고치고
 `npm run generate`를 돌린다. CI가 재생성 결과와 커밋 상태를 대조한다.
 
 전체 구조와 유지보수 절차는 `README.md`에 있다.

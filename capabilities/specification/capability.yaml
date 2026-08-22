@@ -29,11 +29,17 @@ evidence:
   - kind: contract-diff
     required: true
     artifactRequired: true
+  # 문서 영향은 여기서 판정한다. 문서화 레이어가 자기 일의 유무를 스스로 선언하면
+  # 그 판정을 검증할 근거가 사라진다 (ADR-0005 결정 1).
+  - kind: documentation-impact
+    required: true
+    artifactRequired: true
 
 completion:
   requiresEvidence:
     - changed-files
     - contract-diff
+    - documentation-impact
   expectedStatus:
     contract-diff: recorded
 
