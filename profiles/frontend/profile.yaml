@@ -30,15 +30,18 @@ agents:
   - id: accessibility
     file: agents/accessibility.md
     description: >-
-      병합된 통합 빌드를 자동 검사 너머까지 점검하고 직접 개선하는 접근성 전문가입니다 —
+      병합된 통합 빌드를 자동 검사 너머까지 점검하고 지적을 내는 접근성 전문가입니다 —
       키보드 조작, 포커스 관리, 스크린리더 시맨틱(ARIA), 명도 대비, 모션 환경설정.
-      구현·리뷰 직전 통합 단계에서 사용하세요. 접근성 외의 코드(로직·데이터·계약·디자인)는
-      수정하지 않습니다.
-    tools: [Read, Grep, Glob, Bash, Write, Edit, mcp__playwright]
+      모든 계층 green 이후 판정 전 통합 단계에서 사용하세요. 코드를 직접 고치지 않고,
+      무엇을 어떻게 고쳐야 하는지와 소유자를 지적으로 냅니다.
+    # 읽기 전용이다. 모든 계층 green 뒤에 실행되므로 여기서 코드를 고치면 그 수정을
+    # 검증할 단계가 뒤에 없다 (ADR-0007).
+    tools: [Read, Grep, Glob, Bash, mcp__playwright]
     modelTier: strong
     memory: project
     color: blue
-    scope: 접근성 범위만. 대비 문제의 뿌리가 토큰이면 design으로 라우팅한다.
+    readonly: true
+    scope: 접근성 범위만 본다. 수정은 하지 않고 routing이 정한 소유자로 넘긴다.
     mcpServers:
       - playwright:
           type: stdio
@@ -166,7 +169,7 @@ roster:
     runner: implementation
   - unit: 테스트 실행
     runner: test-execution
-  - unit: 접근성·반응형 마감
+  - unit: 접근성 점검·지적
     runner: accessibility
   - unit: 문서 갱신
     runner: documentation
@@ -192,10 +195,11 @@ workflowExtensions:
         mode: before
         anchorCapability: documentation
         note: >-
-          병합된 통합 빌드를 문서 갱신 전에 점검하고 접근성 범위만 직접 고친다.
-          앵커가 review가 아닌 이유는, accessibility가 코드를 직접 고치므로 문서 갱신
-          뒤에 놓이면 문서를 쓴 다음 코드가 바뀌기 때문이다 (ADR-0005 결정 7).
-          review 전용 흐름에는 문서 단계가 없으므로 이 삽입은 건너뛰어진다.
+          병합된 통합 빌드를 문서 갱신 전에 점검하고 지적만 낸다. 코드를 고치지 않으므로
+          뒤에 재검증 단계가 필요 없다 (ADR-0007). Critical 지적이 있으면 routing이
+          정한 소유자로 되돌아가 해당 계층의 red-green을 다시 탄다.
+          review 전용 흐름에는 문서 단계가 없어 이 삽입은 건너뛰어지며, 판정만 하는
+          흐름에 감사 역할을 두지 않는 것은 의도한 결과다.
 
   - workflow: change
     insert:
@@ -237,8 +241,10 @@ routing:
     owner: documentation
     exception: manifest가 단일 출처다. 계약 자체가 틀렸으면 specification으로 넘긴다.
   - symptom: 키보드·포커스·ARIA·모션
-    owner: accessibility
-    exception: accessibility는 이 범위를 직접 고친다. 단 대비의 뿌리가 토큰이면 design으로 넘긴다.
+    owner: implementation
+    exception: >-
+      발견은 accessibility가 하고 수정은 구현이 한다. 대비의 뿌리가 토큰이면 design으로
+      넘긴다. accessibility는 읽기 전용이라 소유자가 될 수 없다 (ADR-0007).
 
 # ---------------------------------------------------------------- 지식
 knowledge:
