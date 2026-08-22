@@ -66,4 +66,3 @@ profileExtensible:
   skills: true
   agents: false
   hooks: true
-  commands: false
