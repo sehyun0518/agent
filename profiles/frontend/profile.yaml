@@ -88,6 +88,9 @@ skills:
   - id: reactlynx-best-practices
     path: skills/reactlynx-best-practices
     description: ReactLynx 이중 스레드 규칙 팩
+  - id: vanilla-lynx
+    path: skills/vanilla-lynx
+    description: Vanilla Lynx(Element PAPI) 작성 규칙 팩
 
 # ---------------------------------------------------------------- Capability 바인딩
 bindings:
@@ -111,6 +114,7 @@ bindings:
       - frontend:react-best-practice
       - frontend:react-native-skills
       - frontend:reactlynx-best-practices
+      - frontend:vanilla-lynx
     tools: [mcp__playwright]
     mcpServers:
       - playwright:

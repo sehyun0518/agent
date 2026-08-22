@@ -11,8 +11,9 @@ metadata:
   version: '1.0.0'
 ---
 
-> **⚠️ React Native(Expo) only.** 웹 React/Next 컴포넌트면 `react-best-practice`,
-> ReactLynx면 `reactlynx-best-practices`를 쓰세요. 세 팩은 혼용하지 않습니다.
+> **⚠️ React Native(Expo) only.** 웹 React/Next면 `react-best-practice`,
+> ReactLynx면 `reactlynx-best-practices`, Vanilla Lynx(Element PAPI)면
+> `vanilla-lynx`를 쓰세요. 네 팩은 혼용하지 않습니다.
 > 어느 팩인지는 저장소 의존성으로 판별합니다 — `react-native` / `expo`.
 
 # React Native Skills

@@ -17,10 +17,10 @@ changes to `lynx.__globalProps`.
 
 ### Modes
 
-| Mode | Behavior | Use when |
-|---|---|---|
-| `'reactive'` | `UpdateGlobalProps` triggers framework `forceUpdate` from the root component | Direct `lynx.__globalProps` reads should participate in the framework-driven re-render |
-| `'event'` | `UpdateGlobalProps` triggers an event, but the framework does not drive re-rendering | Code should explicitly update state with `useGlobalPropsChanged` |
+| Mode         | Behavior                                                                             | Use when                                                                               |
+| ------------ | ------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------- |
+| `'reactive'` | `UpdateGlobalProps` triggers framework `forceUpdate` from the root component         | Direct `lynx.__globalProps` reads should participate in the framework-driven re-render |
+| `'event'`    | `UpdateGlobalProps` triggers an event, but the framework does not drive re-rendering | Code should explicitly update state with `useGlobalPropsChanged`                       |
 
 The default value is `'reactive'`.
 
@@ -47,7 +47,7 @@ previously omitted `globalPropsMode` or used `globalPropsMode: 'reactive'`, scan
 every `lynx.__globalProps` usage before accepting the change.
 
 ```bash
-rg "lynx\.__globalProps" <project>
+rg "lynx\\.__globalProps" <project>
 ```
 
 For each `lynx.__globalProps` usage, report whether the value needs to respond to later

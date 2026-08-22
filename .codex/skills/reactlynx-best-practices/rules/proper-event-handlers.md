@@ -20,7 +20,6 @@ Use event handlers correctly for proper event binding and propagation in ReactLy
 ### Why It Matters
 
 Event handlers in ReactLynx run on the **background thread**, making them safe for:
-
 - Native module calls (`lynx.getJSModule`, `NativeModules`)
 - API requests
 - Heavy computations
@@ -47,9 +46,8 @@ interface Event {
 ```
 
 **`target` vs `currentTarget`:**
-
-- `target` — The element that **triggered** the event (e.g., the clicked child)
-- `currentTarget` — The element that **listens** to the event (e.g., the parent with handler)
+- `target` - The element that **triggered** the event (e.g., the clicked child)
+- `currentTarget` - The element that **listens** to the event (e.g., the parent with handler)
 
 ### Event Types
 
@@ -70,7 +68,7 @@ function App() {
     console.log('Target id:', event.target.id);
     lynx.getJSModule('Analytics').track('tap');
   }
-
+  
   return <view id="my-view" bindtap={handleTap}>Tap me</view>;
 }
 ```
@@ -99,11 +97,11 @@ function App() {
     const { itemId, itemName } = event.currentTarget.dataset;
     console.log(`Tapped item: ${itemId} - ${itemName}`);
   }
-
+  
   return (
-    <view
-      data-item-id="123"
-      data-item-name="Product"
+    <view 
+      data-item-id="123" 
+      data-item-name="Product" 
       bindtap={handleTap}
     >
       Tap me
@@ -121,11 +119,11 @@ function App() {
   function handleOuterTap() {
     console.log('outer tapped'); // Fires second
   }
-
+  
   function handleInnerTap() {
     console.log('inner tapped'); // Fires first
   }
-
+  
   return (
     <view bindtap={handleOuterTap}>
       <view bindtap={handleInnerTap}>Inner</view>
@@ -142,11 +140,11 @@ function App() {
   function handleOuterTap() {
     console.log('outer tapped'); // Never fires
   }
-
+  
   function handleInnerTap() {
     console.log('inner tapped'); // Only this fires
   }
-
+  
   return (
     <view bindtap={handleOuterTap}>
       <view catchtap={handleInnerTap}>Inner</view>
@@ -172,7 +170,7 @@ function handleTap(event: MainThread.ITouchEvent) {
 2. **Use `catchtap`** only when you need to stop event propagation
 3. **Use `dataset`** to pass data instead of closures when possible
 4. **Prefer `currentTarget`** over `target` for accessing the listening element's data
-5. **Native calls are safe** — event handlers run on background thread
+5. **Native calls are safe** - event handlers run on background thread
 6. **Mark custom prop handlers** with `'background only'` when a handler is passed through a component prop before reaching `bindtap`
 7. **Use `main-thread:` events** only for gesture-coupled visual work that needs synchronous main-thread execution
 

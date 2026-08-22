@@ -64,7 +64,6 @@ export function App() {
 ### Standalone Lazy Bundles
 
 For modules built by a standalone Rspeedy producer project:
-
 - Enable `experimental_isLazyBundle: true` in the producer's ReactLynx plugin options.
 - Export the component as the producer entry default export.
 - In the consumer entry, import `@lynx-js/react/experimental/lazy/import` before rendering.

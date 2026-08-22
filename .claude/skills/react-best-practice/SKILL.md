@@ -8,7 +8,8 @@ metadata:
 ---
 
 > **⚠️ Web React / Next.js only.** React Native(Expo)면 `react-native-skills`,
-> ReactLynx면 `reactlynx-best-practices`를 쓰세요. 세 팩은 혼용하지 않습니다.
+> ReactLynx면 `reactlynx-best-practices`, Vanilla Lynx(Element PAPI)면
+> `vanilla-lynx`를 쓰세요. 네 팩은 혼용하지 않습니다.
 > 어느 팩인지는 저장소 의존성으로 판별합니다 — `react` + `next` / `react-dom`.
 
 # React Best Practices

@@ -45,12 +45,12 @@ function onTap(event: MainThread.ITouchEvent) {
 ```tsx
 function App() {
   const [pos, setPos] = useState(0);
-
+  
   function onScroll(event) {
     // Runs on background thread - causes delay
     setPos(event.detail.scrollTop);
   }
-
+  
   return (
     <scroll-view global-bindscroll={onScroll}>
       <view style={{ transform: `translateY(${pos}px)` }} />
@@ -71,7 +71,7 @@ function App() {
       `translateY(${scrollTop}px)`
     );
   }
-
+  
   return (
     <scroll-view main-thread:global-bindscroll={onScroll}>
       <view />
@@ -87,20 +87,19 @@ Main thread functions can capture external variables, but cannot modify them:
 ```tsx
 function App() {
   const color = 'red';
-
+  
   function handleTap(event: MainThread.ITouchEvent) {
     'main thread';
     // ✅ Can read captured variable
     event.currentTarget.setStyleProperty('background-color', color);
     // ❌ Cannot modify: color = 'blue';
   }
-
+  
   return <view main-thread:bindtap={handleTap} />;
 }
 ```
 
 **Important:**
-
 - Captured values sync from background to main thread only after component re-renders
 - Captured values must be JSON-serializable
 
@@ -113,12 +112,12 @@ import { useMainThreadRef } from '@lynx-js/react';
 
 function App() {
   const textRef = useMainThreadRef<MainThread.Element>();
-
+  
   function handleTap(event: MainThread.ITouchEvent) {
     'main thread';
     textRef.current?.setStyleProperty('background-color', 'red');
   }
-
+  
   return (
     <view main-thread:bindtap={handleTap}>
       <text main-thread:ref={textRef}>Only this text changes</text>
@@ -137,7 +136,7 @@ import { useMainThreadRef } from '@lynx-js/react';
 
 function App() {
   const countRef = useMainThreadRef(0);
-
+  
   function handleTap(event: MainThread.ITouchEvent) {
     'main thread';
     countRef.current++;
@@ -146,7 +145,7 @@ function App() {
       countRef.current % 2 ? 'blue' : 'green'
     );
   }
-
+  
   return <view main-thread:bindtap={handleTap} />;
 }
 ```
@@ -160,13 +159,13 @@ import { runOnMainThread, useMainThreadRef } from '@lynx-js/react';
 
 function App() {
   const countRef = useMainThreadRef(0);
-
+  
   const addCount = (value: number) => {
     'main thread';
     countRef.current += value;
     return countRef.current;
   };
-
+  
   const increaseCount = async () => {
     const result = await runOnMainThread(addCount)(1);
     console.log(result);
@@ -181,7 +180,7 @@ import { runOnBackground, useState } from '@lynx-js/react';
 
 function App() {
   const [count, setCount] = useState(0);
-
+  
   const handleTap = async (event: MainThread.ITouchEvent) => {
     'main thread';
     const result = await runOnBackground(() => {

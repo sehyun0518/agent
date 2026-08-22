@@ -8,8 +8,9 @@ metadata:
   version: "1.0.0"
 ---
 
-> **⚠️ ReactLynx only.** 웹 React/Next 컴포넌트면 `react-best-practice`,
-> React Native(Expo)면 `react-native-skills`를 쓰세요. 세 팩은 혼용하지 않습니다.
+> **⚠️ ReactLynx only (JSX).** 같은 Lynx라도 JSX 없이 Element PAPI로 짜면
+> `vanilla-lynx`, 웹 React/Next면 `react-best-practice`, React Native(Expo)면
+> `react-native-skills`를 쓰세요. 네 팩은 혼용하지 않습니다.
 > 어느 팩인지는 저장소 의존성으로 판별합니다 — `@lynx-js/react`.
 
 # ReactLynx Best Practices

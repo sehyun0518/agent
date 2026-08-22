@@ -15,7 +15,6 @@ Ensure `lynx.getJSModule` and `NativeModules` are only called in background-thre
 In ReactLynx's dual-thread architecture, initial rendering can evaluate component code on the main thread while the background thread runs the full React runtime. Side effects unrelated to rendering are background-only. Calling background-only APIs during render can fail on the main thread because APIs such as `lynx.getJSModule` may not exist there.
 
 Calling `lynx.getJSModule` or `NativeModules` from render or other shared code can:
-
 - Throw at runtime on the main thread
 - Increase main-thread bundle size by keeping side-effect code reachable
 - Break the compiler's background-only analysis
@@ -109,7 +108,6 @@ export function App() {
 Use the `'background only'` directive to mark functions that should only run on the background thread.
 
 The `'background only'` directive:
-
 - Explicitly marks functions for background thread execution
 - Enables tree-shaking of main-thread code
 - Improves code clarity about thread boundaries
@@ -120,7 +118,7 @@ The `'background only'` directive:
 ```tsx
 function doBackgroundWork() {
   'background only';
-
+  
   // ✅ Safe to call native modules
   lynx.getJSModule('SomeModule').doWork();
   NativeModules.Analytics.track('event');
@@ -132,7 +130,7 @@ function doBackgroundWork() {
 ```tsx
 const processData = () => {
   'background only';
-
+  
   NativeModules.DataProcessor.process(data);
 };
 ```
