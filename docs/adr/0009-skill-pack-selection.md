@@ -73,21 +73,51 @@ target.skills.push(...(binding.skills ?? []), ...(binding.skillsOneOf ?? []))
 몰랐고, `react-best-practice`의 배너는 RN만 언급해 Lynx 프로젝트에서도 "RN 아니면 이거
 써도 됨"으로 읽혔다.
 
-### 3. 주입 비용은 이름 몇 줄이다
+### 3. 주입은 무조건이고 선택은 에이전트가 한다
 
-생성물의 `skills:`에는 이름만 들어가고 본문은 `.claude/skills/<name>/SKILL.md`에 따로
-있다. `rules/`와 `references/`는 `SKILL.md`를 읽은 뒤 필요할 때 열린다.
+**둘은 다른 일이다.** 섞어서 말하면 계약이 보장하지 않는 것을 보장하는 것처럼 읽힌다.
+
+| | 누가 | 조건 |
+|---|---|---|
+| 주입 | 생성기 | **없음. 무조건이다** |
+| 선택 | 실행 에이전트 | description과 배너 |
+
+계약이 그렇게 정한다.
+
+```jsonc
+// profile.schema.json
+"skills": { "description": "항상 함께 주입되는 스킬." }
+```
+
+```js
+// generate.mjs
+target.skills.push(...(binding.skills ?? []), ...(binding.skillsOneOf ?? []))
+```
+
+조건 분기가 없다. **웹 React 저장소에서도 Lynx 팩과 레퍼런스가 목록에 들어간다.**
 
 ```yaml
+# .claude/agents/implementation.md — 저장소 종류와 무관하게 동일하다
 skills:
+  - lynx-api-docs
+  - lynx-typescript
+  - rspeedy-bundle-size
   - react-best-practice
   - react-native-skills
   - reactlynx-best-practices
   - vanilla-lynx
 ```
 
-넷을 나열해도 4줄이다. 생성 시점에 하나로 고정하는 것은 이 이득이 없으면서 플랫폼의
-description 기반 선택 메커니즘과 싸운다.
+이걸 받아들이는 이유는 비용이 작기 때문이다. 목록에는 **이름만** 들어가고 본문은
+`.claude/skills/<name>/SKILL.md`에 따로 있다. `rules/`와 `references/`는 `SKILL.md`를
+읽은 뒤 필요할 때 열린다. 일곱을 나열해도 7줄이다.
+
+조건부 주입을 넣지 않는 이유는 결정 1과 같다. 조건을 쓰려면 타깃을 선언해야 하고,
+그 타깃은 이미 소비 저장소의 `package.json`에 있다. 조건을 프로파일에 적으면 두 곳이
+어긋나고, 모노레포는 저장소 단위 조건으로 표현되지 않는다.
+
+**그래서 잘못된 팩이 목록에 남아 있는 것은 정상 상태다.** 에이전트가 안 고를 뿐이고,
+안 고른다는 보장은 없다.
 
 ### 4. `skillsOneOf`와 `skills`를 구분한다
 
@@ -97,8 +127,11 @@ description 기반 선택 메커니즘과 싸운다.
 | `skills` | 항상 함께 쓴다 | `lynx-api-docs`·`lynx-typescript`·`rspeedy-bundle-size` |
 
 레퍼런스는 택일 대상이 아니다. `reactlynx-best-practices`를 고르든 `vanilla-lynx`를
-고르든 `lynx-api-docs`는 함께 본다. Lynx가 아닌 저장소에서는 description이 맞지 않아
-에이전트가 고르지 않는다.
+고르든 `lynx-api-docs`는 함께 본다.
+
+`skillsOneOf`와 `skills`의 차이는 **주입 방식이 아니라 의도의 기록**이다. 생성기는 둘을
+구분하지 않고 전부 주입한다(결정 3). `skillsOneOf`는 "이 중 하나만 써라"를 사람과
+검증기에게 남기는 것이고, 지금은 검증기가 그것을 읽지 않는다.
 
 ## 대가
 
@@ -106,6 +139,10 @@ description 기반 선택 메커니즘과 싸운다.
 통과한다. 배너와 description이 유일한 방어선이다.
 
 판정 레이어와 테스트가 실제 오작동은 잡지만, 잘못된 조언 자체는 잡지 못한다.
+
+**목록이 저장소 종류와 무관하게 같다.** 웹 프로젝트의 구현 에이전트도 Lynx 팩 넷을
+목록에 갖는다. 이름 7줄이라 비용은 작지만, 관련 없는 이름이 섞여 있는 만큼 잘못 고를
+여지도 남는다. 팩이 계속 늘면 이 판단을 다시 봐야 한다.
 
 ## 결과
 
