@@ -182,5 +182,6 @@ Capability와 프로파일 소스에서 생성합니다.
 | [ADR-0004](docs/adr/0004-layered-red-green.md) | 계층별 red-green 순서와 생략 규칙을 결정합니다. |
 | [ADR-0005](docs/adr/0005-documentation-capability.md) | 문서화를 독립 Capability로 분리하고 강제 수단을 결정합니다. |
 | [ADR-0006](docs/adr/0006-drop-cursor-mirror.md) | cursor 미러를 생성 대상에서 제외합니다. |
+| [ADR-0007](docs/adr/0007-accessibility-readonly.md) | 마지막 green 뒤의 역할이 코드를 고치지 않도록 결정합니다. |
 
 구조 이관 내역은 [docs/migration/inventory.md](docs/migration/inventory.md)에서 확인할 수 있습니다.
