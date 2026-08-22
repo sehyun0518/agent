@@ -48,6 +48,47 @@ agents:
           command: npx
           args: ["-y", "@playwright/mcp@latest"]
 
+  # 프로젝트 상수를 정하는 세 역할. workflowExtensions에 넣지 않는다 — 그것이 곧
+  # 수동 전용이라는 선언이다. 기능 요청이 프로젝트 골격을 다시 정하게 두지 않는다.
+  # 변형이 아니라 역할 3개인 이유는 권한이 다르기 때문이다. 프로파일 agents는
+  # variants를 선언할 수 없고, 하나로 합치면 inspect의 읽기 전용이 사라진다.
+  - id: project-design-inspect
+    file: agents/project-design-inspect.md
+    description: >-
+      저장소를 훑어 프로젝트 상수 중 무엇이 고정됐고 무엇이 암묵이며 무엇이 없는지
+      가릅니다. 프로젝트를 시작하거나 기존 저장소에 하네스를 붙일 때 가장 먼저
+      사용하세요. 아무것도 정하지 않고 현재 상태만 근거와 함께 보고합니다.
+    tools: [Read, Grep, Glob, Bash]
+    modelTier: strong
+    memory: project
+    color: purple
+    readonly: true
+    scope: 프로젝트 단위 상수만. 기능 하나의 결정은 specification이 본다.
+
+  - id: project-design-decide
+    file: agents/project-design-decide.md
+    description: >-
+      inspect가 암묵·없음으로 판정한 축을 결정으로 만듭니다. 근거와 버린 대안과
+      대가를 함께 남깁니다. 골격을 만들지 않고 결정만 기록하며, 정할 수 없는 것은
+      무엇이 막고 있는지와 함께 보류로 남깁니다.
+    tools: [Read, Grep, Glob, Bash, Write, Edit]
+    modelTier: strong
+    memory: project
+    color: purple
+    scope: 결정 기록만. 폴더·설정·코드를 만들지 않는다.
+
+  - id: project-design-scaffold
+    file: agents/project-design-scaffold.md
+    description: >-
+      decide가 남긴 결정을 폴더·설정·규약 문서·최소 예시로 실체화합니다. 결정에 없는
+      것은 만들지 않고 필요해지면 decide로 되돌립니다. 기능을 만들지 않고 이후 기능이
+      딛고 설 바닥만 놓습니다.
+    tools: [Read, Grep, Glob, Bash, Write, Edit]
+    modelTier: strong
+    memory: project
+    color: purple
+    scope: 결정 문서에 있는 것만. 추측성 추상화를 넣지 않는다.
+
   - id: state-data
     file: agents/state-data.md
     description: >-
@@ -177,6 +218,13 @@ testing:
 # generic 작업 단위 → 명명된 실행자. 오케스트레이터는 이 표를 통해서만 이름을 안다.
 # 순서는 여기 없다 — 워크플로와 workflowExtensions가 소유한다.
 roster:
+  # 프로젝트 단위. 기능 흐름에 붙지 않고 사람이 직접 부른다.
+  - unit: 프로젝트 상수 조사
+    runner: project-design-inspect
+  - unit: 프로젝트 상수 결정
+    runner: project-design-decide
+  - unit: 프로젝트 골격 실체화
+    runner: project-design-scaffold
   - unit: 계약·컴포넌트 계획
     runner: specification
   - unit: 토큰·시각 스펙
@@ -253,6 +301,11 @@ workflowExtensions:
 
 # ---------------------------------------------------------------- 라우팅
 routing:
+  - symptom: 프로젝트 상수 부재·암묵 규약 충돌
+    owner: project-design-decide
+    exception: >-
+      기능 하나의 문제면 specification으로 간다. 이 소유자는 프로젝트 전체가 참조하는
+      상수가 없거나 서로 다를 때만 쓴다.
   - symptom: 계약 드리프트·타입 불일치
     owner: specification
   - symptom: 토큰 부재·대비 부족(뿌리가 토큰)
