@@ -7,6 +7,7 @@ import { findDocumentationBypass } from './documentation-gate.mjs'
 import {
   commandsFromCapabilities,
   commandsFromProfile,
+  commandsFromWorkflows,
   findDuplicateCommands,
 } from '../generators/commands.mjs'
 
@@ -265,4 +266,29 @@ test('이름이 겹치면 출처와 함께 검출한다', () => {
   ])
 
   assert.deepEqual(dupes, [{ name: 'git-commit', sources: ['git-operations#commit', 'git-commit'] }])
+})
+
+test('워크플로는 그 자체가 커맨드가 된다', () => {
+  const commands = commandsFromWorkflows([
+    { id: 'change', title: '계층별 TDD 변경 작업', description: '설명', steps: [{}, {}, {}] },
+    { id: 'review', title: '검토 전용', steps: [{}] },
+  ])
+
+  assert.deepEqual(commands.map((c) => [c.name, c.stepCount]), [['change', 3], ['review', 1]])
+  assert.equal(commands[0].kind, 'workflow')
+})
+
+test('단계가 없는 워크플로도 커맨드가 되고 개수는 0이다', () => {
+  assert.deepEqual(commandsFromWorkflows([{ id: 'empty' }]).map((c) => c.stepCount), [0])
+})
+
+test('워크플로와 변형이 같은 이름이면 출처와 함께 검출한다', () => {
+  const dupes = findDuplicateCommands([
+    { name: 'review', kind: 'workflow', workflow: 'review' },
+    { name: 'review', kind: 'variant', capability: 'review', variant: 'main' },
+  ])
+
+  assert.deepEqual(dupes, [
+    { name: 'review', sources: ['workflows/review.yaml', 'review#main'] },
+  ])
 })
