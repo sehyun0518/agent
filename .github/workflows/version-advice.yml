@@ -1,0 +1,49 @@
+name: version-advice
+
+# 버전 관리 추천만 남긴다. 막지 않는다.
+#
+# 막는 것은 harness.yml이 소유한다. 이 검사가 실패로 병합을 막으면 "추천"이
+# 아니라 규칙이 되는데, 버전 등급은 기계가 정할 수 없어서 규칙으로 만들 수 없다.
+# 여기서는 무엇이 바뀌었고 버전이 어떤 상태인지까지만 확실히 하고,
+# 등급 판단은 Copilot 리뷰(.github/copilot-instructions.md)와 사람에게 넘긴다.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  advise:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 추천 생성
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: node .github/scripts/version-advice.mjs | tee advice.md >> "$GITHUB_STEP_SUMMARY"
+
+      # 포크에서 온 PR은 토큰이 읽기 전용이라 코멘트를 달 수 없다.
+      # 그 경우 위의 job summary만 남는다.
+      - name: 코멘트 갱신
+        if: github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          # 같은 PR에 매번 새 코멘트를 쌓지 않고 하나를 갱신한다.
+          id=$(gh api "repos/$REPO/issues/$PR/comments" \
+                 --jq '.[] | select(.body | startswith("<!-- version-advice -->")) | .id' \
+               | head -1)
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$id" -F body=@advice.md
+          else
+            gh api -X POST "repos/$REPO/issues/$PR/comments" -F body=@advice.md
+          fi
