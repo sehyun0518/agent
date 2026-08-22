@@ -17,7 +17,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - run: npm ci
@@ -25,6 +25,15 @@ jobs:
       # 스키마 · 어휘 · 참조 무결성 · 2계층 권한 · 워크플로 교차 검증
       - name: 선언 검증
         run: npm run validate
+
+      # 워크플로 그래프·프로파일 실행자 해석 등 순수 헬퍼의 계약 테스트.
+      - name: 계약 테스트
+        run: npm run test:contracts
+
+      # 에이전트가 구조를 잘못 읽을 여지만 검사한다. 렌더링 품질은 보지 않는다.
+      # 켜는 규칙과 그 이유는 .markdownlint-cli2.jsonc가 소유한다.
+      - name: 문서 형식
+        run: npm run lint:md
 
       # 재생성 결과가 커밋 상태와 같은지. 손으로 고친 미러를 여기서 잡는다.
       - name: 미러 드리프트
