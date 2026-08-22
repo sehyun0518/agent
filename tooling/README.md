@@ -35,7 +35,8 @@ npm run check      # 검증 + 드리프트 검사 (CI가 도는 것)
 ## generators/
 
 `generate.mjs`가 `capabilities/` + `profiles/` + `packages/orchestrator/`를 읽어
-`.claude` · `.codex`를 만든다.
+`.claude` · `.codex`를 만든다. 수동 실행 대상은 `.claude/commands/`에 슬래시 커맨드로도
+낸다. 무엇을 낼지는 `commands.mjs`가 계약에서 유도한다 — 중앙 목록을 두지 않는다.
 
 - **에이전트 frontmatter는 manifest에서 나온다.** 소스 `.md`에 frontmatter가 남아
   있으면 오류다.
