@@ -21,7 +21,7 @@ cat workflows/change.yaml     # 대본. 자동으로 돌지 않는다
 |---|---|
 | `design` | `specification`과 **병렬** |
 | `state-data` | `implementation`과 **병렬** |
-| `accessibility` | `review` **앞** |
+| `accessibility` | `documentation` **앞** |
 
 이건 `profiles/frontend/profile.yaml`의 `workflowExtensions`가 정한다.
 
@@ -255,11 +255,15 @@ status: granted
 자동 검사 너머를 본다 — 키보드 조작, 포커스 관리, 스크린리더 시맨틱, 명도 대비,
 모션 환경설정.
 
-이 역할은 **접근성 범위만 직접 고친다.** 대비 문제의 뿌리가 토큰이면 고치지 않고
-`design`으로 라우팅한다.
+이 역할은 **코드를 고치지 않는다.** 지적만 낸다. 지적마다 파일·위치·근거 WCAG 기준과
+함께 **어떻게 고칠지**를 적고, `routing`이 정한 소유자를 표시한다. 대비 문제의 뿌리가
+토큰이면 `design`, 마크업이면 `implementation`이다.
 
-문서 갱신 **앞**에 놓이는 이유는 이 역할이 코드를 직접 고치기 때문이다. 문서를 쓴 다음
-코드가 바뀌면 방금 쓴 문서가 낡는다.
+고치지 않는 이유는 이 단계가 모든 계층 green 뒤에 있기 때문이다. 여기서 코드를 고치면
+그 수정을 검증할 단계가 뒤에 없고, 판정 레이어는 고치기 전 증거를 본다(ADR-0007).
+
+Critical 지적이 있으면 소유자로 되돌아가 해당 계층의 red-green을 다시 탄다.
+접근성 수정도 다른 변경과 같은 검증을 받는다.
 
 ---
 

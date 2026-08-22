@@ -130,7 +130,7 @@ integration·e2e를 생략하려면 **사유와 승인**이 있어야 한다.
 | 커버리지 누락 | `tester` |
 | 문서 누락·설명과 계약 불일치 | `documentation` |
 | 문서 영향 판정이 없음 | `spec` |
-| 키보드·포커스·ARIA | `accessibility` (직접 고침) |
+| 키보드·포커스·ARIA | `implementation` (발견은 `accessibility`) |
 
 이 표의 단일 출처는 `profiles/frontend/profile.yaml`의 `routing`이다.
 
