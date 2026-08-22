@@ -13,6 +13,7 @@ metadata:
 > `reactlynx-best-practices`·`vanilla-lynx`와 **함께** 씁니다.
 
 
+<!-- vendored:begin -->
 # Rspeedy Bundle Optimization
 
 A measure-first workflow for shrinking the bundle of a rspeedy/Lynx app. The central discipline: **don't guess where the bytes are — measure, then attack the biggest lever first.** Most "optimize the bundle" requests fail by starting with micro-tree-shaking when the real weight is media assets or main-thread leakage.
@@ -208,6 +209,7 @@ Like the other analysis skills here, default to **producing a prioritized report
 5. **Compile-layer quick wins** — `extractStr` / CSS minify / debug-info / lazy-bundle knobs tried or proposed (Lever 4)
 6. **The wall** — what's already optimal and what external change would be needed to go further
 7. **Log entry** — write the `.bundle-opt-log/` entry and append to the tracking table (see Logging convention)
+<!-- vendored:end -->
 
 ## 출처
 

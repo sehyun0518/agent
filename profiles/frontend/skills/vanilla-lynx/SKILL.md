@@ -15,6 +15,7 @@ metadata:
 > 어느 팩인지는 저장소 의존성으로 판별합니다 — `@lynx-js/rspeedy`가 있고
 > `@lynx-js/react`가 없음.
 
+<!-- vendored:begin -->
 # Build Vanilla Lynx Apps
 
 Use this skill to build Lynx apps directly with Element PAPI and Lynx Runtime APIs, without ReactLynx or JSX.
@@ -50,6 +51,7 @@ When the user asks to run, inspect, debug, or validate a built artifact on a dev
 `lynx-devtool` skill. It owns client discovery, opening an already reachable artifact URL, runtime
 inspection, console logs, screenshots, and interactions. Do not duplicate that workflow here or
 present `agent-lynx` as an artifact builder or server.
+<!-- vendored:end -->
 
 ## 출처
 
