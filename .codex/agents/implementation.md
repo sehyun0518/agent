@@ -5,6 +5,7 @@ capability: implementation
 skills:
   - react-best-practice
   - react-native-skills
+  - reactlynx-best-practices
 ---
 
 # implementation (Codex 래퍼)

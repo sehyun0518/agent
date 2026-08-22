@@ -6,6 +6,7 @@ tools: Read, Grep, Glob, Bash, Write, Edit, mcp__playwright
 skills:
   - react-best-practice
   - react-native-skills
+  - reactlynx-best-practices
 memory: project
 background: true
 isolation: worktree
