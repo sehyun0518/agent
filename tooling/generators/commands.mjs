@@ -7,7 +7,7 @@
  * 세 축에서 유도한다.
  *   1. chaining.autoTriggerable이 false인 Capability의 각 변형
  *   2. workflowExtensions에 삽입되지 않은 프로파일 역할
- *   3. (범위 밖) 워크플로 진입점 — 실행 엔진이 없어 미룬다
+ *   3. 워크플로 자체 — 흐름의 진입점
  */
 
 /** `git-operations#pr-create` → `git-pr-create` */
@@ -74,5 +74,28 @@ export function findDuplicateCommands(commands) {
 }
 
 function sourceOf(c) {
-  return c.kind === 'variant' ? `${c.capability}#${c.variant}` : c.runner
+  if (c.kind === 'variant') return `${c.capability}#${c.variant}`
+  if (c.kind === 'workflow') return `workflows/${c.workflow}.yaml`
+  return c.runner
+}
+
+/**
+ * 워크플로는 그 자체가 진입점이다.
+ *
+ * 실행 코드가 없는 것과 실행 주체가 없는 것은 다르다. 이 하네스는 "실제 단계 호출과
+ * 증거 기록은 사람 또는 메인 에이전트가 수행한다"고 정해뒀다(ADR-0004·0005·0010).
+ * 커맨드는 그 주체에게 흐름을 건네는 것이지 대신 도는 것이 아니다.
+ *
+ * @param {Array<{id: string, title?: string, description?: string, steps?: Array}>} workflows
+ * @returns {Array<{name, kind, workflow, title, description, stepCount}>}
+ */
+export function commandsFromWorkflows(workflows) {
+  return (workflows ?? []).map((w) => ({
+    name: w.id,
+    kind: 'workflow',
+    workflow: w.id,
+    title: w.title ?? w.id,
+    description: (w.description ?? '').trim(),
+    stepCount: (w.steps ?? []).length,
+  }))
 }

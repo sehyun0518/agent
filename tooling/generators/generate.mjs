@@ -11,7 +11,12 @@ import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, statSy
 import { join, dirname, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
-import { commandsFromCapabilities, commandsFromProfile, findDuplicateCommands } from './commands.mjs'
+import {
+  commandsFromCapabilities,
+  commandsFromProfile,
+  commandsFromWorkflows,
+  findDuplicateCommands,
+} from './commands.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const CHECK_ONLY = process.argv.includes('--check')
@@ -169,6 +174,7 @@ function collectSources() {
   // 목록을 안 고쳤을 때 조용히 빠진다.
   const capabilityMap = new Map(capabilities.map((c) => [c.id, c]))
   const commands = [
+    ...commandsFromWorkflows(workflows),
     ...commandsFromCapabilities(capabilityMap),
     ...profiles.flatMap((profile) => commandsFromProfile(profile)),
   ]
@@ -227,6 +233,24 @@ function ownerLabel(agent) {
  */
 function renderCommand(command) {
   const front = { description: command.description.replace(/\s+/g, ' ').slice(0, 200) }
+  // 워크플로는 흐름 전체를 건네므로 본문이 다르다. 다만 순서를 여기 옮겨 적지
+  // 않는 원칙은 같다 — 워크플로 파일이 바뀌면 이 파일은 그대로여야 한다.
+  if (command.kind === 'workflow') {
+    const source = `workflows/${command.workflow}.yaml`
+    return (
+      `---\n${stringifyYaml(front, { lineWidth: 0 })}---\n\n` +
+      `\`${source}\`를 읽고 그 순서대로 진행한다. 단계 ${command.stepCount}개다.\n\n` +
+      `각 step의 \`expect\`·\`expectAnyOf\`가 전이 조건이고, \`gate\`가 가리키는\n` +
+      `\`workflows/gates/*.md\`가 무엇을 봐야 하는지 정한다. \`skippable\`이 있는 단계만\n` +
+      `생략할 수 있고, 생략하면 사유를 증거로 남긴다.\n\n` +
+      `순서를 여기 옮겨 적지 않는다. 워크플로 파일이 단일 출처다.\n\n` +
+      `**자동이 아닌 것.** 이 저장소에는 워크플로 실행 엔진도 증거 저장소도 없다\n` +
+      `(ADR-0002). 단계 호출과 증거 기록은 사람 또는 메인 에이전트가 한다. 게이트가\n` +
+      `증거를 본다고 돼 있으면 그 증거를 실제로 남겼는지 직접 확인해야 한다.\n\n` +
+      `Git 작업은 이 흐름에 자동으로 붙지 않는다. \`/git-commit\`처럼 따로 부른다.\n`
+    )
+  }
+
   const target =
     command.kind === 'variant'
       ? `Capability \`${command.capability}\`의 \`${command.variant}\` 변형`

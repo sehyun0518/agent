@@ -150,10 +150,20 @@ npm run generate
 npm run check
 ```
 
-수동 실행 대상은 `.claude/commands/`에 슬래시 커맨드로도 나옵니다. 하네스 구조를 몰라도
-`/git-commit`처럼 바로 부를 수 있습니다. 목록은 계약에서 유도하므로 따로 관리하지
-않습니다 — `chaining.autoTriggerable: false`인 변형과 워크플로에 삽입되지 않은 프로파일
-역할이 대상입니다.
+작업 진입점은 `.claude/commands/`에 슬래시 커맨드로 나옵니다. 하네스 구조를 몰라도
+`/change`나 `/git-commit`처럼 바로 부를 수 있습니다.
+
+| 커맨드 | 무엇 | 어디서 유도하나 |
+|---|---|---|
+| `/change` `/bugfix` `/review` | 흐름 전체 | `workflows/*.yaml` |
+| `/git-*` | Git 작업 하나씩 | `chaining.autoTriggerable: false`인 변형 |
+| `/project-*` | 프로젝트 상수 | 워크플로에 삽입되지 않은 프로파일 역할 |
+
+목록은 계약에서 유도하므로 따로 관리하지 않습니다. 새 변형이나 역할을 넣고 재생성하면
+커맨드도 함께 늘어납니다.
+
+흐름 커맨드는 순서를 복제하지 않고 워크플로 파일을 가리킵니다. 실행 엔진과 증거
+저장소가 없으므로(ADR-0002) 단계 호출과 증거 기록은 사람 또는 메인 에이전트가 합니다.
 
 `npm run validate`는 manifest와 워크플로 계약을 검사합니다. `npm run generate`는 플랫폼별
 산출물을 다시 만듭니다. `npm run check`는 계약 테스트와 생성물 드리프트까지 검사합니다.
