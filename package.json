@@ -8,11 +8,13 @@
     "validate": "node tooling/validators/validate.mjs",
     "test:contracts": "node --test tooling/validators/*.test.mjs",
     "generate": "node tooling/generators/generate.mjs",
-    "check": "npm run validate && npm run test:contracts && node tooling/generators/generate.mjs --check"
+    "check": "npm run validate && npm run test:contracts && npm run lint:md && node tooling/generators/generate.mjs --check",
+    "lint:md": "markdownlint-cli2"
   },
   "devDependencies": {
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
+    "markdownlint-cli2": "0.23.2",
     "yaml": "^2.8.1"
   },
   "engines": {

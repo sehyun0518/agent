@@ -16,6 +16,7 @@ Comprehensive performance optimization guide for React and Next.js applications,
 ## When to Apply
 
 Reference these guidelines when:
+
 - Writing new React components or Next.js pages
 - Implementing data fetching (client or server-side)
 - Reviewing code for performance issues
@@ -135,12 +136,13 @@ Reference these guidelines when:
 
 Read individual rule files for detailed explanations and code examples:
 
-```
+```text
 rules/async-parallel.md
 rules/bundle-barrel-imports.md
 ```
 
 Each rule file contains:
+
 - Brief explanation of why it matters
 - Incorrect code example with explanation
 - Correct code example with explanation
