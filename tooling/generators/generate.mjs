@@ -11,6 +11,7 @@ import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, statSy
 import { join, dirname, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
+import { commandsFromCapabilities, commandsFromProfile, findDuplicateCommands } from './commands.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const CHECK_ONLY = process.argv.includes('--check')
@@ -164,7 +165,18 @@ function collectSources() {
     if (path.endsWith('.yaml')) workflows.push(parseYaml(readFileSync(path, 'utf8')))
   }
 
-  return { agents, skills, capabilities, profiles, workflows }
+  // 수동 실행 대상은 계약에서 유도한다. 중앙 목록을 두면 새 변형을 넣으면서
+  // 목록을 안 고쳤을 때 조용히 빠진다.
+  const capabilityMap = new Map(capabilities.map((c) => [c.id, c]))
+  const commands = [
+    ...commandsFromCapabilities(capabilityMap),
+    ...profiles.flatMap((profile) => commandsFromProfile(profile)),
+  ]
+  for (const { name, sources: from } of findDuplicateCommands(commands)) {
+    errors.push(`커맨드 이름 "${name}"이 중복됐다: ${from.join(' · ')}`)
+  }
+
+  return { agents, skills, capabilities, profiles, workflows, commands }
 }
 
 // ------------------------------------------------------------------ Claude
@@ -205,6 +217,32 @@ function ownerLabel(agent) {
   if (agent.owner === 'orchestrator') return '조정자 (Capability 아님)'
   if (agent.profile) return `프로파일 \`${agent.profile}\``
   return `Capability \`${agent.capability}\``
+}
+
+// ------------------------------------------------------------------ 커맨드
+
+/**
+ * 수동 실행 대상의 진입점. 본문은 얇은 래퍼다 — 절차를 여기 요약하면 소스가 바뀔 때
+ * 함께 안 바뀌어 조용히 틀린 문서가 된다(ADR-0006).
+ */
+function renderCommand(command) {
+  const front = { description: command.description.replace(/\s+/g, ' ').slice(0, 200) }
+  const target =
+    command.kind === 'variant'
+      ? `Capability \`${command.capability}\`의 \`${command.variant}\` 변형`
+      : `역할 \`${command.runner}\``
+
+  const source =
+    command.kind === 'variant'
+      ? `capabilities/${command.capability}/capability.yaml`
+      : `profiles/*/profile.yaml`
+
+  return (
+    `---\n${stringifyYaml(front, { lineWidth: 0 })}---\n\n` +
+    `${target}을 실행한다.\n\n` +
+    `계약과 절차는 \`${source}\`가 소유한다. 이 파일은 진입점일 뿐이라 내용을 복제하지 않는다.\n\n` +
+    `이 커맨드는 다른 커맨드를 이어서 부르지 않는다. 다음 단계가 필요하면 사람이 다시 부른다.\n`
+  )
 }
 
 // ------------------------------------------------------------------ Codex
@@ -291,6 +329,11 @@ for (const [platform, config] of Object.entries(platforms)) {
 
   if (platform === 'claude') {
     for (const agent of agents) emit(out(config.agentDir, `${agent.id}.md`), renderClaudeAgent(agent, config))
+    if (config.commandDir) {
+      for (const command of sources.commands) {
+        emit(out(config.commandDir, `${command.name}.md`), renderCommand(command))
+      }
+    }
     for (const [name, dir] of skills) {
       for (const { rel, path } of skillFiles(dir)) emit(out(config.skillDir, name, rel), readFileSync(path, 'utf8'))
     }
