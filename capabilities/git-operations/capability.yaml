@@ -185,4 +185,3 @@ profileExtensible:
   agents: false
   tools: false
   hooks: true
-  commands: true

@@ -70,6 +70,7 @@ tooling/                      선언 검증기와 플랫폼 생성기를 제공�
 docs/                         운영 문서, 결정 기록, 이관 문서를 보관합니다.
 
 .claude/ .codex/              소스에서 생성한 플랫폼별 산출물입니다.
+  .claude/commands/           수동 실행 대상의 슬래시 커맨드입니다.
 ```
 
 ## 설계 원칙
@@ -148,6 +149,11 @@ npm run validate
 npm run generate
 npm run check
 ```
+
+수동 실행 대상은 `.claude/commands/`에 슬래시 커맨드로도 나옵니다. 하네스 구조를 몰라도
+`/git-commit`처럼 바로 부를 수 있습니다. 목록은 계약에서 유도하므로 따로 관리하지
+않습니다 — `chaining.autoTriggerable: false`인 변형과 워크플로에 삽입되지 않은 프로파일
+역할이 대상입니다.
 
 `npm run validate`는 manifest와 워크플로 계약을 검사합니다. `npm run generate`는 플랫폼별
 산출물을 다시 만듭니다. `npm run check`는 계약 테스트와 생성물 드리프트까지 검사합니다.

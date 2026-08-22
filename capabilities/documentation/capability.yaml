@@ -69,4 +69,3 @@ profileExtensible:
   agents: false
   tools: true
   hooks: true
-  commands: true

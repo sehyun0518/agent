@@ -4,6 +4,11 @@ import { resolveTestingLayers } from './profile-testing.mjs'
 import { createWorkflowGraph } from './workflow-graph.mjs'
 import { resolveRunners, findUnresolvedRunners, findDuplicateInserts } from './profile-roster.mjs'
 import { findDocumentationBypass } from './documentation-gate.mjs'
+import {
+  commandsFromCapabilities,
+  commandsFromProfile,
+  findDuplicateCommands,
+} from '../generators/commands.mjs'
 
 test('계층별 red 생산자가 구현의 조상이면 전이를 허용한다', () => {
   const graph = createWorkflowGraph([
@@ -210,4 +215,54 @@ test('같은 runner를 다른 id로 넣는 것은 막지 않는다', () => {
   }
 
   assert.deepEqual(findDuplicateInserts(profile, WORKFLOWS), [])
+})
+
+// ---------------------------------------------------------------- 커맨드 유도
+// 중앙 목록 없이 계약에서 유도한다. 목록을 두면 새 변형을 넣으면서 안 고쳤을 때
+// 조용히 빠진다.
+
+test('autoTriggerable이 false인 Capability의 변형만 커맨드가 된다', () => {
+  const caps = new Map([
+    ['git-operations', {
+      chaining: { autoTriggerable: false },
+      variants: { inspect: { title: '상태 확인', description: '읽기 전용' }, commit: { title: '커밋' } },
+    }],
+    ['implementation', {
+      chaining: { autoInvoke: false },   // autoTriggerable 선언 없음 = 자동 가능
+      variants: { logic: {}, ui: {} },
+    }],
+  ])
+
+  assert.deepEqual(commandsFromCapabilities(caps).map((c) => c.name), ['git-inspect', 'git-commit'])
+})
+
+test('변형이 없는 Capability는 커맨드를 내지 않는다', () => {
+  const caps = new Map([['review', { chaining: { autoTriggerable: false } }]])
+  assert.deepEqual(commandsFromCapabilities(caps), [])
+})
+
+test('워크플로에 삽입되지 않은 프로파일 역할만 커맨드가 된다', () => {
+  const profile = {
+    agents: [
+      { id: 'design', description: '토큰' },
+      { id: 'project-design-inspect', description: '조사' },
+    ],
+    workflowExtensions: [{ workflow: '*', insert: [{ id: 'design', runner: 'design' }] }],
+  }
+
+  assert.deepEqual(commandsFromProfile(profile).map((c) => c.name), ['project-inspect'])
+})
+
+test('삽입 선언이 아예 없으면 모든 역할이 커맨드가 된다', () => {
+  const profile = { agents: [{ id: 'project-design-decide', description: '결정' }] }
+  assert.deepEqual(commandsFromProfile(profile).map((c) => c.name), ['project-decide'])
+})
+
+test('이름이 겹치면 출처와 함께 검출한다', () => {
+  const dupes = findDuplicateCommands([
+    { name: 'git-commit', kind: 'variant', capability: 'git-operations', variant: 'commit' },
+    { name: 'git-commit', kind: 'agent', runner: 'git-commit' },
+  ])
+
+  assert.deepEqual(dupes, [{ name: 'git-commit', sources: ['git-operations#commit', 'git-commit'] }])
 })
