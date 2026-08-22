@@ -26,6 +26,10 @@ jobs:
       - name: 선언 검증
         run: npm run validate
 
+      # 워크플로 그래프·프로파일 실행자 해석 등 순수 헬퍼의 계약 테스트.
+      - name: 계약 테스트
+        run: npm run test:contracts
+
       # 에이전트가 구조를 잘못 읽을 여지만 검사한다. 렌더링 품질은 보지 않는다.
       # 켜는 규칙과 그 이유는 .markdownlint-cli2.jsonc가 소유한다.
       - name: 문서 형식
