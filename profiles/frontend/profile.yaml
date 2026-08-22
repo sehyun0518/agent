@@ -91,6 +91,15 @@ skills:
   - id: vanilla-lynx
     path: skills/vanilla-lynx
     description: Vanilla Lynx(Element PAPI) 작성 규칙 팩
+  - id: lynx-api-docs
+    path: skills/lynx-api-docs
+    description: Lynx 요소·CSS·레이아웃·패턴 레퍼런스
+  - id: lynx-typescript
+    path: skills/lynx-typescript
+    description: Lynx 환경 TypeScript 설정·타입 레퍼런스
+  - id: rspeedy-bundle-size
+    path: skills/rspeedy-bundle-size
+    description: rspeedy/Lynx 번들 크기 분석·축소
 
 # ---------------------------------------------------------------- Capability 바인딩
 bindings:
@@ -115,6 +124,12 @@ bindings:
       - frontend:react-native-skills
       - frontend:reactlynx-best-practices
       - frontend:vanilla-lynx
+    # 레퍼런스는 택일이 아니다. 위 팩 중 무엇을 고르든 함께 쓴다.
+    # Lynx가 아닌 저장소에서는 description이 맞지 않아 에이전트가 고르지 않는다.
+    skills:
+      - frontend:lynx-api-docs
+      - frontend:lynx-typescript
+      - frontend:rspeedy-bundle-size
     tools: [mcp__playwright]
     mcpServers:
       - playwright:
