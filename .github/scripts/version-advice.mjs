@@ -12,6 +12,17 @@ const HEAD = process.env.HEAD_SHA
 
 // 소비 저장소가 의존하는 것만 공개 표면이다. README·docs·산문은 아니다.
 // .github/copilot-instructions.md의 목록과 같은 것을 본다. 한쪽만 고치면 어긋난다.
+//
+// 깊이는 두 갈래로 다르게 잡는다.
+//
+// 선언 파일은 최상위 한 겹만 본다(`[^/]+`). 이 저장소는 evals/·tests/ 아래에
+// yaml을 두는 관례가 있는데, 그것들은 선언을 검증하는 쪽이지 소비 저장소가
+// 의존하는 계약이 아니다. 넓게 잡으면 테스트 케이스를 고친 PR이 공개 표면
+// 변경으로 잡힌다.
+//
+// 스키마는 반대로 넓게 둔다(`.*`). 이 검사는 막지 않고 조언만 하므로 과탐지는
+// "확인하세요" 한 줄로 끝나지만, 계약 디렉터리에 스키마가 하나 더 생겼을 때
+// 파일명을 못 박아 뒀으면 신호가 통째로 사라진다. 미탐지가 더 비싸다.
 const SURFACE = [
   [/^packages\/manifest-contracts\/.*\.schema\.json$/, '선언 스키마'],
   [/^packages\/policy-contracts\/.*\.schema\.json$/, '정책 계약'],
@@ -19,7 +30,7 @@ const SURFACE = [
   [/^tooling\/generators\/platforms\.json$/, '생성 산출물 레이아웃'],
   [/^profiles\/[^/]+\/profile\.yaml$/, '프로파일 계약'],
   [/^capabilities\/[^/]+\/capability\.yaml$/, 'Capability 선언'],
-  [/^workflows\/.*\.ya?ml$/, '워크플로 선언'],
+  [/^workflows\/[^/]+\.ya?ml$/, '워크플로 선언'],
 ]
 
 const git = (...args) => execFileSync('git', args, { encoding: 'utf8' }).trim()

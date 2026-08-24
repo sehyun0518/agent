@@ -21,10 +21,11 @@ PR의 diff를 읽고 다음 세 가지만 답한다.
 
 소비 저장소가 의존하는 것만 공개 표면이다.
 
-- `packages/manifest-contracts/*.schema.json` — capability · workflow · profile ·
-  orchestrator 스키마
-- `packages/policy-contracts/policy.schema.json`,
-  `packages/telemetry-contracts/event.schema.json`
+- `packages/manifest-contracts/`의 스키마 — 현재는 capability · workflow ·
+  profile · orchestrator. 여기 더해지는 스키마도 같이 공개 표면이다.
+- `packages/policy-contracts/`, `packages/telemetry-contracts/`의 스키마 —
+  현재는 `policy.schema.json`, `event.schema.json`. 파일명이 아니라 디렉터리
+  기준이다. 계약이 하나 더 생겨도 빠뜨리지 않으려는 것이다.
 - 생성 산출물의 경로와 형태 — `tooling/generators/platforms.json`이 정의하는
   `.claude/`, `.codex/` 레이아웃
 - 프로파일 계약 — `profiles/*/profile.yaml`의 키, 소비 저장소가 쓰는
