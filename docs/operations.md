@@ -224,9 +224,16 @@ integration·e2e를 생략하려면 **사유와 승인**이 있어야 한다.
 | 실행자 이름·단계 구성 | `profiles/<id>/profile.yaml` | `npm run check` |
 | 작업 순서 | `workflows/*.yaml` | `npm run check` |
 | 금지 규칙 | `policies/` | `npm run check` |
+| 검증기 규칙 | `tooling/validators/` + `policy-enforcement.mjs` 레지스트리 | `npm run check` |
 | 게이트·훅의 회귀 케이스 | `capabilities/<id>/tests/*.cases.yaml` | 사람이 대조 (러너 없음) |
 | 새 토큰 | `docs/vocabulary.md` **+** `vocabulary.json` | `npm run check` |
 | 플랫폼 모델 이름 | `tooling/generators/platforms.json` | `npm run generate` |
+
+**새 검증기 규칙은 순수 함수로 쓴다.** `validate.mjs`에 인라인으로 쓰면
+`contracts.test.mjs`가 닿지 못해 **그 통제의 회귀가 없다** — 통제는 있는데 그것이 나중에
+느슨해지는 것을 잡을 케이스가 없다. 판정은 순수 모듈에 두고 `validate.mjs`는 부르고
+보고만 한다. 정책이 강제 수단으로 지정하는 규칙이면 `policy-enforcement.mjs`의
+레지스트리에도 등록한다.
 
 **`.claude`·`.codex`는 절대 직접 고치지 않는다.** 고쳐도 다음 생성 때
 되돌아가고, CI가 병합을 막는다.
@@ -273,6 +280,7 @@ mkdir -p capabilities/<id>/{agents,hooks,tests}
 **막아준다** (틀리면 즉시 실패)
 
 - 어휘 오타, 없는 파일 참조, 권한 초과, 프로파일의 권한 확대
+- `readonly` 역할이 쓰기 도구를 드는 것, 정책이 지정한 검증기가 실재하지 않는 것
 - 테스트 층 합치기, Git 작업 자동화, 파괴적 작업 자동 진행
 - 오케스트레이터에 도메인 지식 유입, 미러 드리프트
 - 문서 단계 없이 판정으로 가는 워크플로, roster·routing의 없는 실행자 이름
@@ -309,6 +317,10 @@ mkdir -p capabilities/<id>/{agents,hooks,tests}
 쓰면 무엇을 막는지 모르는 목록이 된다. §1.5가 도는 만큼 이 표가 채워진다. **실패를 겪고도
 안 채워지면 래칫이 안 돌고 있다는 뜻이다** — 표가 그대로인 것 자체는 실패가 없었다는
 뜻일 수도 있으므로 둘을 가른다.
+
+**검증기 규칙의 회귀는 이 표에 없다.** `tooling/validators/contracts.test.mjs`에 있고
+러너가 CI에서 돈다 (§1.5의 통제 유형 표). 이 표가 다루는 것은 러너가 없는 쪽 — 게이트와
+훅이다.
 
 두 가지가 아직 이 표 뒤에 있다.
 
