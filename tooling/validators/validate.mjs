@@ -745,14 +745,15 @@ function checkPolicyEnforcement(file, doc) {
   }
 }
 
+const POLICY_PATHS = walk(join(ROOT, 'policies'), (p) => p.endsWith('.yaml'))
+
 const targets = [
   ...walk(join(ROOT, 'capabilities'), (p) => basename(p) === 'capability.yaml')
     .map((p) => [p, 'capability', checkCapabilityTokens]),
   ...PROFILE_PATHS.map((p) => [p, 'profile', checkProfilePermissions]),
   ...walk(join(ROOT, 'workflows'), (p) => p.endsWith('.yaml'))
     .map((p) => [p, 'workflow', checkWorkflowTokens]),
-  ...walk(join(ROOT, 'policies'), (p) => p.endsWith('.yaml'))
-    .map((p) => [p, 'policy', checkPolicyEnforcement]),
+  ...POLICY_PATHS.map((p) => [p, 'policy', checkPolicyEnforcement]),
   ...walk(join(ROOT, 'packages', 'orchestrator'), (p) => basename(p) === 'orchestrator.yaml')
     .map((p) => [p, 'orchestrator', checkOrchestratorPurity]),
 ]
@@ -761,10 +762,23 @@ for (const [path, kind, extra] of targets) validateFile(path, kind, extra)
 
 // 레지스트리에만 있고 어떤 정책도 가리키지 않는 검증기. 강제 수단만 남고 근거가
 // 사라진 상태다. 파일이 아니라 레지스트리의 문제라 개별 정책이 아닌 여기서 본다.
-for (const name of findUnreferencedValidators(declaredEnforcement)) {
-  fail(
-    join(ROOT, 'tooling', 'validators', 'policy-enforcement.mjs'),
-    `검증기 "${name}"을 가리키는 정책이 없다. 정책을 지웠으면 레지스트리에서도 지워라.`,
+//
+// 정책이 하나라도 스키마에서 걸리면 checkPolicyEnforcement가 그 파일에 닿지 못해
+// 수집이 비고, 멀쩡한 검증기가 고아로 보인다. 수집이 완전할 때만 판정한다.
+//
+// "problems가 하나라도 있으면 건너뛴다"로 하지 않는 이유는, 무관한 파일의 문제 하나로
+// 이 검사가 조용히 꺼지기 때문이다. 꺼질 때는 꺼졌다고 출력한다.
+if (declaredEnforcement.length === POLICY_PATHS.length) {
+  for (const name of findUnreferencedValidators(declaredEnforcement)) {
+    fail(
+      join(ROOT, 'tooling', 'validators', 'policy-enforcement.mjs'),
+      `검증기 "${name}"을 가리키는 정책이 없다. 정책을 지웠으면 레지스트리에서도 지워라.`,
+    )
+  }
+} else {
+  checked.push(
+    `skip 고아 검증기 검사: 정책 ${POLICY_PATHS.length}개 중 ` +
+      `${declaredEnforcement.length}개만 읽혔다 (위 오류를 먼저 고쳐라)`,
   )
 }
 
