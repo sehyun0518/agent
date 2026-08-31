@@ -12,6 +12,10 @@
 
 const WRITE_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit'])
 
+// 전제: 스키마를 통과한 문서만 들어온다. validateFile이 스키마 검증에 실패한 문서에는
+// 의미 검사를 돌리지 않고, 두 스키마 모두 agents의 원소를 id·file·tools·description이
+// 있는 object로 요구한다. 원소가 null이면 여기 오기 전에 스키마에서 걸린다.
+
 /** readonly:true인 역할이 든 쓰기 도구. 없으면 빈 배열. */
 export function findReadonlyWriteTools(agents) {
   const violations = []

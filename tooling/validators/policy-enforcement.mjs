@@ -41,6 +41,9 @@ export const VALIDATOR_REGISTRY = {
   },
 }
 
+// 아래 두 함수의 전제도 같다 — 스키마를 통과한 정책만 수집되고, 호출부가 넘기는 것은
+// {id, validator} 꼴로 직접 만든 객체다. 원소가 null인 경로가 없다.
+
 /** 정책이 지정했는데 레지스트리에 없는 이름. 오타이거나 구현이 없다는 뜻이다. */
 export function findUnknownValidators(policies, registry = VALIDATOR_REGISTRY) {
   return (policies ?? [])
