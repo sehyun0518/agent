@@ -4,6 +4,12 @@ import { resolveTestingLayers } from './profile-testing.mjs'
 import { createWorkflowGraph } from './workflow-graph.mjs'
 import { resolveRunners, findUnresolvedRunners, findDuplicateInserts } from './profile-roster.mjs'
 import { findDocumentationBypass } from './documentation-gate.mjs'
+import { findReadonlyWriteTools } from './agent-readonly.mjs'
+import {
+  VALIDATOR_REGISTRY,
+  findUnknownValidators,
+  findUnreferencedValidators,
+} from './policy-enforcement.mjs'
 import {
   commandsFromCapabilities,
   commandsFromProfile,
@@ -291,4 +297,96 @@ test('워크플로와 변형이 같은 이름이면 출처와 함께 검출한�
   assert.deepEqual(dupes, [
     { name: 'review', sources: ['workflows/review.yaml', 'review#main'] },
   ])
+})
+
+// ---------------------------------------------------------------- readonly 역할
+// ADR-0007이 이 필드에 기대는데 아무도 읽지 않고 있었다.
+
+test('readonly 역할이 쓰기 도구를 들면 검출한다', () => {
+  const found = findReadonlyWriteTools([
+    { id: 'accessibility', readonly: true, tools: ['Read', 'Edit'] },
+  ])
+  assert.deepEqual(found, [{ agent: 'accessibility', tool: 'Edit' }])
+})
+
+test('readonly 역할이 읽기 도구만 들면 통과한다', () => {
+  const found = findReadonlyWriteTools([
+    { id: 'review', readonly: true, tools: ['Read', 'Grep', 'Glob'] },
+  ])
+  assert.deepEqual(found, [])
+})
+
+test('readonly가 아닌 역할은 쓰기 도구를 들어도 대상이 아니다', () => {
+  const found = findReadonlyWriteTools([{ id: 'implementation', tools: ['Write', 'Edit'] }])
+  assert.deepEqual(found, [])
+})
+
+test('Write·Edit·NotebookEdit를 모두 검출한다', () => {
+  const found = findReadonlyWriteTools([
+    { id: 'a', readonly: true, tools: ['Write', 'Edit', 'NotebookEdit', 'Read'] },
+  ])
+  assert.deepEqual(
+    found.map((v) => v.tool),
+    ['Write', 'Edit', 'NotebookEdit'],
+  )
+})
+
+// 알려진 구멍을 케이스로 박아 둔다. Bash는 쓰기·삭제가 되는데 검증기의 도구-권한
+// 매핑이 filesystem:read로 분류한다. 이 케이스가 초록인 동안 readonly는 Bash를 막지
+// 못한다. #46이 Bash 분류를 정하면 이 케이스가 먼저 빨개진다.
+test('Bash는 readonly 검사가 잡지 못한다 — 알려진 한계 (#46)', () => {
+  const found = findReadonlyWriteTools([{ id: 'review', readonly: true, tools: ['Bash'] }])
+  assert.deepEqual(found, [])
+})
+
+test('tools가 없어도 터지지 않는다', () => {
+  assert.deepEqual(findReadonlyWriteTools([{ id: 'discussion', readonly: true }]), [])
+  assert.deepEqual(findReadonlyWriteTools(undefined), [])
+})
+
+// ---------------------------------------------------------------- 정책 강제 수단
+// 정책이 이름으로 지정한 검사가 실재하는지. 연결이 주석뿐이면 양방향으로 어긋난다.
+
+test('레지스트리에 등록된 검증기를 가리키는 정책은 통과한다', () => {
+  const found = findUnknownValidators([
+    { id: 'filesystem-boundary', validator: 'tools-within-permissions' },
+  ])
+  assert.deepEqual(found, [])
+})
+
+test('레지스트리에 없는 검증기 이름을 검출한다', () => {
+  const found = findUnknownValidators([{ id: 'filesystem-boundary', validator: '오타난-이름' }])
+  assert.deepEqual(found, [{ policy: 'filesystem-boundary', validator: '오타난-이름' }])
+})
+
+test('validator 없이 훅만 선언한 정책은 대상이 아니다', () => {
+  const found = findUnknownValidators([
+    { id: 'secrets-redaction', validator: undefined },
+    { id: 'sensitive-data-storage' },
+  ])
+  assert.deepEqual(found, [])
+})
+
+// 구현 상태와 등록 여부는 다른 축이다. partial·pending도 이름은 실재하므로 통과한다.
+// 무엇이 아직 강제되지 않는지는 레지스트리의 status가 말한다.
+test('partial 상태의 검증기도 등록된 것으로 본다', () => {
+  const registry = { 'x': { status: 'partial' }, 'y': { status: 'pending' } }
+  assert.deepEqual(
+    findUnknownValidators([{ id: 'p', validator: 'x' }, { id: 'q', validator: 'y' }], registry),
+    [],
+  )
+})
+
+test('어떤 정책도 가리키지 않는 검증기를 검출한다', () => {
+  const registry = { '쓰이는-검사': {}, '고아-검사': {} }
+  const found = findUnreferencedValidators([{ id: 'p', validator: '쓰이는-검사' }], registry)
+  assert.deepEqual(found, ['고아-검사'])
+})
+
+test('레지스트리의 모든 항목에 status가 있다', () => {
+  const 허용 = new Set(['implemented', 'partial', 'pending'])
+  for (const [name, entry] of Object.entries(VALIDATOR_REGISTRY)) {
+    assert.ok(허용.has(entry.status), `${name}: 알 수 없는 status "${entry.status}"`)
+    assert.ok(entry.by, `${name}: 어느 검사인지 by에 적어야 한다`)
+  }
 })

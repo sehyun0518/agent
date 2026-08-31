@@ -15,6 +15,12 @@ import { librarySignature } from './profile-testing.mjs'
 import { createWorkflowGraph } from './workflow-graph.mjs'
 import { resolveRunners, findUnresolvedRunners, findDuplicateInserts } from './profile-roster.mjs'
 import { findDocumentationBypass } from './documentation-gate.mjs'
+import { findReadonlyWriteTools } from './agent-readonly.mjs'
+import {
+  VALIDATOR_REGISTRY,
+  findUnknownValidators,
+  findUnreferencedValidators,
+} from './policy-enforcement.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const SCHEMA_DIR = join(ROOT, 'packages', 'manifest-contracts')
@@ -174,9 +180,11 @@ function checkCapabilityTokens(file, doc) {
 
   // 2계층 권한: 도구가 의미 권한을 넘지 않는지.
   checkAgentPermissions(file, doc.entrypoints?.agents, doc.permissions, 'capability')
+  checkReadonlyAgents(file, doc.entrypoints?.agents, 'capability')
   for (const [name, variant] of Object.entries(doc.variants ?? {})) {
     const permissions = variant.permissions ?? doc.permissions
     checkAgentPermissions(file, variant.entrypoints?.agents, permissions, `variant:${name}`)
+    checkReadonlyAgents(file, variant.entrypoints?.agents, `variant:${name}`)
     checkDestructiveApproval(file, { ...variant, permissions }, `variant:${name}`)
   }
   if (!doc.variants) checkDestructiveApproval(file, doc, 'capability')
@@ -243,6 +251,19 @@ function checkAgentPermissions(file, agents, permissions, label) {
         )
       }
     }
+  }
+}
+
+/**
+ * readonly로 선언한 역할이 쓰기 도구를 들지 않았는지 본다 (ADR-0007).
+ * 판정은 agent-readonly.mjs의 순수 함수가 하고 여기서는 보고만 한다.
+ */
+function checkReadonlyAgents(file, agents, label) {
+  for (const { agent, tool } of findReadonlyWriteTools(agents)) {
+    fail(
+      file,
+      `${label} 에이전트 "${agent}": readonly인데 쓰기 도구 "${tool}"을 들고 있다. (ADR-0007)`,
+    )
   }
 }
 
@@ -635,6 +656,7 @@ function checkProfilePermissions(file, doc) {
   }
 
   checkAgentPermissions(file, doc.agents, doc.permissions ?? { filesystem: 'write', network: 'allowlist' }, 'profile')
+  checkReadonlyAgents(file, doc.agents, 'profile')
 
   for (const binding of doc.bindings ?? []) {
     const capability = CAPABILITIES.get(binding.capability)
@@ -704,6 +726,25 @@ function validateFile(path, kind, extraChecks) {
   checked.push(`${mark} ${kind}: ${relative(ROOT, path)}`)
 }
 
+// ---------------------------------------------------------------- 정책 강제 수단 대조
+// policies/*.yaml의 enforcement.validator가 실재하는 검사를 가리키는지 본다.
+// 판정은 policy-enforcement.mjs의 순수 함수가 하고 여기서는 수집과 보고만 한다.
+
+const declaredEnforcement = []
+
+function checkPolicyEnforcement(file, doc) {
+  declaredEnforcement.push({ id: doc.id, validator: doc.enforcement?.validator, file })
+  for (const { validator } of findUnknownValidators([
+    { id: doc.id, validator: doc.enforcement?.validator },
+  ])) {
+    fail(
+      file,
+      `enforcement.validator "${validator}"가 어떤 검사도 가리키지 않는다. ` +
+        `구현했으면 tooling/validators/policy-enforcement.mjs의 레지스트리에 등록해라.`,
+    )
+  }
+}
+
 const targets = [
   ...walk(join(ROOT, 'capabilities'), (p) => basename(p) === 'capability.yaml')
     .map((p) => [p, 'capability', checkCapabilityTokens]),
@@ -711,12 +752,21 @@ const targets = [
   ...walk(join(ROOT, 'workflows'), (p) => p.endsWith('.yaml'))
     .map((p) => [p, 'workflow', checkWorkflowTokens]),
   ...walk(join(ROOT, 'policies'), (p) => p.endsWith('.yaml'))
-    .map((p) => [p, 'policy', null]),
+    .map((p) => [p, 'policy', checkPolicyEnforcement]),
   ...walk(join(ROOT, 'packages', 'orchestrator'), (p) => basename(p) === 'orchestrator.yaml')
     .map((p) => [p, 'orchestrator', checkOrchestratorPurity]),
 ]
 
 for (const [path, kind, extra] of targets) validateFile(path, kind, extra)
+
+// 레지스트리에만 있고 어떤 정책도 가리키지 않는 검증기. 강제 수단만 남고 근거가
+// 사라진 상태다. 파일이 아니라 레지스트리의 문제라 개별 정책이 아닌 여기서 본다.
+for (const name of findUnreferencedValidators(declaredEnforcement)) {
+  fail(
+    join(ROOT, 'tooling', 'validators', 'policy-enforcement.mjs'),
+    `검증기 "${name}"을 가리키는 정책이 없다. 정책을 지웠으면 레지스트리에서도 지워라.`,
+  )
+}
 
 // ---------------------------------------------------------------- 보고
 
