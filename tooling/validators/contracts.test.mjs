@@ -10,6 +10,7 @@ import { commandsInScript, findChecksMissingFromCi } from './pipeline.mjs'
 import { findForeignNamespaceTokens, insertTokens } from './profile-namespace.mjs'
 import { findUndeclaredNestedRepos, submodulePathsFrom } from './nested-repo.mjs'
 import { findWidenedHosts, findUnfilledAllowlist } from './network-scope.mjs'
+import { adrNumbers, findAdrIndexDrift } from './adr-index.mjs'
 import {
   CONVENTION_KEYS,
   declaredCommandKeys,
@@ -1643,4 +1644,33 @@ test('선언되지 않은 commandKey는 여기서 보지 않는다', () => {
 test('빈 입력은 대상이 아니다', () => {
   assert.deepEqual(findUnusedCommandKeys(undefined, undefined), [])
   assert.deepEqual(findUnusedCommandKeys({}, ['test.unit']), [])
+})
+
+// ---------------------------------------------------------------- 결정 기록 표
+// README의 ADR 표는 손으로 옮겨 적는 목록이다. 실제로 갈라졌다 — ADR이 스물다섯인데
+// 표는 열을 적고 있었다. 같은 부류를 이 저장소가 여러 번 고쳤다 (#66 · #69 · ADR-0021).
+
+test('파일 이름에서 번호만 뽑는다', () => {
+  assert.deepEqual(adrNumbers(['0011-a.md', '0002-b.md', 'README.md']), ['0002', '0011'])
+  assert.deepEqual(adrNumbers(undefined), [])
+})
+
+test('표에 없는 ADR을 검출한다', () => {
+  const found = findAdrIndexDrift('[ADR-0001](docs/adr/0001-a.md)', ['0001-a.md', '0002-b.md'])
+  assert.deepEqual(found, [{ number: '0002', problem: 'not-in-index' }])
+})
+
+// 파일을 지웠는데 표가 남으면 죽은 링크가 된다.
+test('파일이 없는 표 항목을 검출한다', () => {
+  const found = findAdrIndexDrift('[ADR-0009](docs/adr/0009-x.md)', ['0001-a.md'])
+  assert.deepEqual(found, [
+    { number: '0001', problem: 'not-in-index' },
+    { number: '0009', problem: 'no-file' },
+  ])
+})
+
+// 표의 설명 문구는 ADR 제목과 같을 필요가 없다. 번호만 본다.
+test('설명이 달라도 번호가 맞으면 통과한다', () => {
+  const md = '| [ADR-0011](docs/adr/0011-logic-scaffold.md) | 전혀 다른 한 줄 요약 |'
+  assert.deepEqual(findAdrIndexDrift(md, ['0011-logic-scaffold.md']), [])
 })

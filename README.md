@@ -195,6 +195,9 @@ Capability와 프로파일 소스에서 생성합니다.
 
 ## 결정 기록
 
+이 표는 `docs/adr/`의 모든 결정을 담아야 한다. `npm run validate`가 대조한다 —
+목록을 두 곳에 적으면 한 곳은 낡는다.
+
 | ADR | 결정 내용 |
 |---|---|
 | [ADR-0001](docs/adr/0001-capability-structure.md) | Capability 중심 구조와 단계적 런타임화를 결정합니다. |
@@ -207,5 +210,20 @@ Capability와 프로파일 소스에서 생성합니다.
 | [ADR-0008](docs/adr/0008-vendoring-third-party-skills.md) | 3자 스킬을 원본과 바이트 일치로 벤더링하도록 결정합니다. |
 | [ADR-0009](docs/adr/0009-skill-pack-selection.md) | 규칙 팩 선택을 실행 에이전트에 맡기도록 결정합니다. |
 | [ADR-0010](docs/adr/0010-project-design-roles.md) | 프로젝트 상수를 수동 실행 역할 셋이 정하도록 결정합니다. |
+| [ADR-0011](docs/adr/0011-logic-scaffold.md) | unit 계층에 계약 스캐폴드를 두어 red 교착을 끊습니다. |
+| [ADR-0012](docs/adr/0012-red-proof-moot.md) | red가 애초에 없는 계층을 `moot`으로 기록합니다. |
+| [ADR-0013](docs/adr/0013-manual-verification.md) | 러너 없이 문서화된 절차로 검증한 계층을 기록합니다. |
+| [ADR-0014](docs/adr/0014-return-path.md) | 되돌림은 그래프 간선이 아니며 재개 규칙을 정합니다. |
+| [ADR-0015](docs/adr/0015-permission-projection.md) | 승인 선언을 플랫폼 permission 런타임으로 투영합니다. |
+| [ADR-0016](docs/adr/0016-vendoring-drift-check.md) | 벤더링 드리프트를 기록된 해시로 대조합니다. |
+| [ADR-0017](docs/adr/0017-insert-contract.md) | 프로파일 삽입 단계도 증거로 완료를 판정합니다. |
+| [ADR-0018](docs/adr/0018-evidence-location.md) | 증거를 격리 밖에 남기고 지금은 승격하지 않습니다. |
+| [ADR-0019](docs/adr/0019-observability-placement.md) | 관측성 작업의 자리를 정하고 감사 역할은 미룹니다. |
+| [ADR-0020](docs/adr/0020-consumer-repo-placement.md) | 소비 저장소를 하네스 안에 두지 않고 격리의 뜻을 정합니다. |
+| [ADR-0021](docs/adr/0021-measurement-slot.md) | 출시 후 무엇을 알고 싶은지를 요구사항에서 묻습니다. |
+| [ADR-0022](docs/adr/0022-session-boundary.md) | 세션을 어휘에 넣지 않고 `runId`가 흐름을 식별합니다. |
+| [ADR-0023](docs/adr/0023-cost-retry-and-promotion-order.md) | 비용·재시도 축을 넣고 `test-kit` 순서를 앞으로 당깁니다. |
+| [ADR-0024](docs/adr/0024-permission-scope-axes.md) | 경로·수량 축 대신 있는 네트워크 범위를 강제합니다. |
+| [ADR-0026](docs/adr/0026-toolchain-precondition.md) | 툴체인 선행조건을 `preflight` 규약으로 받습니다. |
 
 구조 이관 내역은 [docs/migration/inventory.md](docs/migration/inventory.md)에서 확인할 수 있습니다.

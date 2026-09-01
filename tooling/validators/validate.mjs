@@ -43,6 +43,7 @@ import { findForeignNamespaceTokens, insertTokens } from './profile-namespace.mj
 import { findUndeclaredNestedRepos, submodulePathsFrom } from './nested-repo.mjs'
 import { findWidenedHosts, findUnfilledAllowlist } from './network-scope.mjs'
 import { declaredCommandKeys, findUnusedCommandKeys } from './command-keys.mjs'
+import { findAdrIndexDrift } from './adr-index.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const SCHEMA_DIR = join(ROOT, 'packages', 'manifest-contracts')
@@ -1020,6 +1021,18 @@ const ciCommands = ciSteps.filter((step) => step?.run).map((step) => step.run.tr
 const checkScript = readJson(join(ROOT, 'package.json')).scripts?.check
 for (const command of findChecksMissingFromCi(checkScript, ciCommands)) {
   fail(WORKFLOW, `"${command}"이 npm run check에는 있는데 CI에 없다. 로컬에서만 돌고 병합을 막지 못한다.`)
+}
+
+// README의 결정 기록도 손으로 옮겨 적는 목록이라 갈라진다. ADR이 스물다섯인데 표는
+// 열을 적고 있었다.
+const ADR_DIR = join(ROOT, 'docs', 'adr')
+const ROOT_README = join(ROOT, 'README.md')
+const ADR_MESSAGE = {
+  'not-in-index': (n) => `ADR-${n}이 결정 기록 표에 없다. 결정을 냈으면 표에도 적어라.`,
+  'no-file': (n) => `결정 기록 표의 ADR-${n}에 해당하는 파일이 없다. 죽은 링크다.`,
+}
+for (const { number, problem } of findAdrIndexDrift(readFileSync(ROOT_README, 'utf8'), readdirSync(ADR_DIR))) {
+  fail(ROOT_README, ADR_MESSAGE[problem](number))
 }
 
 // 표를 손으로 옮겨 적는 한 레지스트리와 갈라진다. 세 번 났다.
