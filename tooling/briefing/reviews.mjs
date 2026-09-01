@@ -41,6 +41,23 @@ export function findUnansweredReviews(comments) {
 }
 
 /**
+ * 리뷰를 낸 적 있는 이름.
+ *
+ * **"지적 없음"과 "아직 안 봤다"는 다르다.** 인라인 코멘트만 세면 둘이 같아 보이고,
+ * 아무도 안 본 PR이 깨끗한 PR로 보고된다 — 이 도구를 처음 돌렸을 때 실제로 그랬다.
+ * ADR-0031이 텔레메트리에서 적은 것과 같다: **안 온 것은 세어지지 않는다.**
+ *
+ * **누가 봐야 하는지는 정하지 않는다.** 필수 리뷰어 목록을 여기 두면 봇이 늘 때
+ * 두 곳이 갈린다. 누가 봤는지만 말하고 빠진 쪽은 사람이 안다.
+ *
+ * @param {Array<{author?: {login?: string}}>} reviews
+ * @returns {string[]}
+ */
+export function reviewers(reviews) {
+  return [...new Set((reviews ?? []).map((r) => r?.author?.login).filter(Boolean))]
+}
+
+/**
  * 아직 끝나지 않은 체크.
  *
  * 리뷰 봇은 체크로도 상태를 낸다 — CodeRabbit이 `Review in progress`를 그렇게

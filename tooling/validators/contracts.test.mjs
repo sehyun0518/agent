@@ -38,7 +38,7 @@ import { TOOL_COMMANDS, findMissingToolScripts, extensionApplies, anchoredAt } f
 import { buildStepBriefing, renderStepBriefing, parseGateHeader, stepIds } from '../briefing/step.mjs'
 import { walk } from '../walk.mjs'
 import { matchExpectations, readEvidenceRecords } from '../briefing/evidence.mjs'
-import { findUnansweredReviews, findPendingChecks } from '../briefing/reviews.mjs'
+import { findUnansweredReviews, findPendingChecks, reviewers } from '../briefing/reviews.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -2367,6 +2367,22 @@ test('사람이 연 스레드는 대상이 아니다', () => {
 test('코멘트가 없어도 터지지 않는다', () => {
   assert.deepEqual(findUnansweredReviews(undefined), [])
   assert.deepEqual(findUnansweredReviews([null, undefined]), [])
+})
+
+// "지적 없음"과 "아직 안 봤다"는 다르다. 인라인만 세면 둘이 같아 보이고, 아무도 안 본
+// PR이 깨끗하다고 보고된다 — 이 도구를 처음 돌렸을 때 실제로 그랬다.
+test('리뷰를 낸 쪽을 낸다', () => {
+  assert.deepEqual(
+    reviewers([{ author: { login: 'gemini-code-assist' } }, { author: { login: 'sehyun0518' } },
+      { author: { login: 'gemini-code-assist' } }]),
+    ['gemini-code-assist', 'sehyun0518'],
+  )
+})
+
+test('아무도 안 봤으면 빈 목록이다', () => {
+  assert.deepEqual(reviewers([]), [])
+  assert.deepEqual(reviewers(undefined), [])
+  assert.deepEqual(reviewers([null, { author: null }]), [])
 })
 
 test('진행 중인 체크를 낸다', () => {

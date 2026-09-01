@@ -5,7 +5,7 @@
 // 거기 붙는다.
 
 import { execFileSync } from 'node:child_process'
-import { findUnansweredReviews, findPendingChecks } from './reviews.mjs'
+import { findUnansweredReviews, findPendingChecks, reviewers } from './reviews.mjs'
 
 const pr = process.argv[2]
 
@@ -28,6 +28,7 @@ const repo = gh(['repo', 'view', '--json', 'nameWithOwner']).nameWithOwner
 const comments = gh(['api', `repos/${repo}/pulls/${pr}/comments`, '--paginate'])
 const checks = gh(['pr', 'checks', pr, '--json', 'name,state,bucket']).map?.((c) => c) ?? []
 
+const reviewed = reviewers(gh(['pr', 'view', pr, '--json', 'reviews']).reviews)
 const unanswered = findUnansweredReviews(comments)
 const pending = findPendingChecks(checks)
 
@@ -38,6 +39,7 @@ for (const c of comments) {
 }
 
 console.log(`PR #${pr}`)
+console.log(`  리뷰를 낸 쪽  ${reviewed.length ? reviewed.join(' · ') : '없음  ⚠'}`)
 if (byBot.size === 0) console.log('  봇 인라인 지적 없음')
 for (const [bot, total] of byBot) {
   const left = unanswered.filter((u) => u.bot === bot).length
@@ -54,7 +56,10 @@ if (unanswered.length) {
 
 if (pending.length) console.log(`\n진행 중인 체크: ${pending.join(' · ')}  ⚠ 지적이 더 올 수 있다`)
 
-if (unanswered.length || pending.length) {
+// 아무도 안 본 것과 보고 지적이 없는 것은 다르다.
+if (reviewed.length === 0) console.log('\n아직 아무도 리뷰를 내지 않았다. 지적이 없는 것과 다르다.')
+
+if (unanswered.length || pending.length || reviewed.length === 0) {
   console.log('\n머지하기 전에 볼 것이 있다.')
   process.exit(1)
 }
