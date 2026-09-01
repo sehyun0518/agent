@@ -2604,6 +2604,9 @@ test('경로 구분자와 무관하게 훅 문서를 가린다', () => {
   // 작업 공간 경로에 hooks가 끼면 그 아래 전부가 훅으로 걸렸다 (#98 리뷰).
   assert.equal(isHookDoc('/Users/x/hooks/repo/docs/foo.md'), false)
   assert.equal(isHookDoc('C:\\\\u\\\\hooks\\\\repo\\\\docs\\\\foo.md'), false)
+  // 저장소가 hooks라는 이름의 경로 아래 클론돼도 그 안의 다른 .md는 훅이 아니다.
+  assert.equal(isHookDoc('/home/u/hooks/proj/capabilities/c/agents/x.md'), false)
+  assert.equal(isHookDoc('/home/u/hooks/proj/capabilities/c/hooks/x.md'), true)
   assert.equal(isHookDoc(undefined), false)
 })
 
