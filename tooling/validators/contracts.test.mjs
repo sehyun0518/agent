@@ -12,6 +12,7 @@ import {
   classifyPack,
   extractVendoredBody,
   findDrift,
+  parseFrontmatter,
 } from '../vendoring/vendored-files.mjs'
 import { findMissingMootBranches } from './workflow-red-proof.mjs'
 import { findMissingScaffolds } from './workflow-scaffold.mjs'
@@ -1438,5 +1439,43 @@ test('check에 있는데 CI에 없는 명령을 검출한다', () => {
 // 전체 재생성 대조도 CI에만 있어야 한다. 위험한 쪽은 반대다.
 test('CI에만 있는 명령은 대상이 아니다', () => {
   const found = findChecksMissingFromCi('npm run a', ['npm ci', 'npm run a', 'rm -rf .claude'])
+  assert.deepEqual(found, [])
+})
+
+// CRLF frontmatter를 못 읽으면 그 팩이 "우리 것"으로 분류돼 대조에서 통째로 빠진다.
+// 기존 팩은 기록에 남아 "파일이 없다"로 걸리지만, 새 팩을 CRLF로 넣으면 기록에
+// 들어가지도 않는다 — 조용한 우회다.
+
+test('CRLF frontmatter도 읽는다', () => {
+  const lf = '---\nname: x\nmetadata:\n  source: https://u\n---\n\n본문\n'
+  assert.equal(classifyPack(parseFrontmatter(lf).data?.metadata), 'vendored')
+  assert.equal(classifyPack(parseFrontmatter(lf.replace(/\n/g, '\r\n')).data?.metadata), 'vendored')
+})
+
+// 읽을 수 없는 것을 "없는 것"으로 흘려보내면 CRLF 말고 다른 이유로 못 읽는 경우도
+// 같은 자리로 새어 나간다. 사유를 내고 호출부가 실패로 다룬다.
+test('frontmatter가 없거나 깨지면 사유를 낸다', () => {
+  assert.ok(parseFrontmatter('frontmatter 없음').problem)
+  assert.ok(parseFrontmatter('---\na: 1\na: 2\n---\n').problem)
+  assert.ok(parseFrontmatter(undefined).problem)
+})
+
+test('빈 frontmatter는 빈 객체로 읽는다', () => {
+  const parsed = parseFrontmatter('---\n\n---\n본문')
+  assert.deepEqual(parsed.data, {})
+  assert.equal(classifyPack(parsed.data?.metadata), 'own')
+})
+
+// CI step 하나가 여러 줄이거나 &&로 이어질 수 있다. 통째로 대조하면 오탐이 난다.
+test('CI의 멀티라인·체인 step도 명령 단위로 가른다', () => {
+  const found = findChecksMissingFromCi('npm run a && npm run b', [
+    'npm ci',
+    'npm run a && npm run b',
+  ])
+  assert.deepEqual(found, [])
+})
+
+test('여러 줄 run에 섞여 있어도 찾는다', () => {
+  const found = findChecksMissingFromCi('npm run a', ['echo x\nnpm run a\necho y'])
   assert.deepEqual(found, [])
 })

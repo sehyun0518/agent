@@ -12,6 +12,7 @@
 // "우리가 새로 쓴 파일"이 되어 검사를 빠져나간다.
 
 import { createHash } from 'node:crypto'
+import { parse as parseYaml } from 'yaml'
 
 const BEGIN = '<!-- vendored:begin -->'
 const END = '<!-- vendored:end -->'
@@ -23,6 +24,30 @@ export function normalize(text) {
 
 export function digest(text) {
   return createHash('sha256').update(normalize(text), 'utf8').digest('hex')
+}
+
+/**
+ * SKILL.md의 frontmatter.
+ *
+ * 개행은 `\r?\n`으로 받는다. LF만 받으면 CRLF 파일이 "frontmatter가 없다"가 되고,
+ * 그러면 아래 `classifyPack`이 그 팩을 우리 것으로 분류해 **대조에서 통째로 빠진다.**
+ * 기존 팩은 기록에 남아 있어 "파일이 없다"로 걸리지만, 새 팩을 CRLF로 넣으면 기록에
+ * 들어가지도 않는다 — 조용한 우회다.
+ *
+ * 읽을 수 없으면 사유를 낸다. **없는 것으로 보지 않는다.** SKILL.md는 전부 frontmatter를
+ * 갖고 있고, 없다는 것 자체가 이상한 상태다. 그것을 "우리 것"으로 흘려보내면 CRLF 말고
+ * 다른 이유로 못 읽는 경우도 같은 자리로 새어 나간다.
+ *
+ * @returns {{raw: string, data: object} | {problem: string}}
+ */
+export function parseFrontmatter(text) {
+  const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n/.exec(text ?? '')
+  if (!match) return { problem: 'frontmatter가 없다' }
+  try {
+    return { raw: match[1], data: parseYaml(match[1]) ?? {} }
+  } catch (error) {
+    return { problem: error.message.split('\n')[0] }
+  }
 }
 
 /**

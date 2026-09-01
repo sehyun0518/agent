@@ -28,6 +28,10 @@ export function commandsInScript(script) {
  * @returns {string[]} CI에 없는 명령
  */
 export function findChecksMissingFromCi(checkScript, ciCommands) {
-  const inCi = new Set(ciCommands ?? [])
+  // CI 쪽도 같은 방식으로 가른다. step 하나가 `run: |`로 여러 줄이거나 `&&`로 이어질
+  // 수 있는데, 통째로 대조하면 그때 오탐이 난다.
+  const inCi = new Set(
+    (ciCommands ?? []).flatMap((command) => (command ?? '').split('\n').flatMap(commandsInScript)),
+  )
   return commandsInScript(checkScript).filter((command) => !inCi.has(command))
 }

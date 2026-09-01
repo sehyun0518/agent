@@ -9,8 +9,13 @@
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs'
 import { join, dirname, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { parse as parseYaml } from 'yaml'
-import { classifyPack, digest, extractVendoredBody } from './vendored-files.mjs'
+import {
+  classifyPack,
+  digest,
+  extractVendoredBody,
+  findDrift,
+  parseFrontmatter,
+} from './vendored-files.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const MANIFEST = join(ROOT, 'tooling', 'vendoring', 'manifest.json')
@@ -24,18 +29,6 @@ function walk(dir) {
     else out.push(path)
   }
   return out.sort()
-}
-
-function frontmatter(text) {
-  const match = /^---\n([\s\S]*?)\n---\n/.exec(text)
-  if (!match) return { raw: null, data: null }
-  try {
-    return { raw: match[1], data: parseYaml(match[1]) }
-  } catch (error) {
-    // 죽지 않고 보고한다. frontmatter가 깨진 것도 드리프트이고, 그것 때문에 나머지
-    // 파일을 못 보는 것은 더 나쁘다.
-    return { raw: match[1], data: null, error: error.message.split('\n')[0] }
-  }
 }
 
 const problems = []
@@ -61,9 +54,9 @@ for (const profile of readdirSync(join(ROOT, 'profiles'))) {
       continue
     }
 
-    const front = frontmatter(skill)
-    if (front.error) {
-      problems.push(`profiles/${profile}/skills/${pack}/SKILL.md: frontmatter를 읽을 수 없다 — ${front.error}`)
+    const front = parseFrontmatter(skill)
+    if (front.problem) {
+      problems.push(`profiles/${profile}/skills/${pack}/SKILL.md: frontmatter를 읽을 수 없다 — ${front.problem}`)
       continue
     }
 
@@ -108,7 +101,6 @@ if (RECORD) {
   process.exit(problems.length > 0 ? 1 : 0)
 }
 
-const { findDrift } = await import('./vendored-files.mjs')
 const recorded = JSON.parse(readFileSync(MANIFEST, 'utf8')).files ?? {}
 const MESSAGE = {
   changed: (p) => `${p}: 내용이 기록과 다르다. 벤더링한 파일은 손대지 않는다 (ADR-0008).`,
