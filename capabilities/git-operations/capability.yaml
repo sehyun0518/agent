@@ -1,5 +1,4 @@
 id: git-operations
-version: 1
 title: Git 작업
 description: >-
   상태 확인·커밋·푸시·PR을 각각 독립된 커맨드로 수행한다. 하나의 자동 게시 파이프라인이 아니다 —

@@ -1,5 +1,4 @@
 id: specification
-version: 2
 title: 계약 고정
 description: >
   요구사항 스펙을 하류가 병렬로 기댈 수 있는 고정된 계약으로 바꾼다 — 타입·props

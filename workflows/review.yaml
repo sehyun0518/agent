@@ -1,5 +1,4 @@
 id: review
-version: 1
 title: 검토 전용
 description: >-
   이미 만들어진 변경을 판정만 한다. 구현하지 않으므로 red 게이트가 없다. 대신

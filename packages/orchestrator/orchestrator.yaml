@@ -1,5 +1,4 @@
 id: orchestrator
-version: 1
 title: 오케스트레이터
 description: >-
   완결된 요구사항 스펙을 실행 가능한 작업 그래프로 나누고, 활성 프로파일의 로스터·DAG에
