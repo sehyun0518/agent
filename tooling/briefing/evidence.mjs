@@ -15,9 +15,13 @@
  * `test-execution#unit`이 `unit-red`와 `unit-green` 둘 다다 (ADR-0033 결정 2).
  */
 const satisfies = (record, expectation) =>
-  record?.kind === expectation?.evidence &&
-  record?.status === expectation?.status &&
-  (!expectation?.from || record?.step === expectation.from)
+  // 둘 다 값이 있을 때만 비교한다. 없는 것끼리 undefined === undefined로 맞아 버리면
+  // 빈 레코드가 빈 기대를 채웠다고 말하게 된다.
+  Boolean(record?.kind) &&
+  Boolean(expectation?.evidence) &&
+  record.kind === expectation.evidence &&
+  record.status === expectation.status &&
+  (!expectation.from || record.step === expectation.from)
 
 /**
  * 재시도하면 같은 단계의 레코드가 둘이 된다. 덮어쓰지 않고 쌓으므로 마지막을 본다.

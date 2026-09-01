@@ -2271,6 +2271,59 @@ test('모양이 틀린 레코드를 세어 돌려준다', () => {
   assert.equal(r.malformed, 3)
 })
 
+// 없는 것끼리 undefined === undefined로 맞으면 빈 레코드가 빈 기대를 채웠다고 말한다.
+test('빈 기대와 빈 레코드가 서로 맞지 않는다', () => {
+  assert.equal(matchExpectations([{ status: 's' }], [{ status: 's' }])[0].found, null)
+  assert.equal(matchExpectations([{ kind: 'k' }], [{ evidence: 'k' }])[0].found?.kind, 'k')
+  assert.equal(matchExpectations([{}], [{}])[0].found, null)
+})
+
+// expectAnyOf를 쓰는 단계가 서른이다. expect만 대조하면 그쪽은 통째로 안 보였다.
+test('expectAnyOf 묶음마다 대조한다', () => {
+  const wf = {
+    id: 'review',
+    steps: [{
+      id: 'integration',
+      capability: 'test-execution',
+      expectAnyOf: [
+        { conditions: [{ evidence: 'test.ui.result', status: 'passed', from: 'ui' }] },
+        { conditions: [{ evidence: 'test.skip-justification', status: 'recorded', from: 'ui' }] },
+      ],
+    }],
+  }
+  const text = renderStepBriefing(buildStepBriefing({
+    workflow: wf,
+    stepId: 'integration',
+    capabilities: new Map(),
+    evidence: [{ kind: 'test.ui.result', status: 'passed', step: 'ui' }],
+  }))
+  assert.match(text, /test\.ui\.result = passed \(from: ui\)  ✓/)
+  assert.match(text, /test\.skip-justification = recorded \(from: ui\)  ⚠/)
+})
+
+// 묶음 안은 AND다. 하나라도 없으면 그 묶음은 성립하지 않는다.
+test('묶음 안의 조건 하나가 없으면 묶음이 성립하지 않는다', () => {
+  const wf = {
+    id: 'w',
+    steps: [{
+      id: 's',
+      capability: 'c',
+      expectAnyOf: [{ conditions: [{ evidence: 'a', status: 'ok' }, { evidence: 'b', status: 'ok' }] }],
+    }],
+  }
+  const text = renderStepBriefing(buildStepBriefing({
+    workflow: wf, stepId: 's', capabilities: new Map(),
+    evidence: [{ kind: 'a', status: 'ok' }],
+  }))
+  assert.match(text, /⚠/)
+})
+
+test('증거를 안 넘기면 대조 표시가 없다', () => {
+  const wf = { id: 'w', steps: [{ id: 's', capability: 'c', expect: [{ evidence: 'a', status: 'ok' }] }] }
+  const text = renderStepBriefing(buildStepBriefing({ workflow: wf, stepId: 's', capabilities: new Map() }))
+  assert.doesNotMatch(text, /✓|⚠/)
+})
+
 test('증거 파일이 비어도 터지지 않는다', () => {
   assert.deepEqual(readEvidenceRecords(undefined), { records: [], malformed: 0 })
   assert.deepEqual(matchExpectations(undefined, [기대])[0].found, null)

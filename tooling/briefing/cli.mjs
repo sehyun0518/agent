@@ -72,16 +72,27 @@ function resolveRun(requested) {
   return { runId: null, ambiguous: runs }
 }
 
+// 증거는 실행 산출물이라 손으로도 쓴다. 깨졌다고 브리핑 전체를 막지 않는다 —
+// ADR-0033이 "읽는 쪽이 건너뛰고 그 사실을 말한다"고 적었다. 선언과 다른 자리다:
+// 선언이 깨지면 브리핑을 만들 수 없지만, 증거가 깨져도 단계 설명은 나온다.
 function loadEvidence(runId) {
   if (!runId) return null
   const path = join(ROOT, '.harness', 'runs', runId, 'evidence.yaml')
   if (!existsSync(path)) return { records: [], malformed: 0, path, missing: true }
-  return { ...readEvidenceRecords(readYaml(path)), path }
+  try {
+    return { ...readEvidenceRecords(parseYaml(readFileSync(path, 'utf8'))), path }
+  } catch (error) {
+    return { records: [], malformed: 0, path, broken: error.message.split('\n')[0] }
+  }
 }
 
 const args = process.argv.slice(2)
 const runFlag = args.indexOf('--run')
 const requestedRun = runFlag === -1 ? null : args[runFlag + 1]
+if (runFlag !== -1 && (!requestedRun || requestedRun.startsWith('-'))) {
+  console.error('--run 뒤에 runId가 없다. 값 없이 주면 조용히 자동 탐색으로 넘어간다.')
+  process.exit(2)
+}
 // --run과 그 값만 걷어낸다. 없을 때 runFlag가 -1이라 인덱스로 거르면 첫 인자가 사라진다.
 const positional = runFlag === -1 ? args : args.filter((_, i) => i !== runFlag && i !== runFlag + 1)
 const [workflowId, stepId] = positional
@@ -130,6 +141,9 @@ if (run.ambiguous) {
   console.log('\n증거를 대조하지 않았다 — .harness/runs/에 흐름이 없다 (ADR-0033).')
 } else if (evidence?.missing) {
   console.log(`\n증거를 대조하지 않았다 — ${relative(ROOT, evidence.path)}이 없다.`)
+} else if (evidence?.broken) {
+  console.log(`\n증거를 대조하지 않았다 — ${relative(ROOT, evidence.path)}을 읽지 못했다.`)
+  console.log(`  ${evidence.broken}`)
 } else {
   const note = evidence.malformed ? `  (모양이 틀린 레코드 ${evidence.malformed}건은 건너뜀)` : ''
   console.log(`\n흐름 ${run.runId} · 증거 ${evidence.records.length}건과 대조했다.${note}`)

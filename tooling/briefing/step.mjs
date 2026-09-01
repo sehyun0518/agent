@@ -101,6 +101,10 @@ export function buildStepBriefing({ workflow, stepId, capabilities, profiles, ga
     expectAnyOf: step.expectAnyOf ?? [],
     // 증거를 안 넘기면 대조하지 않는다. 흐름을 안 고르고 부르는 것이 기본 사용이다.
     matches: evidence ? matchExpectations(evidence, step.expect) : null,
+    // expectAnyOf를 쓰는 단계가 서른이다. expect만 대조하면 그쪽은 통째로 안 보인다.
+    anyOfMatches: evidence
+      ? (step.expectAnyOf ?? []).map((g) => matchExpectations(evidence, g?.conditions))
+      : null,
     requires: variant?.requires ?? capability?.requires ?? [],
     evidence: variant?.evidence ?? capability?.evidence ?? [],
     completion: variant?.completion ?? capability?.completion ?? null,
@@ -161,12 +165,19 @@ export function renderStepBriefing(b) {
     // 바깥 배열이 OR이고 각 묶음의 conditions가 AND다 (workflow.schema.json).
     if (b.expectAnyOf.length) {
       out.push(bullet(['expectAnyOf  아래 묶음 중 하나가 성립하면 된다']))
-      for (const group of b.expectAnyOf) {
+      for (const [gi, group] of b.expectAnyOf.entries()) {
         const conditions = (group?.conditions ?? [])
           .filter((e) => e?.evidence)
           .map((e) => `${e.evidence} = ${e.status}${e.from ? ` (from: ${e.from})` : ''}`)
           .join('  그리고  ')
-        out.push(bullet([`      · ${conditions}`]))
+        const groupMatches = b.anyOfMatches?.[gi]
+        // 묶음 안은 AND다. 하나라도 없으면 그 묶음은 성립하지 않는다.
+        const mark = !groupMatches
+          ? ''
+          : groupMatches.length && groupMatches.every((m) => m.found)
+            ? '  ✓'
+            : '  ⚠'
+        out.push(bullet([`      · ${conditions}${mark}`]))
       }
     }
   }
