@@ -15,6 +15,10 @@ Agent Run
 
 `event.schema.json`의 각 이벤트는 `runId`·`parentId`·`spanId`로 이 계층을 재구성한다.
 
+`run.started`·`run.completed`가 여는 것은 **흐름**이지 세션이 아니다. 한 실행이 여러
+세션에 걸쳐도 `runId`는 하나다(ADR-0022). 세션은 이 계약에 없다 — 모델이 도는 자리는
+플랫폼 사실이고, 하네스의 기록이 그것을 몰라야 세션을 넘는 기억이 성립한다.
+
 ## 이벤트
 
 | 이벤트 | 언제 |
