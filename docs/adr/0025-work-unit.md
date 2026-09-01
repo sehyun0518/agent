@@ -26,11 +26,25 @@ false`이며 모든 변형이 `trigger: manual`이다. `AGENT.md` 불변식이 "
 ## 결정 — 한 단위는 계약 하나다
 
 > **하나의 계약으로 고정되고, 계층별 red-green을 한 바퀴 돌고, 한 번 판정되는 것.**
-> 워크플로 한 번이 곧 한 단위다.
+> 만드는 흐름(`change`·`bugfix`) 한 번이 한 단위를 낸다.
 
 새로 만드는 정의가 아니라 **워크플로가 이미 그리고 있는 모양**이다. `specification`이
 계약 하나를 내고, unit→ui→integration→e2e가 한 바퀴 돌고, `review`가 한 번 판정한다.
 그 모양이 곧 단위의 경계다.
+
+`review` 흐름은 단위가 아니다 — `specification` 단계가 없고 계약을 `assumes`로
+가정한다(ADR-0014). **이미 있는 단위를 판정하는 흐름**이다.
+
+### 계약을 보기 전에 판정하는 법
+
+게이트는 `requirements`에서 돌고 그때 계약은 아직 없다. **계약을 상상하게 하면 판정이
+아니라 짐작이 된다.** 그래서 이렇게 묻는다.
+
+> **`scope_in`에서 한쪽을 빼도 나머지가 그대로 성립하면 두 단위다.**
+
+뺀 쪽을 참조하는 수용 기준이 남거나 남은 쪽만으로 화면이 성립하지 않으면 하나다.
+**계약을 그려 보지 않고도 답할 수 있다** — 요구사항 안에서 서로 주고받는 것이 있는지만
+보면 된다.
 
 ### 크기가 아니라 계약의 수가 가른다
 
@@ -51,11 +65,14 @@ false`이며 모든 변형이 `trigger: manual`이다. `AGENT.md` 불변식이 "
 완결성 게이트 케이스 둘로 고정했다.
 
 ```text
-scope-in-spans-two-contracts      독립적인 기능 둘 → failed
-scope-in-many-screens-one-contract 화면 다섯, 계약 하나 → passed
+scope-in-spans-two-contracts        한쪽을 빼도 나머지가 성립  → failed
+scope-in-coupled-features           빼면 남은 쪽이 성립 안 함  → passed
+scope-in-many-screens-one-contract  화면 다섯, 계약 하나       → passed
 ```
 
-둘째가 중요하다. **크기를 재지 않는다는 것을 케이스가 말한다.**
+뒤의 둘이 중요하다. 하나는 **크기를 재지 않는다**는 것을, 다른 하나는 **둘로 보이는
+것이 하나일 수 있다**는 것을 말한다. 앞의 것만 있으면 "나누는 쪽이 항상 안전하다"로
+읽힌다.
 
 ## 버린 대안
 
