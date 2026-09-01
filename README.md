@@ -254,5 +254,6 @@ Capability와 프로파일 소스에서 생성합니다.
 | [ADR-0035](docs/adr/0035-consumer-profile-reach.md) | 도구가 `--profile`로 소비 저장소 프로파일을 읽습니다. |
 | [ADR-0036](docs/adr/0036-hook-execution-points.md) | 훅 여섯 중 넷은 대응점이 있고 둘은 런타임이 만듭니다 (C4). |
 | [ADR-0037](docs/adr/0037-layer-advice.md) | 계층 규약이 없으면 도메인 것을 제안합니다. 막지 않습니다. |
+| [ADR-0038](docs/adr/0038-layer-applicability.md) | 계층은 전부 필수이고, 해당 없음은 계약 고정 단계가 판정합니다. |
 
 구조 이관 내역은 [docs/migration/inventory.md](docs/migration/inventory.md)에서 확인할 수 있습니다.

@@ -22,6 +22,7 @@ import { walk } from '../walk.mjs'
 import { findBrokenSectionRefs } from './doc-refs.mjs'
 import { findUnknownHookEvents, knownHookEvents, isHookDoc } from './hook-events.mjs'
 import { findLayerAdvice, renderLayerAdvice } from './layer-advice.mjs'
+import { findLayerStepsWithoutEscape, findUnproducedVerdicts } from './layer-applicability.mjs'
 import { findMissingScaffolds } from './workflow-scaffold.mjs'
 import { findUnisolatedBackgroundAgents } from './background-isolation.mjs'
 import { toolRequirement } from './tools.mjs'
@@ -531,10 +532,6 @@ function checkWorkflowSteps(file, doc) {
       }
     }
 
-    // 승인이 필요한 생략은 승인 증거를 남길 수 있어야 한다.
-    if (step.skippable?.approvalRequired && !CORE_EVIDENCE.has('approval-record')) {
-      fail(file, `step:${step.id}: approval-record 증거가 어휘에 없다.`)
-    }
   }
 }
 
@@ -571,10 +568,6 @@ function checkWorkflowTokens(file, doc) {
         checkExpectation(step, item, `step:${step.id}.expectAnyOf[${groupIndex}]`)
       }
     }
-    if (step.skippable) {
-      checkToken(file, step.skippable.evidenceOnSkip, CORE_EVIDENCE, `step:${step.id}.skippable`)
-    }
-
     const capability = CAPABILITIES.get(step.capability)
     const scope = capability?.variants?.[step.variant] ?? capability
     const requiredTokens = [...(capability?.requires ?? []), ...(scope?.requires ?? [])]
@@ -608,6 +601,20 @@ function checkWorkflowTokens(file, doc) {
   }
 
   // 스캐폴드 변형이 선언된 계층은 그 단계를 red 앞에 두고 있어야 한다 (ADR-0011).
+  // 계층은 전부 필수다. 해당 없을 때 넘어갈 근거가 없으면 그 계층이 해당 없는 작업에서
+  // 흐름이 막힌다 (ADR-0038).
+  for (const { step, layer } of findLayerStepsWithoutEscape(steps)) {
+    fail(
+      file,
+      `step:${step}: test.${layer}.applicability = not-applicable 을 expectAnyOf에 두지 않았다. ` +
+        `그 계층이 해당 없는 작업에서 넘어갈 근거가 없다. (ADR-0038)`,
+    )
+  }
+
+  for (const missing of findUnproducedVerdicts(steps, CAPABILITIES)) {
+    fail(file, `${missing}: 그 판정을 내는 단계가 흐름 안에 없다. (ADR-0038)`)
+  }
+
   for (const { step, scaffold } of findMissingScaffolds(steps, graph, CAPABILITIES)) {
     fail(
       file,

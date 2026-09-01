@@ -71,18 +71,24 @@ producedBy: test-execution#unit
 - 실패했을 때 `summary`에 **실패한 테스트 이름**을 남긴다. 숫자만 있으면 다음 단계가
   무엇이 깨졌는지 다시 실행해야 한다.
 
-## 4. 생략 (ui · integration · e2e)
+## 4. 해당 없음 (ui · integration · e2e)
 
-UI가 없는 작업과 설계에서 불필요하다고 판정된 integration·e2e는 생략할 수 있다.
-단, **침묵 생략은 금지**다. 생략하면
-`test.skip-justification` 증거를 남긴다.
+**계층은 전부 필수다. 생략하는 것이 아니라, 해당되지 않을 때 넘어간다.**
+
+그리고 **그 판정은 이 역할이 하지 않는다.** 계약 고정 단계가 남긴
+`test.<layer>.applicability`를 따른다 — 실행자가 자기 일의 유무를 스스로 선언하면
+그 판정을 검증할 근거가 사라진다 (ADR-0038).
 
 ```yaml
-kind: test.skip-justification
-status: recorded
-summary: "e2e 생략 — 이번 변경은 순수 함수만 건드리고 UI 경로가 없음"
-producedBy: test-execution#e2e
+# specification 단계가 남긴다. test-runner는 읽기만 한다.
+kind: test.e2e.applicability
+status: not-applicable
+summary: "이번 변경은 순수 함수만 건드리고 사용자 경로가 없다"
+producedBy: specification
+step: specification
 ```
+
+판정이 `applicable`인데 돌리지 않았다면 그것은 해당 없음이 아니라 **안 한 것**이다.
 
 사유 없는 생략은 "전부 통과"처럼 읽힌다. unit은 생략할 수 없다.
 

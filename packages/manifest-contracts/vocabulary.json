@@ -216,20 +216,28 @@
         "moot"
       ]
     },
-    "test.skip-justification": {
+    "test.ui.applicability": {
       "statuses": [
-        "recorded"
+        "applicable",
+        "not-applicable"
+      ]
+    },
+    "test.integration.applicability": {
+      "statuses": [
+        "applicable",
+        "not-applicable"
+      ]
+    },
+    "test.e2e.applicability": {
+      "statuses": [
+        "applicable",
+        "not-applicable"
       ]
     },
     "documentation-impact": {
       "statuses": [
         "required",
         "not-applicable"
-      ]
-    },
-    "documentation.skip-justification": {
-      "statuses": [
-        "recorded"
       ]
     },
     "review-findings": {

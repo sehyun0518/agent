@@ -82,5 +82,6 @@ notes:
 ## 완료 조건
 
 `changed-files` 증거가 원본 경로와 함께 기록돼야 완료입니다. 고친 문서가 없는데
-완료로 표시하지 않습니다 — 고칠 것이 없었다면 그것은 생략이고, 생략에는 사유
-증거(`documentation.skip-justification`)가 필요합니다.
+완료로 표시하지 않습니다 — 고칠 것이 없었다면 그 판정은 계약 고정 단계의
+`documentation-impact`가 `not-applicable`로 남긴 것이어야 합니다. 이 레이어가
+스스로 선언하지 않습니다.

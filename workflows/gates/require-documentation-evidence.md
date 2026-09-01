@@ -4,7 +4,7 @@
 - 연결: 워크플로 step의 `gate: [..., require-documentation-evidence]`
 - blocking: 예.
 - 소비 증거: `documentation-impact` · `documentation.changeset` ·
-  `documentation.skip-justification`
+  (판정이 `not-applicable`이면 사유는 그 판정 안에 있다)
 
 ## 검사
 
@@ -15,7 +15,7 @@
 |---|---|
 | 없음 | 차단. 계약 고정 단계로 되돌린다 |
 | `required` | `documentation.changeset`이 있고, 판정이 지목한 문서가 실제로 그 안에 있다 |
-| `not-applicable` | `documentation.skip-justification`이 구체적 사유와 함께 기록됨 |
+| `not-applicable` | 그 판정이 구체적 사유를 담고 있음. 별도 증거를 요구하지 않는다 |
 
 `required` 판정이 문서 A·B를 지목했는데 changeset에 A만 있으면 차단이다. 부분 갱신을
 완료로 읽으면 나머지 문서가 조용히 낡는다. B를 이번에 고치지 않기로 했다면 그것도

@@ -48,6 +48,7 @@ import { findUnansweredReviews, findPendingChecks, reviewers } from '../briefing
 import { findBrokenSectionRefs, sectionNumbers } from './doc-refs.mjs'
 import { findUnknownHookEvents, hookEventOf, knownHookEvents, isHookDoc } from './hook-events.mjs'
 import { findLayerAdvice, renderLayerAdvice, testLayersInCommands } from './layer-advice.mjs'
+import { findLayerStepsWithoutEscape, findUnproducedVerdicts, layerOfStep } from './layer-applicability.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -2718,5 +2719,71 @@ test('kind가 repository가 아니면 대상이 아니다', () => {
 test('수동 계층은 제안하지 않는다', () => {
   const advice = findLayerAdvice(소비(), [도메인({ unit: { manual: { document: 'x' } } })])
   assert.deepEqual(advice, [{ layer: 'unit', suggestions: [] }])
+})
+
+// ── 계층 해당 여부 (ADR-0038) ─────────────────────────────────────────────
+//
+// 계층은 전부 필수다. 건너뛰는 것이 아니라 해당되지 않을 때 넘어간다. 판정은 실행자가
+// 아니라 계약 고정 단계가 한다 — 스스로 선언하면 그 판정을 검증할 근거가 사라진다.
+//
+// 전에는 skippable이 단계마다 있었다. 설계가 "UI가 있다"고 해도 실행자가 사유 한 줄로
+// 통째로 건너뛸 수 있었고, 둘이 어긋나도 아무도 몰랐다.
+
+const 탈출 = (layer) => ({
+  conditions: [{ evidence: `test.${layer}.applicability`, status: 'not-applicable', from: 'specification' }],
+})
+
+test('계층 단계를 id로 가린다', () => {
+  assert.equal(layerOfStep('ui-scaffold'), 'ui')
+  assert.equal(layerOfStep('integration-design'), 'integration')
+  assert.equal(layerOfStep('e2e-red'), 'e2e')
+  assert.equal(layerOfStep('unit-red'), null) // unit은 판정 대상이 아니다 (ADR-0004)
+  assert.equal(layerOfStep('review'), null)
+  assert.equal(layerOfStep(undefined), null)
+})
+
+test('탈출구가 있으면 통과한다', () => {
+  assert.deepEqual(findLayerStepsWithoutEscape([{ id: 'ui-red', expectAnyOf: [탈출('ui')] }]), [])
+})
+
+test('탈출구가 없으면 검출한다', () => {
+  assert.deepEqual(
+    findLayerStepsWithoutEscape([{ id: 'ui-red', expect: [{ evidence: 'x', status: 'y' }] }]),
+    [{ step: 'ui-red', layer: 'ui' }],
+  )
+})
+
+// 다른 계층의 판정으로는 넘어갈 수 없다.
+test('다른 계층의 탈출구는 세지 않는다', () => {
+  assert.deepEqual(
+    findLayerStepsWithoutEscape([{ id: 'e2e-red', expectAnyOf: [탈출('ui')] }]),
+    [{ step: 'e2e-red', layer: 'e2e' }],
+  )
+})
+
+test('unit 단계는 탈출구를 요구하지 않는다', () => {
+  assert.deepEqual(findLayerStepsWithoutEscape([{ id: 'unit-red', expect: [] }]), [])
+})
+
+test('판정을 내는 단계가 흐름 안에 있어야 한다', () => {
+  const steps = [
+    { id: 'specification', capability: 'specification' },
+    { id: 'ui-red', expectAnyOf: [탈출('ui')] },
+  ]
+  const 있음 = new Map([['specification', { evidence: [{ kind: 'test.ui.applicability' }] }]])
+  assert.deepEqual(findUnproducedVerdicts(steps, 있음), [])
+  const 없음 = new Map([['specification', { evidence: [] }]])
+  assert.deepEqual(findUnproducedVerdicts(steps, 없음), ['test.ui.applicability (from specification)'])
+})
+
+// review는 앞선 실행의 판정을 받는다. from이 없으면 흐름 밖이라는 뜻이다 (ADR-0014).
+test('from이 없으면 흐름 밖 판정이라 보지 않는다', () => {
+  const steps = [{ id: 'ui', expectAnyOf: [{ conditions: [{ evidence: 'test.ui.applicability', status: 'not-applicable' }] }] }]
+  assert.deepEqual(findUnproducedVerdicts(steps, new Map()), [])
+})
+
+test('입력이 없어도 터지지 않는다', () => {
+  assert.deepEqual(findLayerStepsWithoutEscape(undefined), [])
+  assert.deepEqual(findUnproducedVerdicts(undefined, undefined), [])
 })
 
