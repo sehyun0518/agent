@@ -27,6 +27,7 @@ import { findMissingMootBranches } from './workflow-red-proof.mjs'
 import { findMissingScaffolds } from './workflow-scaffold.mjs'
 import { findUnisolatedBackgroundAgents } from './background-isolation.mjs'
 import { writesFilesystem, toolRequirement } from './tools.mjs'
+import { findEscalationCycles, findDanglingEscalations } from './escalation.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -1776,5 +1777,88 @@ test('포그라운드는 격리 없이 써도 대상이 아니다', () => {
 test('역할이 없어도 터지지 않는다', () => {
   assert.deepEqual(findUnisolatedBackgroundAgents(new Map([['x', {}]])), [])
   assert.deepEqual(findUnisolatedBackgroundAgents(undefined), [])
+})
+
+// ── 에스컬레이션 종료 (ADR-0029 · #85) ─────────────────────────────────────
+//
+// 재시도는 스키마가 묶는다 — maxAttempts가 maximum: 3이고 action이 분류마다
+// const다. 에스컬레이션에는 그런 것이 없어서 사슬이 돌 수 있다.
+
+const 넘김 = (to) => ({ failure: { 'contract-violation': { action: 'escalate', escalateTo: to } } })
+const 사슬 = (entries) => new Map(entries.map(([id, to]) => [id, 넘김(to)]))
+
+test('에스컬레이션 사슬이 orchestrator에서 끝나면 통과한다', () => {
+  const capabilities = 사슬([
+    ['implementation', 'specification'],
+    ['specification', 'requirements'],
+    ['requirements', 'orchestrator'],
+  ])
+  assert.deepEqual(findEscalationCycles(capabilities), [])
+  assert.deepEqual(findDanglingEscalations(capabilities), [])
+})
+
+test('사슬이 돌면 검출한다', () => {
+  assert.deepEqual(
+    findEscalationCycles(사슬([['a', 'b'], ['b', 'c'], ['c', 'a']])),
+    [{ cycle: ['a', 'b', 'c'] }],
+  )
+})
+
+test('자기 자신을 가리켜도 순환이다', () => {
+  assert.deepEqual(findEscalationCycles(사슬([['a', 'a']])), [{ cycle: ['a'] }])
+})
+
+// 시작점이 셋이어도 순환은 하나다. 시작점마다 보고하면 같은 것을 세 번 말한다.
+test('같은 순환을 시작점마다 보고하지 않는다', () => {
+  assert.equal(findEscalationCycles(사슬([['a', 'b'], ['b', 'c'], ['c', 'a']])).length, 1)
+})
+
+test('순환에 닿는 사슬이 있어도 순환만 보고한다', () => {
+  assert.deepEqual(
+    findEscalationCycles(사슬([['entry', 'a'], ['a', 'b'], ['b', 'a']])),
+    [{ cycle: ['a', 'b'] }],
+  )
+})
+
+test('escalateTo가 없으면 orchestrator로 본다', () => {
+  assert.deepEqual(findEscalationCycles(new Map([['a', {}]])), [])
+  assert.deepEqual(findDanglingEscalations(new Map([['a', {}]])), [])
+})
+
+// 스키마가 action을 const로 막지만 이 검사는 스키마 검증과 독립적으로 돈다.
+// 스키마 실패한 문서도 여기 들어오므로 action을 직접 본다 (#89 리뷰).
+test('action이 escalate가 아니면 escalateTo를 따라가지 않는다', () => {
+  const capabilities = new Map([
+    ['a', { failure: { 'contract-violation': { action: 'halt', escalateTo: 'b' } } }],
+    ['b', 넘김('a')],
+  ])
+  assert.deepEqual(findEscalationCycles(capabilities), [])
+  assert.deepEqual(findDanglingEscalations(capabilities), [])
+})
+
+test('action이 escalate가 아니면 없는 대상도 보고하지 않는다', () => {
+  assert.deepEqual(
+    findDanglingEscalations(new Map([
+      ['a', { failure: { 'contract-violation': { action: 'halt', escalateTo: 'ghost' } } }],
+    ])),
+    [],
+  )
+})
+
+test('없는 Capability를 가리키면 검출한다', () => {
+  assert.deepEqual(
+    findDanglingEscalations(사슬([['a', 'ghost']])),
+    [{ capability: 'a', escalateTo: 'ghost' }],
+  )
+})
+
+// 없는 대상은 순환이 아니다. 두 검사가 나눠 갖고 겹치지 않는다.
+test('없는 대상을 순환으로 세지 않는다', () => {
+  assert.deepEqual(findEscalationCycles(사슬([['a', 'ghost']])), [])
+})
+
+test('capability가 없어도 터지지 않는다', () => {
+  assert.deepEqual(findEscalationCycles(undefined), [])
+  assert.deepEqual(findDanglingEscalations(undefined), [])
 })
 
