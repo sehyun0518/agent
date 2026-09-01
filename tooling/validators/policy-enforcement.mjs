@@ -90,3 +90,26 @@ export function findUnknownProjections(policies, registry = PROJECTION_REGISTRY)
   const ids = new Set((policies ?? []).map((p) => p.id))
   return Object.keys(registry).filter((id) => !ids.has(id))
 }
+
+/**
+ * `policies/README.md`의 표와 레지스트리가 갈라진 곳.
+ *
+ * 이 표는 세 번 갈라졌다. #49는 일부만 강제되는 것을 ⏳로 적어 뒀고, #50과 이 변경은
+ * 실제로 도는 강제를 표가 빠뜨린 것을 고쳤다. 단일 출처를 레지스트리로 정해 뒀지만
+ * **표를 손으로 옮겨 적는 한 네 번째가 난다.**
+ *
+ * 표 문법에 기대는 검사라 깨지기 쉽다. 다만 깨지면 조용하지 않고 여기서 실패하므로,
+ * 그때는 문법이 바뀐 것이고 이 정규식을 함께 고치면 된다.
+ *
+ * @param {string} markdown policies/README.md 전문
+ * @returns {Array<{name: string, problem: 'not-in-registry'|'not-in-table'}>}
+ */
+export function findEnforcementTableDrift(markdown, registry = VALIDATOR_REGISTRY) {
+  const named = new Set([...(markdown ?? '').matchAll(/validator `([a-z][a-z0-9-]*)`/g)].map((m) => m[1]))
+  const known = new Set(Object.keys(registry))
+
+  return [
+    ...[...named].filter((n) => !known.has(n)).map((name) => ({ name, problem: 'not-in-registry' })),
+    ...[...known].filter((n) => !named.has(n)).map((name) => ({ name, problem: 'not-in-table' })),
+  ]
+}

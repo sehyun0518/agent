@@ -26,6 +26,7 @@ import {
   findUnreferencedValidators,
   PROJECTION_REGISTRY,
   findUnknownProjections,
+  findEnforcementTableDrift,
 } from './policy-enforcement.mjs'
 import {
   approvalRequiredVariants,
@@ -1234,7 +1235,7 @@ test('빈 입력은 대상이 아니다', () => {
 // ADR-0015가 검증기도 훅도 아닌 강제 수단을 하나 만들었다. 그대로 두면 강제 현황표가
 // 실제로 도는 강제를 빠뜨린다 — #50이 고친 것과 같은 종류의 드리프트다.
 
-test('레지스트리가 없는 정책을 가리키면 검출한다', () => {
+test('정책 선언이 없는 레지스트리 항목을 검출한다', () => {
   const found = findUnknownProjections([{ id: 'destructive-approval' }], {
     'destructive-approval': {},
     '없어진-정책': {},
@@ -1256,4 +1257,55 @@ test('실제 레지스트리의 모든 항목에 근거와 출처가 있다', ()
     assert.ok(entry.by, `${id}: 무엇이 강제하는지 by에 적어야 한다`)
     assert.ok(entry.source, `${id}: 어느 파일이 소유하는지 source에 적어야 한다`)
   }
+})
+
+// 이 표는 세 번 갈라졌다 (#49 · #50 · 이 변경). 단일 출처를 레지스트리로 정해 뒀지만
+// 표를 손으로 옮겨 적는 한 네 번째가 난다.
+
+const 레지스트리 = { 'tools-within-permissions': {}, 'network-within-allowlist': {} }
+
+test('레지스트리에 있는데 표에 안 적힌 검증기를 검출한다', () => {
+  const md = '| a | b | validator `tools-within-permissions` ✅ |'
+  assert.deepEqual(findEnforcementTableDrift(md, 레지스트리), [
+    { name: 'network-within-allowlist', problem: 'not-in-table' },
+  ])
+})
+
+test('표에 있는데 레지스트리에 없는 이름을 검출한다', () => {
+  const md = [
+    '| a | b | validator `tools-within-permissions` ✅ |',
+    '| a | b | validator `network-within-allowlist` ✅ |',
+    '| a | b | validator `sensitive-data-blocked` ✅ |',
+  ].join('\n')
+  assert.deepEqual(findEnforcementTableDrift(md, 레지스트리), [
+    { name: 'sensitive-data-blocked', problem: 'not-in-registry' },
+  ])
+})
+
+// 검증기 id는 policy.schema.json이 소문자 kebab으로 고정한다. 그 밖의 표기는 검증기
+// 참조로 보지 않는다 — 실제 이름이 될 수 없기 때문이다. 다만 오타가 그 형태를 벗어나면
+// "표에 없다"로 잡히지 "이상한 이름이 있다"로 잡히지 않는다. 어느 쪽이든 실패한다.
+test('소문자 kebab이 아닌 표기는 검증기 참조로 보지 않는다', () => {
+  const md = [
+    '| a | b | validator `tools-within-permissions` ✅ |',
+    '| a | b | validator `Network-Within-Allowlist` ✅ |',
+  ].join('\n')
+  assert.deepEqual(findEnforcementTableDrift(md, 레지스트리), [
+    { name: 'network-within-allowlist', problem: 'not-in-table' },
+  ])
+})
+
+test('양쪽이 맞으면 통과한다', () => {
+  const md = [
+    '| a | b | validator `tools-within-permissions` ✅ |',
+    '| a | b | validator `network-within-allowlist` 🟡 + 플랫폼 투영 🛡️ |',
+  ].join('\n')
+  assert.deepEqual(findEnforcementTableDrift(md, 레지스트리), [])
+})
+
+test('빈 입력은 레지스트리 전체를 미기재로 본다', () => {
+  assert.deepEqual(
+    findEnforcementTableDrift(undefined, 레지스트리).map((d) => d.problem),
+    ['not-in-table', 'not-in-table'],
+  )
 })

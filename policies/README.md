@@ -23,7 +23,7 @@ Capability 기본 설정
 | data-handling | `secrets-redaction` | blocking hook (`on-evidence`·`before-tool`) ⏳ |
 | data-handling | `sensitive-data-storage` | blocking hook (`on-evidence`) ⏳ |
 | data-handling | `audit-trail` | validator `completion-requires-evidence` ✅ + hook ⏳ |
-| destructive-actions | `destructive-approval` | validator ✅ + 플랫폼 투영 🛡️ + blocking hook ⏳ |
+| destructive-actions | `destructive-approval` | validator `destructive-requires-manual-and-approval` ✅ + 플랫폼 투영 🛡️ + blocking hook ⏳ |
 
 ✅ 은 `npm run validate`에서 실제로 도는 검사, 🟡 는 일부만 정적으로 강제되고 나머지가
 런타임을 기다리는 것, 🛡️ 는 **플랫폼의 permission 런타임이 강제하는 것**, ⏳ 은 훅

@@ -36,6 +36,7 @@ import {
   findUnknownValidators,
   findUnreferencedValidators,
   findUnknownProjections,
+  findEnforcementTableDrift,
 } from './policy-enforcement.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -886,6 +887,16 @@ for (const [path, kind, extra] of targets) validateFile(path, kind, extra)
 // "problems가 하나라도 있으면 건너뛴다"로 하지 않는 이유는, 무관한 파일의 문제 하나로
 // 이 검사가 조용히 꺼지기 때문이다. 꺼질 때는 꺼졌다고 출력한다.
 if (declaredEnforcement.length === POLICY_PATHS.length) {
+  // 표를 손으로 옮겨 적는 한 레지스트리와 갈라진다. 세 번 났다.
+  const README = join(ROOT, 'policies', 'README.md')
+  const TABLE_MESSAGE = {
+    'not-in-registry': (n) => `표가 검증기 "${n}"을 이름으로 적었는데 레지스트리에 없다.`,
+    'not-in-table': (n) => `레지스트리의 "${n}"이 표에 안 적혀 있다. 강제되는데 안 보인다.`,
+  }
+  for (const { name, problem } of findEnforcementTableDrift(readFileSync(README, 'utf8'))) {
+    fail(README, TABLE_MESSAGE[problem](name))
+  }
+
   for (const id of findUnknownProjections(declaredEnforcement)) {
     fail(
       join(ROOT, 'tooling', 'validators', 'policy-enforcement.mjs'),
