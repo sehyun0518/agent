@@ -7,6 +7,7 @@ import { findDocumentationBypass } from './documentation-gate.mjs'
 import { findReadonlyWriteTools } from './agent-readonly.mjs'
 import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
 import { commandsInScript, findChecksMissingFromCi } from './pipeline.mjs'
+import { findForeignNamespaceTokens, insertTokens } from './profile-namespace.mjs'
 import {
   normalize,
   classifyPack,
@@ -1478,4 +1479,42 @@ test('CI의 멀티라인·체인 step도 명령 단위로 가른다', () => {
 test('여러 줄 run에 섞여 있어도 찾는다', () => {
   const found = findChecksMissingFromCi('npm run a', ['echo x\nnpm run a\necho y'])
   assert.deepEqual(found, [])
+})
+
+// ---------------------------------------------------------------- 네임스페이스 소유권
+// ADR-0001이 프로파일마다 네임스페이스를 준 이유는 중앙 등록 없이 자기 토큰을 만들게
+// 하기 위해서다. 남의 접두사를 쓰면 그 프로파일을 떼어냈을 때 없는 것을 가리킨다.
+
+test('자기 것이 아닌 네임스페이스를 검출한다', () => {
+  const found = findForeignNamespaceTokens(['backend:x.y', 'frontend:a.b'], 'frontend')
+  assert.deepEqual(found, [{ token: 'backend:x.y', namespace: 'backend' }])
+})
+
+// 코어 토큰은 프로파일을 떼어내도 남는 것이라 대상이 아니다.
+test('접두사 없는 코어 토큰은 대상이 아니다', () => {
+  assert.deepEqual(findForeignNamespaceTokens(['changed-files', 'review-findings'], 'frontend'), [])
+  assert.deepEqual(findForeignNamespaceTokens(undefined, 'frontend'), [])
+})
+
+// 계약 필드가 늘면 이 함수도 늘어야 한다. 하나라도 빠지면 그 자리로 남의
+// 네임스페이스가 새어 들어온다.
+test('삽입 단계의 네 자리에서 토큰을 모은다', () => {
+  const tokens = insertTokens({
+    produces: ['frontend:a.b'],
+    evidence: [{ kind: 'changed-files' }, { kind: 'frontend:c.d' }],
+    completion: { requiresEvidence: ['changed-files'] },
+    skippable: { evidenceOnSkip: 'frontend:e.f' },
+  })
+  assert.deepEqual(tokens, [
+    'frontend:a.b',
+    'changed-files',
+    'frontend:c.d',
+    'changed-files',
+    'frontend:e.f',
+  ])
+})
+
+test('계약 필드가 비어도 터지지 않는다', () => {
+  assert.deepEqual(insertTokens({}), [])
+  assert.deepEqual(insertTokens(undefined), [])
 })

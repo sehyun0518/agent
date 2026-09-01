@@ -146,6 +146,11 @@ frontend:visual.snapshot-result    # 비주얼 스냅샷 증거
 
 이 토큰들은 코어 표에 등록하지 않는다. 프론트엔드 프로파일을 떼어내면 함께 사라진다.
 
+**도메인 단계의 생략 어휘도 여기 온다.** `test.skip-justification`은 테스트 계층용이고
+`documentation.skip-justification`은 문서용이라, 프로파일이 끼운 단계의 생략은 자기
+네임스페이스에 만든다 — `frontend:state.skip-justification`처럼. 코어에 두면 코어가
+도메인 축을 알기 시작한다 (ADR-0017).
+
 ## 5. 증거 레코드 형식
 
 ```yaml

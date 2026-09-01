@@ -262,6 +262,13 @@ workflowExtensions:
         runner: design
         mode: parallel-with
         anchorCapability: specification
+        produces: [frontend:design.tokens-frozen]
+        evidence:
+          - kind: changed-files
+            required: true
+            artifactRequired: true
+        completion:
+          requiresEvidence: [changed-files]
         note: >-
           계약 고정과 같은 시점에 토큰·시각 스펙을 낸다. 둘 다 끝나야 하류가 병렬로 간다.
           review 전용 흐름에는 계약 고정 단계가 없으므로 이 삽입은 건너뛰어진다.
@@ -270,6 +277,14 @@ workflowExtensions:
         runner: accessibility
         mode: before
         anchorCapability: documentation
+        produces: [frontend:a11y.audited]
+        # 이 역할은 readonly라 파일을 만들지 않는다. 산출은 지적이고, 그것이 증거다.
+        evidence:
+          - kind: review-findings
+            required: true
+            artifactRequired: true
+        completion:
+          requiresEvidence: [review-findings]
         note: >-
           병합된 통합 빌드를 문서 갱신 전에 점검하고 지적만 낸다. 코드를 고치지 않으므로
           뒤에 재검증 단계가 필요 없다 (ADR-0007). Critical 지적이 있으면 routing이
@@ -286,6 +301,19 @@ workflowExtensions:
         anchorStep: logic
         background: true
         isolation: worktree
+        produces: [frontend:state.layer-ready]
+        evidence:
+          - kind: changed-files
+            required: true
+            artifactRequired: true
+        completion:
+          requiresEvidence: [changed-files]
+        # 서버가 없고 데이터가 고정이면 만들 것이 없다. 그때도 침묵으로 넘어가지 않고
+        # 사유를 남긴다 — FE 실행에서 실제로 이 경우였고 기록할 자리가 없었다 (#53).
+        skippable:
+          evidenceOnSkip: frontend:state.skip-justification
+          reasonRequired: true
+          approvalRequired: false
         note: 순수 로직 구현과 같은 시점에 데이터 레이어를 만들고 고정된 계약에만 기댄다.
 
   - workflow: bugfix
@@ -297,6 +325,19 @@ workflowExtensions:
         anchorStep: logic-fix
         background: true
         isolation: worktree
+        produces: [frontend:state.layer-ready]
+        evidence:
+          - kind: changed-files
+            required: true
+            artifactRequired: true
+        completion:
+          requiresEvidence: [changed-files]
+        # 서버가 없고 데이터가 고정이면 만들 것이 없다. 그때도 침묵으로 넘어가지 않고
+        # 사유를 남긴다 — FE 실행에서 실제로 이 경우였고 기록할 자리가 없었다 (#53).
+        skippable:
+          evidenceOnSkip: frontend:state.skip-justification
+          reasonRequired: true
+          approvalRequired: false
         note: 순수 로직 수정과 같은 시점에 데이터 레이어를 만들고 고정된 계약에만 기댄다.
 
 # ---------------------------------------------------------------- 라우팅

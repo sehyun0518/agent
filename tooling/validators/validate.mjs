@@ -39,6 +39,7 @@ import {
   findEnforcementTableDrift,
 } from './policy-enforcement.mjs'
 import { findChecksMissingFromCi } from './pipeline.mjs'
+import { findForeignNamespaceTokens, insertTokens } from './profile-namespace.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const SCHEMA_DIR = join(ROOT, 'packages', 'manifest-contracts')
@@ -686,6 +687,52 @@ function checkWorkflowExtensions(file, doc) {
   // 런타임에 끊긴다 — 삽입 지점과 같은 규칙으로 선언 시점에 잡는다.
   for (const { field, index, name, label } of findUnresolvedRunners(doc, runners)) {
     fail(file, `${field}[${index}] "${label}": 실행자 "${name}"가 없다.`)
+  }
+
+  // 삽입 단계도 증거로 완료를 판정한다 (ADR-0017). 핵심 단계에 걸던 검사를 같은
+  // 순수 함수로 여기에도 건다 — 도메인 축만 다른 규칙을 쓰면 그것이 곧 구멍이다.
+  const producibleTokens = new Set([...CORE_SIGNALS, ...CORE_ARTIFACTS])
+  for (const extension of doc.workflowExtensions ?? []) {
+    for (const insert of extension.insert ?? []) {
+      const label = `workflowExtensions/${insert.id}`
+
+      // 프로파일은 자기 네임스페이스 아래에서만 토큰을 만든다 (ADR-0001). 남의 것을
+      // 쓰면 그 프로파일을 떼어냈을 때 없는 것을 가리키게 된다.
+      for (const { token, namespace } of findForeignNamespaceTokens(insertTokens(insert), doc.namespace)) {
+        fail(
+          file,
+          `${label}: 토큰 "${token}"의 네임스페이스 "${namespace}"는 이 프로파일의 ` +
+            `namespace "${doc.namespace}"가 아니다.`,
+        )
+      }
+
+      for (const token of insert.produces ?? []) {
+        checkToken(file, token, producibleTokens, `${label}.produces`)
+      }
+
+      const declared = new Set()
+      for (const item of insert.evidence ?? []) {
+        checkToken(file, item.kind, CORE_EVIDENCE, `${label}.evidence`)
+        declared.add(item.kind)
+      }
+
+      for (const { kind } of findEvidenceWithoutArtifact([{ label, evidence: insert.evidence }])) {
+        fail(
+          file,
+          `${label}.evidence "${kind}": artifactRequired가 없다. status와 summary만 남는 증거는 ` +
+            `세션과 함께 사라진다. (#45)`,
+        )
+      }
+
+      const groups = normalizeRequiredEvidence(insert.completion?.requiresEvidence)
+      for (const { kind } of findUndeclaredCompletionEvidence(groups, declared)) {
+        fail(file, `${label}.completion: "${kind}"를 요구하지만 evidence에 선언되지 않았다.`)
+      }
+
+      if (insert.skippable) {
+        checkToken(file, insert.skippable.evidenceOnSkip, CORE_EVIDENCE, `${label}.skippable`)
+      }
+    }
   }
 
   // 삽입 하나씩 보는 아래 검사는 겹침을 놓친다. workflow "*"가 특정 워크플로 블록과

@@ -248,6 +248,7 @@ integration·e2e를 생략하려면 **사유와 승인**이 있어야 한다.
 | 도구·모델·권한 | `capabilities/<id>/capability.yaml` | `npm run check` |
 | 선행조건·산출물·증거 | 같은 파일 | `npm run check` |
 | 도메인 지식 (토큰·규칙) | `profiles/<id>/` | `npm run check` |
+| 삽입 단계의 증거·생략 조건 | `profiles/<id>/profile.yaml`의 `workflowExtensions[].insert[]` | `npm run check` |
 | 실행자 이름·단계 구성 | `profiles/<id>/profile.yaml` | `npm run check` |
 | 작업 순서 | `workflows/*.yaml` | `npm run check` |
 | 금지 규칙 | `policies/` | `npm run check` |
@@ -318,6 +319,7 @@ mkdir -p capabilities/<id>/{agents,hooks,tests}
 - 흐름이 스스로 생산하거나 아무도 요구하지 않는 `assumes`가 남아 있는 것
 - 벤더링한 파일이 기록된 해시와 달라지는 것, 마커만 지워 대조를 피하는 것
 - `npm run check`에 넣은 검사가 CI 목록에 없는 것 (로컬에서만 돌고 병합을 못 막는다)
+- 삽입 단계가 증거·완료 조건 없이 선언되는 것, 그 증거가 미등록 토큰인 것
 - 승인을 요구하는 변형이 플랫폼별로 투영되지 않는 것, 투영도 사유도 없는 플랫폼 (생성 실패)
 - 테스트 층 합치기, Git 작업 자동화, 파괴적 작업 자동 진행
 - 오케스트레이터에 도메인 지식 유입, 미러 드리프트
