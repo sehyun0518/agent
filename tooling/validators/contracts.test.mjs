@@ -17,6 +17,12 @@ import {
   findUnusedCommandKeys,
 } from './command-keys.mjs'
 import {
+  MANIFEST_PATH,
+  buildManifest,
+  findStaleMirrorFiles,
+  findUnmanagedFiles,
+} from '../generators/consumer-mirror.mjs'
+import {
   normalize,
   classifyPack,
   extractVendoredBody,
@@ -2858,3 +2864,47 @@ test('프로파일이 비어도 터지지 않는다', () => {
   assert.deepEqual(whatIsLeft({}, undefined, undefined), { missing: [], conventionsMissing: [] })
 })
 
+
+// ── 소비 저장소 미러 (ADR-0040) ─────────────────────────────────────────
+
+test('지난번에 놓았는데 이번에 안 낸 것만 지운다', () => {
+  const stale = findStaleMirrorFiles(
+    ['.claude/agents/spec.md'],
+    { files: ['.claude/agents/spec.md', '.claude/agents/gone.md'] },
+  )
+  assert.deepEqual(stale, ['.claude/agents/gone.md'])
+})
+
+test('매니페스트가 없으면 아무것도 지우지 않는다', () => {
+  // 처음 내는 저장소다. 여기서 present를 지우기 시작하면 남의 것을 지운다.
+  assert.deepEqual(findStaleMirrorFiles(['.claude/agents/spec.md'], {}), [])
+  assert.deepEqual(findStaleMirrorFiles(['.claude/agents/spec.md'], undefined), [])
+})
+
+test('저장소가 자기 것으로 둔 파일은 지우지 않고 말만 한다', () => {
+  const unmanaged = findUnmanagedFiles(
+    ['.claude/agents/spec.md', '.claude/agents/mine.md'],
+    ['.claude/agents/spec.md'],
+    {},
+  )
+  assert.deepEqual(unmanaged, ['.claude/agents/mine.md'])
+})
+
+test('지난번 매니페스트에 있으면 관리하지 않는 것이 아니다', () => {
+  // 이번에 안 냈어도 우리가 놓은 것이다. stale 쪽이 가져간다 — 양쪽에 걸리면 안 된다.
+  const previous = { files: ['.claude/agents/gone.md'] }
+  assert.deepEqual(findUnmanagedFiles(['.claude/agents/gone.md'], [], previous), [])
+  assert.deepEqual(findStaleMirrorFiles([], previous), ['.claude/agents/gone.md'])
+})
+
+test('매니페스트는 어느 판이 냈는지와 정렬된 목록을 담는다', () => {
+  const manifest = buildManifest({ version: '0.3.0', files: ['b.md', 'a.md'] })
+  assert.equal(manifest.harness, '0.3.0')
+  assert.deepEqual(manifest.files, ['a.md', 'b.md'])
+  assert.match(manifest.$comment, /직접 고치지 않는다/)
+})
+
+test('매니페스트 자리는 프로파일 옆이다', () => {
+  // init이 쓰는 .agent-harness/ 와 같은 디렉터리여야 소비 저장소가 한 곳만 본다.
+  assert.equal(MANIFEST_PATH, '.agent-harness/generated.json')
+})
