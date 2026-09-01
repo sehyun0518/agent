@@ -6,6 +6,12 @@ import { resolveRunners, findUnresolvedRunners, findDuplicateInserts } from './p
 import { findDocumentationBypass } from './documentation-gate.mjs'
 import { findReadonlyWriteTools } from './agent-readonly.mjs'
 import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
+import {
+  normalize,
+  classifyPack,
+  extractVendoredBody,
+  findDrift,
+} from '../vendoring/vendored-files.mjs'
 import { findMissingMootBranches } from './workflow-red-proof.mjs'
 import { findMissingScaffolds } from './workflow-scaffold.mjs'
 import {
@@ -1351,4 +1357,64 @@ test('빈 입력은 레지스트리 전체를 미기재로 본다', () => {
     findEnforcementTableDrift(undefined, 레지스트리).map((d) => d.problem),
     ['not-in-table', 'not-in-table'],
   )
+})
+
+// ---------------------------------------------------------------- 벤더링 드리프트
+// ADR-0008이 바이트 일치를 요구하는데 대조 도구가 없었다. 두 번 어겼고 둘 다 사람이
+// 우연히 잡았다 (#33 · ADR-0016).
+
+test('CRLF와 파일 끝 개행만 고른다', () => {
+  assert.equal(normalize('a\r\nb\n\n\n'), 'a\nb\n')
+  assert.equal(normalize('a'), 'a\n')
+  assert.equal(normalize(undefined), '\n')
+})
+
+// 그 밖에는 아무것도 하지 않는다. 공백을 다듬으면 상류의 공백 변경을 못 본다.
+test('그 밖의 공백은 건드리지 않는다', () => {
+  assert.equal(normalize('a  \n\n  b'), 'a  \n\n  b\n')
+})
+
+test('source가 없으면 우리 것으로 본다', () => {
+  assert.equal(classifyPack(undefined), 'own')
+  assert.equal(classifyPack({ author: 'x' }), 'own')
+})
+
+// 마커 유무가 아니라 선언으로 가른다. 마커로 가르면 마커를 지우는 것만으로
+// "우리가 새로 쓴 파일"이 되어 검사를 빠져나간다.
+test('본문을 다시 썼다는 선언이 있어야 대조를 면한다', () => {
+  assert.equal(classifyPack({ source: 'u' }), 'vendored')
+  assert.equal(classifyPack({ source: 'u', vendored: 'body-rewritten' }), 'body-rewritten')
+})
+
+test('마커 사이 본문을 앞뒤 개행 없이 떼어낸다', () => {
+  const md = ['머리말', '<!-- vendored:begin -->', '', '# 상류', '본문', '', '<!-- vendored:end -->', '꼬리말'].join('\n')
+  assert.equal(extractVendoredBody(md).body, '# 상류\n본문')
+})
+
+test('마커가 없거나 순서가 뒤집히거나 여러 번이면 사유를 낸다', () => {
+  assert.equal(extractVendoredBody('마커 없음').problem, 'missing-marker')
+  assert.equal(
+    extractVendoredBody('<!-- vendored:end -->\nx\n<!-- vendored:begin -->').problem,
+    'marker-out-of-order',
+  )
+  assert.equal(
+    extractVendoredBody(
+      ['<!-- vendored:begin -->', 'a', '<!-- vendored:end -->', '<!-- vendored:begin -->', 'b', '<!-- vendored:end -->'].join('\n'),
+    ).problem,
+    'marker-repeated',
+  )
+})
+
+test('내용이 기록과 다르면 검출한다', () => {
+  assert.deepEqual(findDrift({ 'a.md': 'x' }, { 'a.md': 'y' }), [{ path: 'a.md', problem: 'changed' }])
+  assert.deepEqual(findDrift({ 'a.md': 'x' }, { 'a.md': 'x' }), [])
+})
+
+// 한쪽만 보면 지우거나 더해서 빠져나갈 수 있다.
+test('파일이 사라진 것도 기록에 없는 것도 검출한다', () => {
+  const found = findDrift({ 'b.md': 'x' }, { 'a.md': 'x' })
+  assert.deepEqual(found, [
+    { path: 'a.md', problem: 'missing' },
+    { path: 'b.md', problem: 'unrecorded' },
+  ])
 })
