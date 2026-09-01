@@ -2194,6 +2194,72 @@ test('탐색이 없는 디렉터리에 터지지 않는다', () => {
   assert.deepEqual(walk('/없는경로/여기', () => true), [])
 })
 
+// 명령을 돌리는 것이 일인 단계인데 명령이 안 나왔다. 실제 소비 저장소에 돌려 보고
+// 알았다 — capability에서 키를 찾고 프로파일에서 명령을 찾느라 파일 둘을 더 열었다.
+test('변형이 부르는 명령을 낸다', () => {
+  const wf = { id: 'w', steps: [{ id: 's', capability: 'te', variant: 'unit' }] }
+  const caps = new Map([['te', { variants: { unit: { commandKey: 'test.unit' } } }]])
+  const profiles = [{ id: 'blog', commands: { 'test.unit': { command: 'vitest run', cwd: 'apps/x' } } }]
+  const b = buildStepBriefing({ workflow: wf, stepId: 's', capabilities: caps, profiles })
+  assert.deepEqual(b.command, { key: 'test.unit', command: 'vitest run', cwd: 'apps/x', from: 'blog' })
+  const text = renderStepBriefing(b)
+  assert.match(text, /vitest run.*cwd: apps\/x/)
+})
+
+// "아직 안 읽었다"와 "읽었는데 그 키가 없다"는 다른 상태다. 뒤쪽은 프로파일이 잘못된
+// 것이고, 실제로 blog가 test.ui를 test.component로 부르고 있었다.
+test('프로파일을 읽었는데 키가 없는 것과 안 읽은 것을 가른다', () => {
+  const wf = { id: 'w', steps: [{ id: 's', capability: 'te', variant: 'ui' }] }
+  const caps = new Map([['te', { variants: { ui: { commandKey: 'test.ui' } } }]])
+  const 없음 = buildStepBriefing({ workflow: wf, stepId: 's', capabilities: caps, profiles: [] })
+  assert.equal(없음.command.sawCommands, false)
+  assert.match(renderStepBriefing(없음), /--profile/)
+
+  const 있음 = buildStepBriefing({
+    workflow: wf, stepId: 's', capabilities: caps,
+    profiles: [{ id: 'blog', commands: { 'test.component': { command: 'x' } } }],
+  })
+  assert.equal(있음.command.sawCommands, true)
+  assert.match(renderStepBriefing(있음), /다른 이름으로 선언했는지/)
+})
+
+// 도메인 프로파일이 commands: {} 를 갖고 있다. 빈 객체는 봤다고 세지 않는다.
+test('빈 commands는 봤다고 세지 않는다', () => {
+  const wf = { id: 'w', steps: [{ id: 's', capability: 'te', variant: 'ui' }] }
+  const caps = new Map([['te', { variants: { ui: { commandKey: 'test.ui' } } }]])
+  const b = buildStepBriefing({
+    workflow: wf, stepId: 's', capabilities: caps, profiles: [{ id: 'frontend', commands: {} }],
+  })
+  assert.equal(b.command.sawCommands, false)
+})
+
+test('commandKey가 없는 변형은 명령 절이 없다', () => {
+  const wf = { id: 'w', steps: [{ id: 's', capability: 'te', variant: 'x' }] }
+  const caps = new Map([['te', { variants: { x: {} } }]])
+  const text = renderStepBriefing(buildStepBriefing({ workflow: wf, stepId: 's', capabilities: caps }))
+  assert.doesNotMatch(text, /돌릴 명령/)
+})
+
+// 테스트를 쓰는 단계는 라이브러리와 파일 규약이 필요하다. 그것도 프로파일에 있다.
+test('그 계층의 라이브러리·파일 규약을 낸다', () => {
+  const wf = { id: 'w', steps: [{ id: 's', capability: 'td', variant: 'unit' }] }
+  const caps = new Map([['td', { variants: { unit: {} } }]])
+  const profiles = [{ id: 'fe', testing: { layers: { unit: { libraries: ['vitest'], filePatterns: ['**/*.unit.test.ts'] } } } }]
+  const text = renderStepBriefing(buildStepBriefing({ workflow: wf, stepId: 's', capabilities: caps, profiles }))
+  assert.match(text, /라이브러리 {2}vitest/)
+  assert.match(text, /\*\*\/\*\.unit\.test\.ts/)
+})
+
+test('수동 계층은 러너가 없다고 낸다', () => {
+  const wf = { id: 'w', steps: [{ id: 's', capability: 'td', variant: 'integration' }] }
+  const caps = new Map([['td', { variants: { integration: {} } }]])
+  const profiles = [{ id: 'fe', testing: { layers: { integration: { manual: { document: 'x' } } } } }]
+  assert.match(
+    renderStepBriefing(buildStepBriefing({ workflow: wf, stepId: 's', capabilities: caps, profiles })),
+    /수동 — 러너가 없다/,
+  )
+})
+
 test('단계 목록을 낸다', () => {
   assert.deepEqual(stepIds(워크플로), ['spec', 'logic'])
   assert.deepEqual(stepIds(undefined), [])

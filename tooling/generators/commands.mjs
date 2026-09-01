@@ -169,9 +169,9 @@ export const TOOL_COMMANDS = [
   {
     name: 'step',
     kind: 'tool',
-    script: 'npm run step -- <workflow> <step> [--run <runId>]',
+    script: 'npm run step -- <workflow> <step> [--profile <경로>] [--run <runId>]',
     description:
-      '워크플로 단계 하나에 필요한 것을 한 화면으로 모은다 — 게이트·선행 증거·남길 증거·내는 토큰·프로파일 삽입.',
+      '워크플로 단계 하나에 필요한 것을 한 화면으로 모은다 — 돌릴 명령·계층 규약·게이트·선행 증거·남길 증거·내는 토큰·프로파일 삽입.',
     note:
       '출력은 선언에서 그때그때 조립된다. **실행하지 않는다** — 단계를 부르는 것도 증거를 남기는 것도 사람이 한다 (ADR-0002 · ADR-0032).',
   },

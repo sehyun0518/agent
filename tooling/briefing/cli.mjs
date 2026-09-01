@@ -37,8 +37,14 @@ function loadCapabilities() {
   return map
 }
 
-function loadProfiles() {
-  return walk(join(ROOT, 'profiles'), (p) => basename(p) === 'profile.yaml')
+// 소비 저장소 프로파일은 ROOT 밖에 있다 — 하네스가 `.agent-harness/harness/`이면
+// 프로파일은 그 한 단계 위다. 걷어서는 못 찾으므로 경로로 받는다 (ADR-0035).
+//
+// 검증기와 달리 `examples/consumer-repo`를 읽지 않는다. 검증기는 스키마가 실제 소비
+// 설정을 표현할 수 있는지 보려고 읽지만, 브리핑은 **지금 이 저장소에서 무엇을 할지**를
+// 낸다 — 예시의 명령을 보여주면 돌리면 안 되는 명령을 돌리라고 말하게 된다.
+function loadProfiles(extra) {
+  return [...walk(join(ROOT, 'profiles'), (p) => basename(p) === 'profile.yaml'), ...extra]
     .map(readYaml)
     .filter(Boolean)
 }
@@ -87,6 +93,21 @@ function loadEvidence(runId) {
 }
 
 const args = process.argv.slice(2)
+const profilePaths = []
+for (let i = 0; i < args.length; i += 1) {
+  if (args[i] !== '--profile') continue
+  const value = args[i + 1]
+  if (!value || value.startsWith('-')) {
+    console.error('--profile 뒤에 경로가 없다.')
+    process.exit(2)
+  }
+  if (!existsSync(value)) {
+    console.error(`--profile ${value} 가 없다.`)
+    process.exit(2)
+  }
+  profilePaths.push(value)
+}
+
 const runFlag = args.indexOf('--run')
 const requestedRun = runFlag === -1 ? null : args[runFlag + 1]
 if (runFlag !== -1 && (!requestedRun || requestedRun.startsWith('-'))) {
@@ -94,11 +115,13 @@ if (runFlag !== -1 && (!requestedRun || requestedRun.startsWith('-'))) {
   process.exit(2)
 }
 // --run과 그 값만 걷어낸다. 없을 때 runFlag가 -1이라 인덱스로 거르면 첫 인자가 사라진다.
-const positional = runFlag === -1 ? args : args.filter((_, i) => i !== runFlag && i !== runFlag + 1)
-const [workflowId, stepId] = positional
+const drop = new Set()
+if (runFlag !== -1) drop.add(runFlag).add(runFlag + 1)
+for (let i = 0; i < args.length; i += 1) if (args[i] === '--profile') drop.add(i).add(i + 1)
+const [workflowId, stepId] = args.filter((_, i) => !drop.has(i))
 
 if (!workflowId || !stepId) {
-  console.error('사용법: npm run step <workflow> <step> [--run <runId>]')
+  console.error('사용법: npm run step -- <workflow> <step> [--profile <경로>] [--run <runId>]')
   console.error(`워크플로: ${workflowIds().join(' · ')}`)
   process.exit(2)
 }
@@ -120,7 +143,7 @@ const briefing = buildStepBriefing({
   workflow,
   stepId,
   capabilities: loadCapabilities(),
-  profiles: loadProfiles(),
+  profiles: loadProfiles(profilePaths),
   gates: loadGates(),
   evidence: evidence?.records,
 })
