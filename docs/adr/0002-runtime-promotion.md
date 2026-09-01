@@ -26,6 +26,9 @@ JSON Schema)과 검증·생성 CLI만 만들고, 실행 코드는 계약이 안�
 
 아래 조건이 **전부** 충족되기 전에는 실행 코드를 만들지 않는다.
 
+> 조건이 지금 어떤 상태인지는 여기 적지 않는다. 상태는 변하고, 두 곳에 적으면 한 곳이
+> 낡는다. 가장 최근 평가는 ADR-0018에 날짜와 함께 있다.
+
 ### C1. manifest 계약이 한 분기 이상 바뀌지 않았다
 
 `capability.schema.json`·`profile.schema.json`·`workflow.schema.json`에 **구조 변경**이
