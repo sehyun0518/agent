@@ -62,7 +62,8 @@ if (hits.length === 0 && !moved) {
   out.push(`공개 표면 변경 없음. \`${after}\` 유지가 맞습니다.`)
 } else if (hits.length === 0 && moved) {
   out.push(`공개 표면 변경이 없는데 버전이 \`${before}\` → \`${after}\`로 움직였습니다.`,
-    '', '의도한 릴리스인지 확인하세요. 문서·산문만 바뀐 PR이라면 버전은 그대로 두는 편이 낫습니다.')
+    '', '**릴리스 PR이면 이 모양이 정상입니다** — 릴리스는 별도 `chore:` PR로 끊으므로 공개 표면을 건드리지 않습니다 (`docs/operations.md` §2.7).',
+    '', '릴리스가 아닌데 버전이 움직였다면 되돌리세요.')
 } else {
   const grouped = new Map()
   for (const { file, kind } of hits) grouped.set(kind, [...(grouped.get(kind) ?? []), file])
