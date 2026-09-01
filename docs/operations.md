@@ -215,12 +215,15 @@ integration·e2e를 생략하려면 **사유와 승인**이 있어야 한다.
 ### 1.3.1 단계 하나를 시작할 때
 
 ```bash
-npm run step -- <workflow> <step> [--run <runId>]     # 또는 /step
+npm run step -- <workflow> <step> [--profile <경로>] [--run <runId>]     # 또는 /step
 ```
 
 게이트·선행 증거·남길 증거·내는 토큰·프로파일 삽입을 한 화면에 모은다. 워크플로·
 capability·프로파일·게이트를 **호출 시점에** 읽으므로 내용이 낡지 않는다(ADR-0032).
 어휘는 읽지 않는다 — 토큰 이름만 나오고 뜻은 `docs/vocabulary.md`에 있다.
+
+`--profile`로 소비 저장소 프로파일을 주면 **돌릴 명령과 그 계층의 라이브러리·파일
+규약**이 함께 나온다(ADR-0035). 소비 프로파일은 하네스 ROOT 밖에 있어 걷어서는 못 찾는다.
 
 `--run`을 주면 `.harness/runs/{runId}/evidence.yaml`과 대조해 `expect`마다 있는지
 표시한다(ADR-0033). 흐름이 하나뿐이면 안 줘도 찾는다. **여럿이면 고르라고 하고 대조하지
@@ -492,6 +495,18 @@ git status             # 미러가 손으로 고쳐지지 않았는지
 - `profiles/`가 하나뿐인가 → 하나면 "도메인 무관"은 아직 검증되지 않은 주장이다
 
 ---
+
+### 2.5.1 소비 저장소 프로파일도 검사한다
+
+```bash
+node <하네스>/tooling/validators/validate.mjs --profile <소비저장소>/.agent-harness/profile.yaml
+```
+
+`kind: repository`용 검사는 **구조적으로 하네스 안에서 안 돈다** — 그 프로파일이 ROOT
+밖에 있기 때문이다. 경로를 주면 돈다(ADR-0035).
+
+실제 저장소에 돌려 보니 명령 키가 어긋나 있었다 — 코어는 `test.ui`를 찾는데 저장소는
+`test.component`를 선언했고, **양쪽 다 조용했다.**
 
 ### 2.6.1 머지하기 전에
 

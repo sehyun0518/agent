@@ -251,5 +251,6 @@ Capability와 프로파일 소스에서 생성합니다.
 | [ADR-0032](docs/adr/0032-step-briefing.md) | 단계 하나에 필요한 것을 한 화면으로 모읍니다. 읽어서 인쇄할 뿐 실행하지 않습니다. |
 | [ADR-0033](docs/adr/0033-evidence-record-file.md) | 증거는 흐름마다 `evidence.yaml` 하나에 쌓고 `step`으로 단계를 가립니다. |
 | [ADR-0034](docs/adr/0034-review-arrival.md) | 머지 전에 답하지 않은 리뷰를 셉니다. CI로 막지 않습니다. |
+| [ADR-0035](docs/adr/0035-consumer-profile-reach.md) | 도구가 `--profile`로 소비 저장소 프로파일을 읽습니다. |
 
 구조 이관 내역은 [docs/migration/inventory.md](docs/migration/inventory.md)에서 확인할 수 있습니다.

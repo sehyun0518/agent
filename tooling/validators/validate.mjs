@@ -6,7 +6,7 @@
 // 워크플로 선행조건 도달 가능성, 미러 드리프트.
 
 import { readFileSync, readdirSync, existsSync, lstatSync } from 'node:fs'
-import { join, relative, dirname, basename } from 'node:path'
+import { join, relative, resolve, dirname, basename } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import Ajv from 'ajv/dist/2020.js' // 스키마가 draft 2020-12를 쓴다
 import addFormats from 'ajv-formats'
@@ -111,11 +111,44 @@ const CORE_TOKENS = new Set([...CORE_SIGNALS, ...CORE_ARTIFACTS, ...CORE_EVIDENC
  * walk가 건너뛴다. 스키마가 실제 소비 설정을 표현할 수 있는지 확인해야 하므로
  * 명시적으로 더한다.
  */
+// `--profile <path>`로 소비 저장소 프로파일을 함께 검사한다.
+//
+// 하네스 밖에 있는 유일한 선언이라(ADR-0027) 이것이 없으면 `kind: repository`용 검사가
+// **구조적으로 안 돈다** — ADR-0024·0026이 대가로 적어 뒀다. 실제 소비 저장소에 손으로
+// 돌려 보니 명령 키가 어긋나 있었다: 코어는 `test.ui`를 찾는데 저장소는
+// `test.component`를 선언했고, 양쪽 다 조용했다 (ADR-0035).
+//
+// 배포 방식과 무관하다. 하네스가 어디 놓이든 경로를 받으면 읽는다.
+function consumerProfileArgs() {
+  const args = process.argv.slice(2)
+  const paths = []
+  for (let i = 0; i < args.length; i += 1) {
+    if (args[i] !== '--profile') continue
+    const value = args[i + 1]
+    if (!value || value.startsWith('-')) {
+      console.error('--profile 뒤에 경로가 없다.')
+      process.exit(2)
+    }
+    paths.push(resolve(value))
+    i += 1
+  }
+  return paths
+}
+
 function collectProfilePaths() {
   const paths = walk(join(ROOT, 'profiles'), (p) => basename(p) === 'profile.yaml')
   const consumer = join(ROOT, 'examples', 'consumer-repo', '.agent-harness', 'profile.yaml')
   if (existsSync(consumer)) paths.push(consumer)
-  return paths
+  for (const path of consumerProfileArgs()) {
+    if (!existsSync(path)) {
+      console.error(`--profile ${path} 가 없다.`)
+      process.exit(2)
+    }
+    paths.push(path)
+  }
+  // 같은 파일을 두 번 주면 같은 지적이 두 번 난다. 실제로 예시 저장소를 --profile로
+  // 다시 주니 두 줄이 났다 (#96 리뷰).
+  return [...new Set(paths)]
 }
 
 const PROFILE_PATHS = collectProfilePaths()
@@ -837,11 +870,19 @@ function checkProfilePermissions(file, doc) {
   }
 
   // 선언했는데 아무도 부르지 않는 명령 키. 오타가 나면 양쪽이 조용하다 (ADR-0026).
-  for (const key of findUnusedCommandKeys(doc.commands, declaredCommandKeys(CAPABILITIES))) {
+  //
+  // 무엇이 불리는지 함께 낸다. 실제 소비 저장소가 `test.component`를 선언했는데 코어는
+  // `test.ui`를 찾고 있었다 — "이건 안 불린다"만 말하면 무엇을 쓸지는 여전히 찾아야
+  // 한다 (ADR-0035).
+  const commandKeys = declaredCommandKeys(CAPABILITIES)
+  const unused = findUnusedCommandKeys(doc.commands, commandKeys)
+  const missing = commandKeys.filter((key) => !(key in (doc.commands ?? {})))
+  for (const key of unused) {
+    const hint = missing.length ? ` 코어가 찾는데 없는 키: ${missing.join(' · ')}.` : ''
     fail(
       file,
       `commands "${key}": 어느 변형의 commandKey도 아니고 규약 키도 아니다. ` +
-        `오타이거나 아무도 부르지 않는 명령이다. (ADR-0026)`,
+        `오타이거나 아무도 부르지 않는 명령이다.${hint} (ADR-0026)`,
     )
   }
 

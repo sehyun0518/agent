@@ -65,6 +65,40 @@ function insertionsFor(workflowId, step, profiles) {
   return found
 }
 
+
+/**
+ * 이 변형이 부르는 명령. 프로파일이 그 키를 채웠으면 명령까지 낸다.
+ *
+ * 소비 저장소 프로파일이 없으면 키만 낸다 — 그것만으로도 어디를 볼지 알 수 있다.
+ */
+function commandFor(variant, profiles) {
+  const key = variant?.commandKey
+  if (!key) return null
+  // 명령을 가진 프로파일이 하나라도 있었는지 갈라 둔다. "아직 안 읽었다"와 "읽었는데
+  // 그 키가 없다"는 다른 상태이고, 뒤쪽은 프로파일이 잘못된 것이다 — blog가
+  // `test.ui`를 `test.component`로 부르고 있었다 (ADR-0035).
+  let sawCommands = false
+  for (const profile of profiles ?? []) {
+    // 빈 객체는 봤다고 세지 않는다 — 도메인 프로파일이 `commands: {}`를 갖고 있다.
+    if (Object.keys(profile?.commands ?? {}).length > 0) sawCommands = true
+    const found = profile?.commands?.[key]
+    if (found?.command) {
+      return { key, command: found.command, cwd: found.cwd, from: profile.id }
+    }
+  }
+  return { key, command: null, sawCommands }
+}
+
+/** 이 계층의 라이브러리·파일 규약. 프로파일이 소유한다. */
+function testLayerFor(variantId, profiles) {
+  if (!variantId) return null
+  for (const profile of profiles ?? []) {
+    const layer = profile?.testing?.layers?.[variantId]
+    if (layer) return { layer: variantId, ...layer, from: profile.id }
+  }
+  return null
+}
+
 /**
  * 단계 하나의 브리핑. 없는 단계면 null.
  *
@@ -92,6 +126,11 @@ export function buildStepBriefing({ workflow, stepId, capabilities, profiles, ga
       isolation: a.isolation ?? 'none',
     })),
     trigger: step.trigger ?? null,
+    // 명령을 돌리는 것이 일인 단계인데 명령이 안 나왔다. capability에서 키를 찾고
+    // 소비 프로파일에서 명령을 찾느라 파일 둘을 더 열어야 했다 (ADR-0035).
+    command: commandFor(variant, profiles),
+    // 테스트를 쓰는 단계는 라이브러리와 파일 규약이 있어야 한다. 그것도 프로파일에 있다.
+    testLayer: testLayerFor(step.variant, profiles),
     dependsOn: step.dependsOn ?? [],
     gates: gateNames(step.gate).map((name) => ({
       name,
@@ -144,6 +183,30 @@ export function renderStepBriefing(b) {
     }
   }
   if (b.trigger) out.push(`실행  ${b.trigger}${b.skippable ? ' · 생략 가능 (사유를 증거로)' : ''}`)
+
+  if (b.command) {
+    out.push('', '돌릴 명령')
+    if (b.command.command) {
+      out.push(bullet([`${b.command.command}${b.command.cwd ? `   (cwd: ${b.command.cwd})` : ''}`]))
+      out.push(bullet([`commandKey: ${b.command.key}  ←  ${b.command.from}`]))
+    } else {
+      out.push(bullet([`commandKey: ${b.command.key}  —  채워지지 않았다`]))
+      out.push(
+        bullet([
+          b.command.sawCommands
+            ? '      읽은 프로파일에 이 키가 없다. 다른 이름으로 선언했는지 본다'
+            : '      --profile <경로>로 소비 저장소 프로파일을 함께 읽는다',
+        ]),
+      )
+    }
+  }
+
+  if (b.testLayer) {
+    out.push('', '이 계층의 규약')
+    if (b.testLayer.manual) out.push(bullet([`수동 — 러너가 없다 (${b.testLayer.from})`]))
+    if (b.testLayer.libraries?.length) out.push(bullet([`라이브러리  ${b.testLayer.libraries.join(' · ')}`]))
+    if (b.testLayer.filePatterns?.length) out.push(bullet([`파일        ${b.testLayer.filePatterns.join(' · ')}`]))
+  }
 
   if (b.gates.length || b.expects.length || b.expectAnyOf.length || b.dependsOn.length) {
     out.push('', '먼저 있어야 하는 것')
