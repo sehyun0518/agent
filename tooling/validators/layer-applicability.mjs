@@ -12,9 +12,16 @@
 
 const JUDGED_LAYERS = ['ui', 'integration', 'e2e']
 
-/** 이 단계가 속한 계층. 판정 대상이 아니면 null. */
+/**
+ * 이 단계가 속한 계층. 판정 대상이 아니면 null.
+ *
+ * `ui-scaffold`처럼 접두사인 것과 `review.yaml`의 `ui`처럼 **이름 그 자체**인 것을 둘 다
+ * 받는다. 접두사만 봤더니 `review.yaml`의 세 단계가 통째로 검사에서 빠졌다 — 실패가
+ * 아니라 검사가 조용히 꺼진 것이다 (#100 리뷰).
+ */
 export function layerOfStep(stepId) {
-  return JUDGED_LAYERS.find((layer) => String(stepId ?? '').startsWith(`${layer}-`)) ?? null
+  const id = String(stepId ?? '')
+  return JUDGED_LAYERS.find((layer) => id === layer || id.startsWith(`${layer}-`)) ?? null
 }
 
 /**

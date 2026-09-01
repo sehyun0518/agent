@@ -2735,6 +2735,11 @@ const 탈출 = (layer) => ({
 
 test('계층 단계를 id로 가린다', () => {
   assert.equal(layerOfStep('ui-scaffold'), 'ui')
+  // review.yaml의 단계는 하이픈 없이 계층 이름 그 자체다. 접두사만 봤더니 그 흐름이
+  // 통째로 검사에서 빠졌다 — 실패가 아니라 검사가 조용히 꺼졌다 (#100 리뷰).
+  assert.equal(layerOfStep('ui'), 'ui')
+  assert.equal(layerOfStep('integration'), 'integration')
+  assert.equal(layerOfStep('e2e'), 'e2e')
   assert.equal(layerOfStep('integration-design'), 'integration')
   assert.equal(layerOfStep('e2e-red'), 'e2e')
   assert.equal(layerOfStep('unit-red'), null) // unit은 판정 대상이 아니다 (ADR-0004)
@@ -2780,6 +2785,16 @@ test('판정을 내는 단계가 흐름 안에 있어야 한다', () => {
 test('from이 없으면 흐름 밖 판정이라 보지 않는다', () => {
   const steps = [{ id: 'ui', expectAnyOf: [{ conditions: [{ evidence: 'test.ui.applicability', status: 'not-applicable' }] }] }]
   assert.deepEqual(findUnproducedVerdicts(steps, new Map()), [])
+})
+
+// 검사가 실제로 review.yaml을 보는지 — 세 단계가 전부 탈출구를 갖는지 확인한다.
+test('실제 review 흐름의 계층 단계가 전부 탈출구를 갖는다', async () => {
+  const { readFileSync } = await import('node:fs')
+  const { parse } = await import('yaml')
+  const wf = parse(readFileSync(new URL('../../workflows/review.yaml', import.meta.url), 'utf8'))
+  const layered = (wf.steps ?? []).filter((s) => layerOfStep(s.id))
+  assert.equal(layered.length, 3, `계층 단계를 ${layered.length}개만 찾았다`)
+  assert.deepEqual(findLayerStepsWithoutEscape(wf.steps), [])
 })
 
 test('입력이 없어도 터지지 않는다', () => {

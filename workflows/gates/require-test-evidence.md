@@ -11,13 +11,19 @@
 | 층 | 통과 조건 |
 |---|---|
 | unit | `test.unit.result`가 존재한다. 생략 불가 |
-| ui | UI가 적용되면 `test.ui.result`, 아니면 테스트 계획에 연결된 구체적 생략 사유 |
+| ui | `test.ui.result`가 있거나, 계약 고정 단계가 `test.ui.applicability`를 `not-applicable`로 판정함 |
 | integration | `test.integration.result` 또는 `test.integration.manual-result`가 있거나, 계약 고정 단계가 `test.integration.applicability`를 `not-applicable`로 판정함 |
 | e2e | `test.e2e.result` 또는 `test.e2e.manual-result`가 있거나, 계약 고정 단계가 `test.e2e.applicability`를 `not-applicable`로 판정함 |
 
-증거가 없는데 생략 기록도 없으면 차단한다. 생략 기록은 `specification.test-plan`의
-해당 계층 `not-applicable` 판정과 연결되어야 하며, integration·e2e는
-`approval-record: granted`도 함께 있어야 한다.
+증거가 없는데 **해당 없음 판정도 없으면** 차단한다. 판정은 계약 고정 단계가 내고 그
+사유를 담는다 — 실행 계층이 자기 일의 유무를 스스로 선언하지 않는다 (ADR-0038).
+
+`integration`·`e2e`의 `not-applicable`은 `approval-record: granted`와 함께 있어야 한다.
+계층 넷 중 둘을 통째로 건너뛰는 판정이라 비용이 크다 (ADR-0004).
+
+**이 요구는 규약이지 장치가 아니다.** 전에는 `skippable.approvalRequired`가 선언에
+있었지만 그것도 어휘에 `approval-record`가 있는지만 봤을 뿐 실제 승인을 강제하지
+않았다. 강제 수준은 그대로이고 적히는 자리만 옮겼다.
 
 ## `manual-result` — 러너 없이 검증한 경우 (integration·e2e만)
 
