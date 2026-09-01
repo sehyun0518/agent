@@ -153,15 +153,31 @@ frontend:visual.snapshot-result    # 비주얼 스냅샷 증거
 
 ## 5. 증거 레코드 형식
 
+**어디에 쓰나** — 흐름 하나에 파일 하나다. 순서대로 덧붙인다 (ADR-0033).
+
+```text
+.harness/runs/{runId}/
+  evidence.yaml     ← 레코드가 여기 쌓인다
+  unit.json         ← artifact가 가리키는 원본
+```
+
+같은 단계를 재시도하면 레코드가 둘이 된다. **덮어쓰지 않는다** — 둘 다 남기고 읽는
+쪽이 마지막을 본다. 재시도로 통과한 것과 한 번에 통과한 것은 다른 사건이다.
+
 ```yaml
 evidence:
   - kind: test.unit.result          # §3 등록 토큰
     status: failed                  # 해당 kind의 허용 status 중 하나
     summary: "3 failed, 12 passed"  # 사람이 읽는 한 줄
     artifact: .harness/runs/{runId}/unit.json   # 원본 경로 (코어 증거는 필수)
+    step: unit-red                  # 흐름의 어느 단계인가
     producedBy: test-execution#unit # <capability>[#<variant>]
 ```
 
+- **`step`과 `producedBy`는 다른 축이다.** `producedBy`는 **누가** 만들었나(역할)이고
+  `step`은 흐름의 **어디**인가(위치)다. 역할로는 단계를 못 가린다 — `test-execution#unit`이
+  `unit-red`와 `unit-green` 둘 다이고, `change`·`bugfix`에서 여덟 곳이 그렇다. 게이트의
+  `expect.from`이 찾는 것은 `step`이다 (ADR-0033).
 - `status`는 워크플로 전이 조건이 대조하는 값이다. 상태 머신이 아니라 이 값이 전이를 결정한다.
 - `artifact`는 코어 증거에서 **필수**다. capability manifest가 `artifactRequired: true`로
   선언하고 `npm run validate`가 대조한다. `status`와 `summary` 한 줄만 남는 증거는 세션과
