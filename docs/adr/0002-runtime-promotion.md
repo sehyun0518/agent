@@ -71,6 +71,17 @@ core Capability를 고칠 필요가 없어야 한다.
 5. **`orchestrator`** — 조정 루프. 마지막인 이유는 위 넷이 없으면 조정할 것이 없기 때문이다.
 6. **`test-kit`** — `tests/`·`evals/` 러너.
 
+> **2026-09-01 재검토 — `test-kit`을 3번으로 올린다.** 위 목록이 "앞의 것이 뒤의 것에
+> 의존하지 않는다"고 적었으므로 6번인 근거가 의존성일 수 없는데, 다른 근거가 적혀 있지
+> 않았다. `tests/*.cases.yaml` 러너가 필요로 하는 것은 `execution-state`와
+> `hook-runtime` 둘뿐이다. `evals/` 쪽은 만들어 봐야 안다.
+>
+> 그리고 `tests/*.cases.yaml`은 게이트·훅 통제의 적립 장소인데 러너가 없어 사람이
+> 대조한다. **래칫이 도는지 확인하는 수단이 마지막에 있을 이유가 없다** (ADR-0023).
+>
+> 새 순서: `execution-state` → `hook-runtime` → **`test-kit`** → `policy-engine` →
+> `capability-registry` → `orchestrator`.
+
 이 시점에 워크스페이스 도구(pnpm workspace 등)를 도입한다. 지금 루트
 `package.json` 하나로 충분한 이유는 실행 코드가 없기 때문이다.
 

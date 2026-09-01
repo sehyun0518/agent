@@ -87,6 +87,26 @@
 
     "durationMs": { "type": "integer", "minimum": 0 },
 
+    "attempt": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "이 실행이 몇 번째 시도인가. 1이 첫 시도다. failure.classified가 transient로 분류되고 재시도된 횟수를 이 필드로 센다 — 재시도로 통과한 것과 한 번에 통과한 것은 다른 사건이다."
+    },
+    "model": {
+      "type": "string",
+      "description": "이 span을 실행한 모델. modelTier가 아니라 실제로 쓰인 이름이다 — tier는 선언이고 이건 사실이다."
+    },
+    "tokens": {
+      "type": "object",
+      "description": "이 span이 쓴 토큰. 비용은 여기 넣지 않는다 — 단가는 바뀌고, 기록된 비용은 그때의 단가를 주장하게 된다. 필요하면 model과 tokens로 계산한다.",
+      "additionalProperties": false,
+      "properties": {
+        "input": { "type": "integer", "minimum": 0 },
+        "output": { "type": "integer", "minimum": 0 },
+        "cached": { "type": "integer", "minimum": 0 }
+      }
+    },
+
     "attributes": {
       "type": "object",
       "description": "추가 속성. 여기에 비밀정보나 민감 데이터를 넣지 않는다 (data-handling 정책이 강제).",
