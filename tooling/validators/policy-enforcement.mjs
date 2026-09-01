@@ -54,7 +54,13 @@ export const VALIDATOR_REGISTRY = {
  */
 export const PROJECTION_REGISTRY = {
   'destructive-approval': {
-    by: 'requiresApproval 선언을 플랫폼 permission 설정으로 낸다 (ADR-0015)',
+    // 정책 statement가 넷을 요구하는데 플랫폼은 첫째만 강제한다. 나머지를 pending에
+    // 적지 않으면 🛡️ 가 "이 정책이 강제된다"로 읽힌다 (#46 결정 6).
+    status: 'partial',
+    by: 'requiresApproval 선언을 플랫폼 permission 설정으로 낸다 — 사람을 멈춰 세우는 것까지 (ADR-0015)',
+    pending:
+      '승인을 approval-record로 남기는 것, status가 granted인지 보는 것, 거부를 재시도로 ' +
+      '우회하지 못하게 하는 것. 플랫폼 prompt는 증거를 만들지 않는다 — 훅 런타임(ADR-0002)이 필요하다',
     source: 'tooling/generators/permissions.json',
   },
 }

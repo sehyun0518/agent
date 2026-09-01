@@ -1305,9 +1305,20 @@ test('투영이 없는 정책은 대상이 아니다', () => {
 })
 
 test('실제 레지스트리의 모든 항목에 근거와 출처가 있다', () => {
+  const 허용 = new Set(['implemented', 'partial', 'pending'])
   for (const [id, entry] of Object.entries(PROJECTION_REGISTRY)) {
+    assert.ok(허용.has(entry.status), `${id}: 알 수 없는 status "${entry.status}"`)
     assert.ok(entry.by, `${id}: 무엇이 강제하는지 by에 적어야 한다`)
     assert.ok(entry.source, `${id}: 어느 파일이 소유하는지 source에 적어야 한다`)
+  }
+})
+
+// 덜 강제되는데 무엇이 남았는지 안 적으면 표가 "이 정책이 강제된다"로 읽힌다.
+// 검증기 레지스트리가 같은 이유로 pending을 요구한다 (#49).
+test('전부 강제하지 못하는 항목은 무엇이 남았는지 적는다', () => {
+  for (const [id, entry] of Object.entries(PROJECTION_REGISTRY)) {
+    if (entry.status === 'implemented') continue
+    assert.ok(entry.pending, `${id}: status가 "${entry.status}"인데 남은 것이 안 적혀 있다`)
   }
 })
 
