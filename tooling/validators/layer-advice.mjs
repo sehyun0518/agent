@@ -46,8 +46,11 @@ export function findLayerAdvice(consumer, profiles) {
 
     const suggestions = []
     for (const profile of profiles ?? []) {
-      // id로 가른다. 같은 파일이어도 따로 파싱하면 다른 객체다 (#99 리뷰).
-      if (profile?.kind !== 'domain' || profile?.id === consumer?.id) continue
+      // 자기 자신을 거르는 조건은 두지 않는다. 위에서 consumer는 repository이고
+      // 여기서 profile은 domain이라 같을 수 없다. 그런데 id로 걸러 두면 두 프로파일이
+      // 같은 id를 쓸 때 **멀쩡한 도메인 제안이 사라진다** — 없는 위험을 막으려다
+      // 있는 것을 막는다 (#99 리뷰).
+      if (profile?.kind !== 'domain') continue
       const found = layerOf(profile, layer)
       if (!found || found.manual) continue
       const libraries = found.libraries ?? []
@@ -70,7 +73,7 @@ export function findLayerAdvice(consumer, profiles) {
  */
 export function renderLayerAdvice(advice) {
   const lines = []
-  for (const { layer, suggestions } of advice ?? []) {
+  for (const { layer, suggestions = [] } of advice ?? []) {
     if (suggestions.length === 0) {
       lines.push(`testing.layers.${layer}가 없다. 도메인 프로파일에도 그 계층이 없어 제안할 것이 없다.`)
       continue

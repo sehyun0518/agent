@@ -2691,6 +2691,24 @@ test('도메인이 여럿이면 전부 출처와 함께 낸다', () => {
   assert.deepEqual(advice[0].suggestions.map((s) => s.from), ['frontend', 'backend'])
 })
 
+// 자기 자신을 id로 거르는 가드를 뒀다가 뺐다. consumer는 repository이고 후보는
+// domain이라 같을 수 없는데, id로 걸면 두 프로파일이 같은 id를 쓸 때 멀쩡한 제안이
+// 사라진다 — 없는 위험을 막으려다 있는 것을 막는다 (#99 리뷰).
+test('id가 같아도 도메인 제안은 살아 있다', () => {
+  const advice = findLayerAdvice(
+    { id: '같은이름', kind: 'repository', commands: { 'test.unit': { command: 'x' } } },
+    [{ id: '같은이름', kind: 'domain', testing: { layers: { unit: { libraries: ['vitest'] } } } }],
+  )
+  assert.deepEqual(advice[0].suggestions.map((x) => x.from), ['같은이름'])
+})
+
+test('suggestions가 없어도 렌더가 터지지 않는다', () => {
+  assert.deepEqual(renderLayerAdvice([{ layer: 'unit' }]), [
+    'testing.layers.unit가 없다. 도메인 프로파일에도 그 계층이 없어 제안할 것이 없다.',
+  ])
+  assert.deepEqual(renderLayerAdvice(undefined), [])
+})
+
 test('kind가 repository가 아니면 대상이 아니다', () => {
   assert.deepEqual(findLayerAdvice(도메인({ unit: {} }), []), [])
   assert.deepEqual(findLayerAdvice(undefined, []), [])
