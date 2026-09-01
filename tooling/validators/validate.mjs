@@ -688,6 +688,41 @@ function checkWorkflowExtensions(file, doc) {
     fail(file, `${field}[${index}] "${label}": 실행자 "${name}"가 없다.`)
   }
 
+  // 삽입 단계도 증거로 완료를 판정한다 (ADR-0017). 핵심 단계에 걸던 검사를 같은
+  // 순수 함수로 여기에도 건다 — 도메인 축만 다른 규칙을 쓰면 그것이 곧 구멍이다.
+  for (const extension of doc.workflowExtensions ?? []) {
+    for (const insert of extension.insert ?? []) {
+      const label = `workflowExtensions/${insert.id}`
+
+      for (const token of insert.produces ?? []) {
+        checkToken(file, token, new Set([...CORE_SIGNALS, ...CORE_ARTIFACTS]), `${label}.produces`)
+      }
+
+      const declared = new Set()
+      for (const item of insert.evidence ?? []) {
+        checkToken(file, item.kind, CORE_EVIDENCE, `${label}.evidence`)
+        declared.add(item.kind)
+      }
+
+      for (const { kind } of findEvidenceWithoutArtifact([{ label, evidence: insert.evidence }])) {
+        fail(
+          file,
+          `${label}.evidence "${kind}": artifactRequired가 없다. status와 summary만 남는 증거는 ` +
+            `세션과 함께 사라진다. (#45)`,
+        )
+      }
+
+      const groups = normalizeRequiredEvidence(insert.completion?.requiresEvidence)
+      for (const { kind } of findUndeclaredCompletionEvidence(groups, declared)) {
+        fail(file, `${label}.completion: "${kind}"를 요구하지만 evidence에 선언되지 않았다.`)
+      }
+
+      if (insert.skippable) {
+        checkToken(file, insert.skippable.evidenceOnSkip, CORE_EVIDENCE, `${label}.skippable`)
+      }
+    }
+  }
+
   // 삽입 하나씩 보는 아래 검사는 겹침을 놓친다. workflow "*"가 특정 워크플로 블록과
   // 겹치면 같은 단계가 두 번 들어가는데, 각각은 모든 조건을 만족하기 때문이다.
   for (const { workflowId, insertId, count } of findDuplicateInserts(doc, WORKFLOWS)) {
