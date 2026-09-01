@@ -208,6 +208,20 @@ export function findMissingToolScripts(tools, packageScripts) {
   return missing
 }
 
+/**
+ * 설명(`note`)이 없는 도구 커맨드.
+ *
+ * 없으면 생성된 파일에 `undefined`가 그대로 찍힌다. 폴백으로 빈 문자열을 두면
+ * 찍히지는 않지만 **설명 없는 커맨드가 조용히 남는다** — 도구는 무엇을 읽고
+ * 무엇을 안 하는지가 설명의 전부라 그것이 없으면 커맨드가 아니라 명령 한 줄이다.
+ *
+ * @param {Array<{name: string, note?: string}>} tools
+ * @returns {string[]} 설명 없는 커맨드 이름
+ */
+export function findToolCommandsWithoutNote(tools) {
+  return (tools ?? []).filter((t) => !t?.note?.trim()).map((t) => t?.name).filter(Boolean)
+}
+
 export function commandsFromTools() {
   return TOOL_COMMANDS.map((c) => ({ ...c }))
 }

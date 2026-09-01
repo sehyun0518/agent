@@ -14,26 +14,51 @@ if (!pr) {
   process.exit(2)
 }
 
+const run = (args) =>
+  JSON.parse(execFileSync('gh', args, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }))
+
 const gh = (args) => {
   try {
-    return JSON.parse(execFileSync('gh', args, { encoding: 'utf8', maxBuffer: 32 * 1024 * 1024 }))
+    return run(args)
   } catch (error) {
-    console.error('gh를 부르지 못했다. 로그인돼 있는지, PR 번호가 맞는지 본다.')
-    console.error(`  ${String(error.message).split('\n')[0]}`)
+    if (error.code === 'ENOENT') {
+      console.error('gh가 없다. GitHub CLI를 설치한다.')
+    } else {
+      console.error('gh를 부르지 못했다. 로그인돼 있는지, PR 번호가 맞는지 본다.')
+      console.error(`  ${(error.stderr || String(error.message)).toString().trim().split('\n')[0]}`)
+    }
     process.exit(1)
+  }
+}
+
+// gh pr checks는 체크가 없을 때도, 체크가 **실패했을 때도** 0이 아닌 코드로 끝난다.
+// 둘 다 이 도구가 답해야 하는 상태다 — 여기서 죽으면 "로그인 확인하라"는 엉뚱한
+// 말을 하고, 정작 미응답 지적은 보여주지 못한다 (#94 리뷰).
+const ghChecks = (args) => {
+  try {
+    return run(args)
+  } catch (error) {
+    if (error.code === 'ENOENT') return null
+    try {
+      return JSON.parse(error.stdout?.toString() || '[]')
+    } catch {
+      return []
+    }
   }
 }
 
 const repo = gh(['repo', 'view', '--json', 'nameWithOwner']).nameWithOwner
 const comments = gh(['api', `repos/${repo}/pulls/${pr}/comments`, '--paginate'])
-const checks = gh(['pr', 'checks', pr, '--json', 'name,state,bucket']).map?.((c) => c) ?? []
+const checks = ghChecks(['pr', 'checks', pr, '--json', 'name,state,bucket']) ?? []
 
+// API가 배열이 아닌 것을 돌려줄 수 있다. 순수 함수는 막고 있지만 아래 루프는 안 막는다.
+const commentList = Array.isArray(comments) ? comments : []
 const reviewed = reviewers(gh(['pr', 'view', pr, '--json', 'reviews']).reviews)
-const unanswered = findUnansweredReviews(comments)
+const unanswered = findUnansweredReviews(commentList)
 const pending = findPendingChecks(checks)
 
 const byBot = new Map()
-for (const c of comments) {
+for (const c of commentList) {
   if (c?.in_reply_to_id || !/\[bot\]$/.test(c?.user?.login ?? '')) continue
   byBot.set(c.user.login, (byBot.get(c.user.login) ?? 0) + 1)
 }

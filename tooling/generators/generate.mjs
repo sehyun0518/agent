@@ -313,7 +313,7 @@ function renderCommand(command) {
     return (
       `---\n${stringifyYaml(front, { lineWidth: 0 })}---\n\n` +
       `\`\`\`bash\n${command.script}\n\`\`\`\n\n` +
-      `${command.note}\n\n` +
+      `${command.note ?? ''}\n\n` +
       `이 파일에 내용을 옮겨 적지 않는다.\n`
     )
   }
