@@ -34,10 +34,18 @@ import {
   AGGREGATION_INPUTS,
 } from './reliability-inputs.mjs'
 import { findUnknownTelemetryEvents, knownEventNames } from './telemetry-mapping.mjs'
-import { TOOL_COMMANDS, findMissingToolScripts, extensionApplies, anchoredAt } from '../generators/commands.mjs'
+import {
+  TOOL_COMMANDS,
+  findMissingToolScripts,
+  findToolCommandsWithoutNote,
+  extensionApplies,
+  anchoredAt,
+} from '../generators/commands.mjs'
 import { buildStepBriefing, renderStepBriefing, parseGateHeader, stepIds } from '../briefing/step.mjs'
 import { walk } from '../walk.mjs'
 import { matchExpectations, readEvidenceRecords } from '../briefing/evidence.mjs'
+import { findUnansweredReviews, findPendingChecks, reviewers } from '../briefing/reviews.mjs'
+import { findBrokenSectionRefs, sectionNumbers } from './doc-refs.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -2199,6 +2207,18 @@ test('도구 커맨드가 없는 스크립트를 가리키면 검출한다', () 
   )
 })
 
+// note가 없으면 생성된 파일에 undefined가 찍힌다. 폴백을 두면 안 찍히지만 설명 없는
+// 커맨드가 조용히 남는다 — 도구는 무엇을 읽고 무엇을 안 하는지가 설명의 전부다.
+test('note 없는 도구 커맨드를 검출한다', () => {
+  assert.deepEqual(findToolCommandsWithoutNote([{ name: 'a' }, { name: 'b', note: '  ' }, { name: 'c', note: 'x' }]),
+    ['a', 'b'])
+  assert.deepEqual(findToolCommandsWithoutNote(undefined), [])
+})
+
+test('실제 도구 커맨드가 전부 note를 갖는다', () => {
+  assert.deepEqual(findToolCommandsWithoutNote(TOOL_COMMANDS), [])
+})
+
 test('실제 도구 커맨드가 전부 실재하는 스크립트를 가리킨다', async () => {
   const { readFileSync } = await import('node:fs')
   const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'))
@@ -2328,5 +2348,115 @@ test('증거 파일이 비어도 터지지 않는다', () => {
   assert.deepEqual(readEvidenceRecords(undefined), { records: [], malformed: 0 })
   assert.deepEqual(matchExpectations(undefined, [기대])[0].found, null)
   assert.deepEqual(matchExpectations([], undefined), [])
+})
+
+// ── 리뷰 미응답 (ADR-0034) ────────────────────────────────────────────────
+//
+// 이 세션이 리뷰 세 건을 놓쳤다. 늦게 온 것이 아니라 머지 28분 전에 도착해 있었고
+// 안 돌아봤다. 사람이 기억하는 것으로 고치면 같은 실패가 또 난다.
+
+const 봇글 = (id, bot = 'coderabbitai[bot]', over = {}) =>
+  ({ id, in_reply_to_id: null, user: { login: bot }, path: 'a.mjs', line: 1, ...over })
+const 답글 = (id, root, login) => ({ id, in_reply_to_id: root, user: { login } })
+
+test('답한 지적은 세지 않는다', () => {
+  assert.deepEqual(
+    findUnansweredReviews([봇글(1), 답글(2, 1, 'sehyun0518')]),
+    [],
+  )
+})
+
+test('답 없는 봇 지적을 낸다', () => {
+  const found = findUnansweredReviews([봇글(1), 봇글(2)])
+  assert.deepEqual(found.map((f) => f.id), [1, 2])
+})
+
+// CodeRabbit이 내 답글에 다시 답한다. 그것은 내가 답한 증거가 아니다.
+test('봇이 봇에게 단 답글은 응답으로 세지 않는다', () => {
+  assert.deepEqual(
+    findUnansweredReviews([봇글(1), 답글(2, 1, 'coderabbitai[bot]')]).map((f) => f.id),
+    [1],
+  )
+})
+
+test('사람이 연 스레드는 대상이 아니다', () => {
+  assert.deepEqual(findUnansweredReviews([봇글(1, 'sehyun0518')]), [])
+})
+
+test('코멘트가 없어도 터지지 않는다', () => {
+  assert.deepEqual(findUnansweredReviews(undefined), [])
+  assert.deepEqual(findUnansweredReviews([null, undefined]), [])
+})
+
+// "지적 없음"과 "아직 안 봤다"는 다르다. 인라인만 세면 둘이 같아 보이고, 아무도 안 본
+// PR이 깨끗하다고 보고된다 — 이 도구를 처음 돌렸을 때 실제로 그랬다.
+test('리뷰를 낸 쪽을 낸다', () => {
+  assert.deepEqual(
+    reviewers([{ author: { login: 'gemini-code-assist' } }, { author: { login: 'sehyun0518' } },
+      { author: { login: 'gemini-code-assist' } }]),
+    ['gemini-code-assist', 'sehyun0518'],
+  )
+})
+
+test('아무도 안 봤으면 빈 목록이다', () => {
+  assert.deepEqual(reviewers([]), [])
+  assert.deepEqual(reviewers(undefined), [])
+  assert.deepEqual(reviewers([null, { author: null }]), [])
+})
+
+test('진행 중인 체크를 낸다', () => {
+  assert.deepEqual(
+    findPendingChecks([
+      { name: 'check', bucket: 'pass' },
+      { name: 'CodeRabbit', bucket: 'pending' },
+      { name: 'x', state: 'IN_PROGRESS' },
+      { name: 'y' },
+    ]),
+    ['CodeRabbit', 'x', 'y'],
+  )
+})
+
+test('체크가 없어도 터지지 않는다', () => {
+  assert.deepEqual(findPendingChecks(undefined), [])
+})
+
+// ── 문서 절 참조 (ADR-0034) ──────────────────────────────────────────────
+//
+// `docs/operations.md §2.8`이라고 적었는데 그 절이 없었다. 읽는 사람은 문서가 낡은
+// 것인지 참조가 틀린 것인지 모른다.
+
+test('절 번호를 뽑는다', () => {
+  const md = '## 2. 관리\n\n### 2.6.1 머지하기 전에\n\n#### 등급\n\n## 3. 실수\n'
+  assert.deepEqual([...sectionNumbers(md)].sort(), ['2', '2.6.1', '3'])
+})
+
+test('없는 절을 가리키면 검출한다', () => {
+  const docs = new Map([['docs/operations.md', '## 2. 관리\n\n### 2.6.1 x\n']])
+  assert.deepEqual(
+    findBrokenSectionRefs([{ path: 'a.mjs', text: '(`docs/operations.md` §2.8)' }], docs),
+    [{ source: 'a.mjs', target: 'docs/operations.md', section: '2.8' }],
+  )
+})
+
+test('있는 절은 통과한다', () => {
+  const docs = new Map([['docs/operations.md', '### 2.6.1 x\n']])
+  assert.deepEqual(findBrokenSectionRefs([{ path: 'a.mjs', text: '`docs/operations.md` §2.6.1' }], docs), [])
+})
+
+// 파일을 명시하지 않은 참조는 어느 문서인지 기계가 모른다. 넓게 잡으면 정상 참조를
+// 틀렸다고 말한다 — 실제로 어휘 §5·§6 같은 것이 넷 있었다.
+test('파일을 명시하지 않은 참조는 보지 않는다', () => {
+  const docs = new Map([['docs/operations.md', '## 1. x\n']])
+  assert.deepEqual(findBrokenSectionRefs([{ path: 'a.md', text: '어휘 §5의 예시가' }], docs), [])
+})
+
+// 없는 문서는 다른 축이다. 함께 보면 "문서가 아직 없다"와 "절이 없다"가 같은 말이 된다.
+test('없는 문서를 가리키는 것은 보지 않는다', () => {
+  assert.deepEqual(findBrokenSectionRefs([{ path: 'a.md', text: '`docs/없다.md` §1' }], new Map()), [])
+})
+
+test('입력이 없어도 터지지 않는다', () => {
+  assert.deepEqual(findBrokenSectionRefs(undefined, undefined), [])
+  assert.deepEqual([...sectionNumbers(undefined)], [])
 })
 

@@ -313,9 +313,8 @@ function renderCommand(command) {
     return (
       `---\n${stringifyYaml(front, { lineWidth: 0 })}---\n\n` +
       `\`\`\`bash\n${command.script}\n\`\`\`\n\n` +
-      `출력은 선언에서 그때그때 조립된다. 이 파일에 내용을 옮겨 적지 않는다.\n\n` +
-      `**실행하지 않는다.** 무엇을 해야 하는지 보여줄 뿐이고, 단계를 부르는 것도 증거를\n` +
-      `남기는 것도 사람이 한다 (ADR-0002 · ADR-0032).\n`
+      `${command.note ?? ''}\n\n` +
+      `이 파일에 내용을 옮겨 적지 않는다.\n`
     )
   }
 

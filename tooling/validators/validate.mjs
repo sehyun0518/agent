@@ -19,6 +19,7 @@ import { findReadonlyWriteTools } from './agent-readonly.mjs'
 import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
 import { findMissingMootBranches } from './workflow-red-proof.mjs'
 import { walk } from '../walk.mjs'
+import { findBrokenSectionRefs } from './doc-refs.mjs'
 import { findMissingScaffolds } from './workflow-scaffold.mjs'
 import { findUnisolatedBackgroundAgents } from './background-isolation.mjs'
 import { toolRequirement } from './tools.mjs'
@@ -29,7 +30,11 @@ import {
   AGGREGATION_INPUTS,
 } from './reliability-inputs.mjs'
 import { findUnknownTelemetryEvents, knownEventNames } from './telemetry-mapping.mjs'
-import { TOOL_COMMANDS, findMissingToolScripts } from '../generators/commands.mjs'
+import {
+  TOOL_COMMANDS,
+  findMissingToolScripts,
+  findToolCommandsWithoutNote,
+} from '../generators/commands.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -989,6 +994,31 @@ const gitmodules = existsSync(join(ROOT, '.gitmodules'))
 const EVENT_SCHEMA = join(ROOT, 'packages', 'telemetry-contracts', 'event.schema.json')
 for (const { field, metric } of findMissingAggregationInputs(readJson(EVENT_SCHEMA), AGGREGATION_INPUTS)) {
   fail(EVENT_SCHEMA, `집계 입력 '${field}'이 없다 — ${metric}. (ADR-0030)`)
+}
+
+// 없는 절을 가리키는 참조. 읽는 사람은 문서가 낡은 것인지 참조가 틀린 것인지 모른다.
+const DOC_SOURCES = [
+  ...walk(join(ROOT, 'docs'), (p) => p.endsWith('.md')),
+  // 테스트는 픽스처로 없는 절을 일부러 적는다. 그것은 참조가 아니다.
+  ...walk(join(ROOT, 'tooling'), (p) => p.endsWith('.mjs') && !p.endsWith('.test.mjs')),
+  join(ROOT, 'README.md'),
+].filter(existsSync)
+const DOCS = new Map(
+  walk(join(ROOT, 'docs'), (p) => p.endsWith('.md')).map((p) => [
+    relative(ROOT, p),
+    readFileSync(p, 'utf8'),
+  ]),
+)
+for (const { source, target, section } of findBrokenSectionRefs(
+  DOC_SOURCES.map((p) => ({ path: relative(ROOT, p), text: readFileSync(p, 'utf8') })),
+  DOCS,
+)) {
+  fail(join(ROOT, source), `${target}에 §${section}이 없다. 참조가 틀렸거나 절이 사라졌다. (ADR-0034)`)
+}
+
+// 설명 없는 도구 커맨드는 명령 한 줄이지 커맨드가 아니다.
+for (const name of findToolCommandsWithoutNote(TOOL_COMMANDS)) {
+  fail(join(ROOT, 'tooling', 'generators', 'commands.mjs'), `도구 커맨드 '${name}'에 note가 없다. 무엇을 읽고 무엇을 안 하는지가 설명의 전부다. (ADR-0034)`)
 }
 
 // 도구 커맨드가 없는 npm 스크립트를 가리키면, 부른 사람은 커맨드가 깨졌는지 자기가
