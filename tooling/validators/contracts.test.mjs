@@ -8,6 +8,7 @@ import { findReadonlyWriteTools } from './agent-readonly.mjs'
 import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
 import { commandsInScript, findChecksMissingFromCi } from './pipeline.mjs'
 import { findForeignNamespaceTokens, insertTokens } from './profile-namespace.mjs'
+import { findUndeclaredNestedRepos, submodulePathsFrom } from './nested-repo.mjs'
 import {
   normalize,
   classifyPack,
@@ -1534,4 +1535,32 @@ test('삽입 단계의 네 자리에서 토큰을 모은다', () => {
 test('계약 필드가 비어도 터지지 않는다', () => {
   assert.deepEqual(insertTokens({}), [])
   assert.deepEqual(insertTokens(undefined), [])
+})
+
+// ---------------------------------------------------------------- 중첩 저장소
+// 소비 저장소를 하네스 안에 두면 그 디렉터리가 worktree에 존재하지 않아
+// isolation: worktree가 아무것도 격리하지 못한다 (ADR-0020).
+
+test('선언되지 않은 중첩 저장소를 검출한다', () => {
+  const found = findUndeclaredNestedRepos(['FE', 'vendor/lib'], ['vendor/lib'])
+  assert.deepEqual(found, ['FE'])
+})
+
+// submodule은 선언된 중첩이라 하네스가 아는 상태다.
+test('submodule로 선언된 것은 대상이 아니다', () => {
+  assert.deepEqual(findUndeclaredNestedRepos(['vendor/lib'], ['vendor/lib']), [])
+  assert.deepEqual(findUndeclaredNestedRepos([], []), [])
+  assert.deepEqual(findUndeclaredNestedRepos(undefined, undefined), [])
+})
+
+test('.gitmodules에서 path만 뽑는다', () => {
+  const text = [
+    '[submodule "lib"]',
+    '\tpath = vendor/lib',
+    '\turl = https://example.com/lib.git',
+    '[submodule "other"]',
+    '  path   =   tools/other  ',
+  ].join('\n')
+  assert.deepEqual(submodulePathsFrom(text), ['vendor/lib', 'tools/other'])
+  assert.deepEqual(submodulePathsFrom(undefined), [])
 })

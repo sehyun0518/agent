@@ -40,6 +40,7 @@ import {
 } from './policy-enforcement.mjs'
 import { findChecksMissingFromCi } from './pipeline.mjs'
 import { findForeignNamespaceTokens, insertTokens } from './profile-namespace.mjs'
+import { findUndeclaredNestedRepos, submodulePathsFrom } from './nested-repo.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const SCHEMA_DIR = join(ROOT, 'packages', 'manifest-contracts')
@@ -661,6 +662,27 @@ function checkOrchestratorPurity(file, doc) {
  * /steps/N: must be object"로 정확히 보고되므로 여기서 다시 말하지 않는다. 다른 파일의
  * 검사가 남의 파일 문법 오류로 멈추지 않게 하는 것이 목적이다.
  */
+/**
+ * 저장소 안의 다른 git 저장소. `node_modules`와 생성 미러는 보지 않는다 — 전자는
+ * 의존성이고 후자는 실행 산물이라 중첩이 정상이다.
+ */
+function nestedRepos() {
+  const skip = new Set(['node_modules', '.git', '.claude', '.codex'])
+  const found = []
+  const walkDirs = (dir, rel) => {
+    for (const name of readdirSync(dir)) {
+      if (skip.has(name)) continue
+      const path = join(dir, name)
+      if (!statSync(path).isDirectory()) continue
+      const relative = rel ? `${rel}/${name}` : name
+      if (existsSync(join(path, '.git'))) found.push(relative)
+      else walkDirs(path, relative)
+    }
+  }
+  walkDirs(ROOT, '')
+  return found
+}
+
 function loadWorkflows() {
   const map = new Map()
   for (const path of walk(join(ROOT, 'workflows'), (p) => p.endsWith('.yaml'))) {
@@ -935,6 +957,19 @@ for (const [path, kind, extra] of targets) validateFile(path, kind, extra)
 // "problems가 하나라도 있으면 건너뛴다"로 하지 않는 이유는, 무관한 파일의 문제 하나로
 // 이 검사가 조용히 꺼지기 때문이다. 꺼질 때는 꺼졌다고 출력한다.
 if (declaredEnforcement.length === POLICY_PATHS.length) {
+  // 소비 저장소를 하네스 안에 중첩하면 isolation: worktree가 아무것도 격리하지 못한다
+  // (ADR-0020). submodule은 선언된 중첩이라 대상이 아니다.
+  const gitmodules = existsSync(join(ROOT, '.gitmodules'))
+    ? readFileSync(join(ROOT, '.gitmodules'), 'utf8')
+    : ''
+  for (const path of findUndeclaredNestedRepos(nestedRepos(), submodulePathsFrom(gitmodules))) {
+    fail(
+      join(ROOT, path),
+      `중첩된 git 저장소다. 소비 저장소는 하네스 안에 두지 않는다 — ` +
+        `worktree에 존재하지 않아 isolation이 아무것도 격리하지 못한다. (ADR-0020)`,
+    )
+  }
+
   // check에 넣고 CI에 안 넣으면 그 검사는 로컬에서만 돌고 병합을 막지 못한다.
   const WORKFLOW = join(ROOT, '.github', 'workflows', 'harness.yml')
   const ciSteps = parseYaml(readFileSync(WORKFLOW, 'utf8'))?.jobs?.check?.steps ?? []
