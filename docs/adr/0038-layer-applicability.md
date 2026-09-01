@@ -120,6 +120,14 @@ evidence:
 경계가 이렇게 된다 — **코어 계층은 계약 고정 단계가 판정하고, 도메인 삽입은 도메인이
 정한다.**
 
+## 승인 요구는 게이트로 옮긴다
+
+`skippable.approvalRequired`가 함께 사라졌다. `ADR-0004`가 integration·e2e 생략에
+승인을 요구했으므로 그 의도를 잃지 않게 `require-test-evidence` 게이트에 적는다.
+
+**강제 수준은 그대로다.** `approvalRequired: true`도 검증기가 "어휘에 `approval-record`가
+있는지"만 봤을 뿐 실제 승인을 강제하지 않았다. 적히는 자리만 옮겼다.
+
 ## 버린 대안
 
 **1. `skippable`을 두고 전이 조건만 판정으로 바꾼다.**
@@ -136,14 +144,6 @@ evidence:
 **4. `documentation`의 `skippable`은 남긴다.**
 `documentation-impact`가 이미 판정을 낸다. 둘을 같이 두면 판정이 있는데 우회로도 있는
 상태가 된다.
-
-### 승인 요구는 게이트로 옮긴다
-
-`skippable.approvalRequired`가 함께 사라졌다. `ADR-0004`가 integration·e2e 생략에
-승인을 요구했으므로 그 의도를 잃지 않게 `require-test-evidence` 게이트에 적는다.
-
-**강제 수준은 그대로다.** `approvalRequired: true`도 검증기가 "어휘에 `approval-record`가
-있는지"만 봤을 뿐 실제 승인을 강제하지 않았다. 적히는 자리만 옮겼다.
 
 ## 대가
 
