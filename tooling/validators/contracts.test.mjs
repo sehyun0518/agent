@@ -8,7 +8,10 @@ import { findReadonlyWriteTools } from './agent-readonly.mjs'
 import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
 import { findMissingMootBranches } from './workflow-red-proof.mjs'
 import { findMissingScaffolds } from './workflow-scaffold.mjs'
-import { findUnreachablePreconditions } from './workflow-return-path.mjs'
+import {
+  findUnreachablePreconditions,
+  findUnusedAssumes,
+} from './workflow-return-path.mjs'
 import {
   normalizeRequiredEvidence,
   findUndeclaredCompletionEvidence,
@@ -1070,4 +1073,30 @@ test('assumes에 없는 토큰은 여전히 검출한다', () => {
 test('모르는 capability와 빈 입력은 대상이 아니다', () => {
   assert.deepEqual(findUnreachablePreconditions([{ id: 'x', capability: '없음' }], 계약), [])
   assert.deepEqual(findUnreachablePreconditions(undefined, 계약), [])
+})
+
+// assumes는 흐름 밖 의존을 적어 두는 목록이다. 필요 없어진 항목이 남으면 그 흐름이
+// 실제보다 많은 것을 가정하는 것처럼 읽힌다 (ADR-0014).
+
+test('아무 step도 요구하지 않는 assumes를 검출한다', () => {
+  const steps = [{ id: 'spec', capability: 'specification' }]
+  const found = findUnusedAssumes(steps, 계약, ['requirements.spec', '아무도.안쓰는것'])
+  assert.deepEqual(found, [{ token: '아무도.안쓰는것', reason: 'unrequired' }])
+})
+
+// 나중에 흐름 안에 생산자가 생겼는데 목록이 남은 경우가 더 나쁘다 — 되돌림이 흐름
+// 안으로 갈 수 있는데도 밖으로 나간다고 적혀 있게 된다.
+test('흐름이 스스로 생산하는 assumes를 검출한다', () => {
+  const steps = [
+    { id: 'req', capability: 'x', produces: ['requirements.spec'] },
+    { id: 'spec', capability: 'specification' },
+  ]
+  const found = findUnusedAssumes(steps, 계약, ['requirements.spec'])
+  assert.deepEqual(found, [{ token: 'requirements.spec', reason: 'produced-in-flow' }])
+})
+
+test('필요하고 흐름 밖인 assumes는 통과한다', () => {
+  const steps = [{ id: 'spec', capability: 'specification' }]
+  assert.deepEqual(findUnusedAssumes(steps, 계약, ['requirements.spec']), [])
+  assert.deepEqual(findUnusedAssumes(steps, 계약), [])
 })

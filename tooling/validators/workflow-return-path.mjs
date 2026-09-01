@@ -16,12 +16,26 @@
 // 선언하게 하고, 선언된 토큰은 대상에서 뺀다. 선언은 면제가 아니라 **되돌림이 흐름
 // 밖으로 나간다는 표시**다.
 
+// 전제: 스키마를 통과한 문서만 들어온다. workflow.schema.json이 assumes를 array로
+// 요구하고, validateFile은 스키마 검증에 실패한 문서에 의미 검사를 돌리지 않는다.
+// 값 없는 `assumes:`는 null로 파싱되지만 스키마에서 걸린다.
+
+/** 루트와 변형의 requires를 합친 집합. */
+function requiredTokens(step, capabilities) {
+  const capability = capabilities?.get(step.capability)
+  if (!capability) return []
+  const variant = step.variant ? capability.variants?.[step.variant] : undefined
+  return [...(capability.requires ?? []), ...(variant?.requires ?? [])]
+}
+
 /**
  * requires 토큰을 이 워크플로의 어느 step도 생산하지 않는 경우.
  *
  * @param {Array} steps
  * @param {Map<string, {requires?: string[], variants?: Record<string, {requires?: string[]}>}>} capabilities
- * @param {string[]} assumes 흐름 밖에서 충족된다고 선언한 토큰
+ * @param {string[]} assumes 흐름 밖에서 충족된다고 선언한 토큰. 기본값은 인자가
+ *   undefined일 때만 쓰이는데, 스키마가 array를 요구하므로 여기까지 오는 값은 배열이거나
+ *   없거나 둘 중 하나다.
  * @returns {Array<{step: string, token: string}>}
  */
 export function findUnreachablePreconditions(steps, capabilities, assumes = []) {
@@ -32,15 +46,31 @@ export function findUnreachablePreconditions(steps, capabilities, assumes = []) 
   const unreachable = []
 
   for (const step of steps ?? []) {
-    const capability = capabilities?.get(step.capability)
-    if (!capability) continue
-    const variant = step.variant ? capability.variants?.[step.variant] : undefined
-    const tokens = new Set([...(capability.requires ?? []), ...(variant?.requires ?? [])])
-
-    for (const token of tokens) {
+    for (const token of new Set(requiredTokens(step, capabilities))) {
       if (satisfied.has(token)) continue
       unreachable.push({ step: step.id, token })
     }
   }
   return unreachable
+}
+
+/**
+ * 아무 step도 요구하지 않거나 흐름이 스스로 생산하는 `assumes` 항목.
+ *
+ * 흐름 밖 의존을 적어 두는 목록이라, 필요 없어진 항목이 남으면 그 흐름이 실제보다
+ * 많은 것을 가정하는 것처럼 읽힌다. 더 나쁜 것은 나중에 흐름 안에 생산자가 생겼는데
+ * 목록이 남아 있는 경우다 — 그때는 되돌림이 흐름 안으로 갈 수 있는데도 밖으로
+ * 나간다고 적혀 있게 된다.
+ *
+ * @returns {Array<{token: string, reason: 'unrequired'|'produced-in-flow'}>}
+ */
+export function findUnusedAssumes(steps, capabilities, assumes = []) {
+  const required = new Set((steps ?? []).flatMap((step) => requiredTokens(step, capabilities)))
+  const produced = new Set((steps ?? []).flatMap((step) => step.produces ?? []))
+
+  return assumes.flatMap((token) => {
+    if (produced.has(token)) return [{ token, reason: 'produced-in-flow' }]
+    if (!required.has(token)) return [{ token, reason: 'unrequired' }]
+    return []
+  })
 }
