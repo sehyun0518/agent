@@ -73,7 +73,8 @@ core Capability를 고칠 필요가 없어야 한다.
 
 > **2026-09-01 재검토 — `test-kit`을 3번으로 올린다.** 위 목록이 "앞의 것이 뒤의 것에
 > 의존하지 않는다"고 적었으므로 6번인 근거가 의존성일 수 없는데, 다른 근거가 적혀 있지
-> 않았다. `test-kit`이 필요로 하는 것은 `execution-state`와 `hook-runtime` 둘뿐이다.
+> 않았다. `tests/*.cases.yaml` 러너가 필요로 하는 것은 `execution-state`와
+> `hook-runtime` 둘뿐이다. `evals/` 쪽은 만들어 봐야 안다.
 >
 > 그리고 `tests/*.cases.yaml`은 게이트·훅 통제의 적립 장소인데 러너가 없어 사람이
 > 대조한다. **래칫이 도는지 확인하는 수단이 마지막에 있을 이유가 없다** (ADR-0023).
