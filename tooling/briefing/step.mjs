@@ -12,6 +12,7 @@
 // 커맨드 파일이 순서를 옮겨 적지 않는 것과 같은 이유다.
 
 import { extensionApplies, anchoredAt } from '../generators/commands.mjs'
+import { matchExpectations } from './evidence.mjs'
 
 /** `gate:`가 문자열일 수도 배열일 수도 있다. */
 const gateNames = (gate) => (Array.isArray(gate) ? gate : gate ? [gate] : [])
@@ -69,7 +70,7 @@ function insertionsFor(workflowId, step, profiles) {
  *
  * @param {{workflow: object, stepId: string, capabilities: Map<string, object>, profiles?: object[], gates?: Map<string, string>}} input
  */
-export function buildStepBriefing({ workflow, stepId, capabilities, profiles, gates }) {
+export function buildStepBriefing({ workflow, stepId, capabilities, profiles, gates, evidence }) {
   const steps = workflow?.steps ?? []
   const index = steps.findIndex((s) => s?.id === stepId)
   if (index === -1) return null
@@ -98,6 +99,8 @@ export function buildStepBriefing({ workflow, stepId, capabilities, profiles, ga
     })),
     expects: step.expect ?? [],
     expectAnyOf: step.expectAnyOf ?? [],
+    // 증거를 안 넘기면 대조하지 않는다. 흐름을 안 고르고 부르는 것이 기본 사용이다.
+    matches: evidence ? matchExpectations(evidence, step.expect) : null,
     requires: variant?.requires ?? capability?.requires ?? [],
     evidence: variant?.evidence ?? capability?.evidence ?? [],
     completion: variant?.completion ?? capability?.completion ?? null,
@@ -146,9 +149,14 @@ export function renderStepBriefing(b) {
       if (gate.consumes?.length) out.push(bullet([`      소비 증거  ${gate.consumes.join(' · ')}`]))
       out.push(bullet([`      workflows/gates/${gate.name}.md`]))
     }
-    for (const e of b.expects) {
+    for (const [i, e] of b.expects.entries()) {
       if (!e?.evidence) continue
       out.push(bullet([`expect  ${e.evidence} = ${e.status}${e.from ? `  (from: ${e.from})` : ''}`]))
+      const match = b.matches?.[i]
+      if (!match) continue
+      if (match.found) out.push(bullet([`        ✓ 있다${match.found.summary ? ` — ${match.found.summary}` : ''}`]))
+      else if (match.sameKind) out.push(bullet(['        ⚠ 그 kind는 있는데 status나 단계가 다르다']))
+      else out.push(bullet(['        ⚠ 없다']))
     }
     // 바깥 배열이 OR이고 각 묶음의 conditions가 AND다 (workflow.schema.json).
     if (b.expectAnyOf.length) {

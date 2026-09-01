@@ -73,7 +73,15 @@
         "status": { "type": "string" },
         "summary": { "type": "string" },
         "artifact": { "type": "string" },
-        "producedBy": { "type": "string" }
+        "step": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$",
+          "description": "이 증거가 난 흐름의 단계 id. producedBy는 누가 만들었나(역할)이고 이것은 어디인가(위치)다 — test-execution#unit이 unit-red와 unit-green 둘 다라 역할로는 단계를 못 가린다. 게이트의 expect.from이 이 값을 찾는다 (ADR-0033)."
+        },
+        "producedBy": {
+          "type": "string",
+          "description": "이 증거를 만든 역할. <capability>[#<variant>], 또는 프로파일이 끼운 단계면 그 runner."
+        }
       }
     },
 

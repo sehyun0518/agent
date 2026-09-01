@@ -37,6 +37,7 @@ import { findUnknownTelemetryEvents, knownEventNames } from './telemetry-mapping
 import { TOOL_COMMANDS, findMissingToolScripts, extensionApplies, anchoredAt } from '../generators/commands.mjs'
 import { buildStepBriefing, renderStepBriefing, parseGateHeader, stepIds } from '../briefing/step.mjs'
 import { walk } from '../walk.mjs'
+import { matchExpectations, readEvidenceRecords } from '../briefing/evidence.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -2202,5 +2203,77 @@ test('실제 도구 커맨드가 전부 실재하는 스크립트를 가리킨�
   const { readFileSync } = await import('node:fs')
   const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'))
   assert.deepEqual(findMissingToolScripts(TOOL_COMMANDS, pkg.scripts), [])
+})
+
+// ── 증거 대조 (ADR-0033) ──────────────────────────────────────────────────
+//
+// 말과 파일을 대조할 대상이 처음 생긴다. 판정하지 않고 있는지 없는지만 말한다.
+
+const 레코드 = (over = {}) => ({
+  kind: 'test.unit.red-proof',
+  status: 'confirmed',
+  step: 'unit-red',
+  producedBy: 'test-execution#unit',
+  ...over,
+})
+const 기대 = { evidence: 'test.unit.red-proof', status: 'confirmed', from: 'unit-red' }
+
+test('맞는 증거를 찾는다', () => {
+  const [m] = matchExpectations([레코드({ summary: 'ok' })], [기대])
+  assert.equal(m.found.summary, 'ok')
+})
+
+test('없으면 sameKind도 거짓이다', () => {
+  const [m] = matchExpectations([레코드({ kind: '다른것' })], [기대])
+  assert.equal(m.found, null)
+  assert.equal(m.sameKind, false)
+})
+
+test('status가 다르면 kind만 있다고 말한다', () => {
+  const [m] = matchExpectations([레코드({ status: 'pending' })], [기대])
+  assert.equal(m.found, null)
+  assert.equal(m.sameKind, true)
+})
+
+// producedBy로는 못 가린다 — test-execution#unit이 unit-red와 unit-green 둘 다다.
+// step을 넣은 이유가 이것이고, 이 케이스가 그 이유를 고정한다 (ADR-0033 결정 2).
+test('다른 단계의 증거로 통과하지 않는다', () => {
+  const [m] = matchExpectations([레코드({ step: 'unit-green' })], [기대])
+  assert.equal(m.found, null)
+  assert.equal(m.sameKind, true)
+})
+
+test('from이 없으면 단계를 보지 않는다', () => {
+  const [m] = matchExpectations([레코드({ step: '아무거나' })],
+    [{ evidence: 'test.unit.red-proof', status: 'confirmed' }])
+  assert.ok(m.found)
+})
+
+// 재시도하면 같은 단계의 레코드가 둘이 된다. 덮어쓰지 않으므로 마지막을 본다.
+test('같은 단계가 여럿이면 마지막을 본다', () => {
+  const [m] = matchExpectations(
+    [레코드({ summary: '첫 시도' }), 레코드({ summary: '재시도' })],
+    [기대],
+  )
+  assert.equal(m.found.summary, '재시도')
+})
+
+test('evidence 키가 있어도 없어도 읽는다', () => {
+  const one = { kind: 'k', status: 's' }
+  assert.deepEqual(readEvidenceRecords({ evidence: [one] }), { records: [one], malformed: 0 })
+  assert.deepEqual(readEvidenceRecords([one]), { records: [one], malformed: 0 })
+})
+
+// 조용히 버리면 "증거가 없다"와 구분되지 않는다. 몇 건인지 말한다.
+test('모양이 틀린 레코드를 세어 돌려준다', () => {
+  const r = readEvidenceRecords({ evidence: [null, { kind: 'k' }, { kind: 'k', status: 's' }, 'x'] })
+  assert.equal(r.records.length, 1)
+  assert.equal(r.malformed, 3)
+})
+
+test('증거 파일이 비어도 터지지 않는다', () => {
+  assert.deepEqual(readEvidenceRecords(undefined), { records: [], malformed: 0 })
+  assert.deepEqual(matchExpectations(undefined, [기대])[0].found, null)
+  assert.deepEqual(matchExpectations([], undefined), [])
 })
 
