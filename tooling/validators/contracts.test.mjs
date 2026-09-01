@@ -26,6 +26,12 @@ import {
   findUnreferencedValidators,
 } from './policy-enforcement.mjs'
 import {
+  approvalRequiredVariants,
+  findPermissionMismatches,
+  findUndeclaredPlatforms,
+  buildSettings,
+} from '../generators/permissions.mjs'
+import {
   commandsFromCapabilities,
   commandsFromProfile,
   commandsFromWorkflows,
@@ -1099,4 +1105,125 @@ test('필요하고 흐름 밖인 assumes는 통과한다', () => {
   const steps = [{ id: 'spec', capability: 'specification' }]
   assert.deepEqual(findUnusedAssumes(steps, 계약, ['requirements.spec']), [])
   assert.deepEqual(findUnusedAssumes(steps, 계약), [])
+})
+
+// ---------------------------------------------------------------- 승인 투영
+// 승인 선언을 플랫폼 permission 런타임으로 옮긴다. 무엇이 승인 대상인지는
+// capability.yaml이 정하고 표는 명령 패턴만 안다 (ADR-0015).
+
+const 승인표 = {
+  unprojected: { codex: '승인 정책을 파일로 받는 자리를 아직 정하지 않았다' },
+  approvalRequired: { 'git-operations#push': { claude: ['Bash(git push:*)'] } },
+  neverAllowed: { 'file-deletion': { why: '파일 삭제', claude: ['Bash(rm -rf:*)'] } },
+}
+
+const 선언 = new Map([
+  ['git-operations', { variants: { push: { requiresApproval: true }, commit: {} } }],
+  ['review', {}],
+])
+
+test('requiresApproval인 변형만 모은다', () => {
+  assert.deepEqual(approvalRequiredVariants(선언), ['git-operations#push'])
+})
+
+// 변형이 없는 capability는 루트가 직접 선언한다.
+test('변형 없는 capability의 루트 선언도 본다', () => {
+  const found = approvalRequiredVariants(new Map([['x', { requiresApproval: true }]]))
+  assert.deepEqual(found, ['x'])
+})
+
+// 승인을 요구하는데 그 플랫폼의 패턴이 없으면 선언이 그 런타임에 도달하지 않는다.
+test('투영되지 않은 승인 선언을 검출한다', () => {
+  const found = findPermissionMismatches(선언, { approvalRequired: {} }, 'claude')
+  assert.deepEqual(found, [{ key: 'git-operations#push', problem: 'unprojected' }])
+})
+
+// 하네스는 한 플랫폼의 것이 아니다. claude에만 패턴이 있으면 codex 쪽은 비어 있다.
+test('플랫폼마다 따로 본다', () => {
+  assert.deepEqual(findPermissionMismatches(선언, 승인표, 'claude'), [])
+  assert.deepEqual(findPermissionMismatches(선언, 승인표, 'codex'), [
+    { key: 'git-operations#push', problem: 'unprojected' },
+  ])
+})
+
+// 표가 오래된 경우. 변형을 지웠는데 패턴이 남으면 없는 것을 막고 있는 셈이다.
+test('선언에 없는 표 항목을 검출한다', () => {
+  const found = findPermissionMismatches(
+    선언,
+    { approvalRequired: { 'git-operations#push': { claude: ['x'] }, '없어진#변형': { claude: ['y'] } } },
+    'claude',
+  )
+  assert.deepEqual(found, [{ key: '없어진#변형', problem: 'orphan' }])
+})
+
+test('ask는 승인 선언에서, deny는 표에서 온다', () => {
+  assert.deepEqual(buildSettings(선언, 승인표, 'claude'), {
+    permissions: { ask: ['Bash(git push:*)'], deny: ['Bash(rm -rf:*)'] },
+  })
+})
+
+// 투영하지 않는 플랫폼은 빈 설정이 아니라 아무것도 내지 않는다. 빈 permissions를
+// 내면 "아무것도 막지 않기로 했다"로 읽힌다.
+test('패턴이 없는 플랫폼은 빈 목록이 된다', () => {
+  assert.deepEqual(buildSettings(선언, 승인표, 'codex'), {
+    permissions: { ask: [], deny: [] },
+  })
+})
+
+// 단일 출처는 선언이다. 표에 있어도 선언이 승인을 요구하지 않으면 ask에 안 들어간다.
+test('선언이 승인을 요구하지 않으면 패턴이 있어도 ask에 안 들어간다', () => {
+  const settings = buildSettings(
+    new Map([['git-operations', { variants: { push: {} } }]]),
+    승인표,
+    'claude',
+  )
+  assert.deepEqual(settings.permissions.ask, [])
+})
+
+// 투영하지 않는 것 자체는 정당할 수 있다. 조용한 것이 문제다 — 사유가 없으면 그
+// 플랫폼에서 승인이 강제되지 않는다는 사실을 아무도 모른다.
+test('투영도 안 하고 사유도 없는 플랫폼을 검출한다', () => {
+  const platforms = {
+    $comment: '무시된다',
+    claude: { enabled: true, permissionFile: 'settings.json' },
+    codex: { enabled: true },
+    사유있음: { enabled: true },
+    꺼진것: { enabled: false },
+  }
+  const table = { unprojected: { 사유있음: '아직 자리를 안 정했다' } }
+  assert.deepEqual(findUndeclaredPlatforms(platforms, table), ['codex'])
+})
+
+// 변형 둘이 같은 패턴을 요구하면 목록에 두 번 들어간다. 생성물이 그대로 두면 무엇이
+// 왜 있는지 읽기 어렵고 드리프트 비교도 흔들린다.
+test('같은 패턴을 여러 변형이 요구해도 한 번만 낸다', () => {
+  const 선언둘 = new Map([
+    ['git-operations', { variants: { push: { requiresApproval: true }, sync: { requiresApproval: true } } }],
+  ])
+  const 표 = {
+    approvalRequired: {
+      'git-operations#push': { claude: ['Bash(git push:*)'] },
+      'git-operations#sync': { claude: ['Bash(git push:*)'] },
+    },
+  }
+  assert.deepEqual(buildSettings(선언둘, 표, 'claude').permissions.ask, ['Bash(git push:*)'])
+})
+
+// 빈 배열은 "패턴을 적었다"가 아니다. 문자열 하나를 배열 대신 적은 것도 마찬가지다 —
+// 둘 다 그 플랫폼에는 투영이 없는 상태다.
+test('빈 배열이나 배열 아닌 값은 투영으로 보지 않는다', () => {
+  const 빈것 = { approvalRequired: { 'git-operations#push': { claude: [] } } }
+  const 문자열 = { approvalRequired: { 'git-operations#push': { claude: 'Bash(git push:*)' } } }
+  assert.deepEqual(findPermissionMismatches(선언, 빈것, 'claude'), [
+    { key: 'git-operations#push', problem: 'unprojected' },
+  ])
+  assert.deepEqual(findPermissionMismatches(선언, 문자열, 'claude'), [
+    { key: 'git-operations#push', problem: 'unprojected' },
+  ])
+  assert.deepEqual(buildSettings(선언, 문자열, 'claude').permissions.ask, [])
+})
+
+test('빈 입력은 대상이 아니다', () => {
+  assert.deepEqual(findUndeclaredPlatforms(undefined, undefined), [])
+  assert.deepEqual(approvalRequiredVariants(undefined), [])
 })

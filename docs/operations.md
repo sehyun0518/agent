@@ -9,6 +9,7 @@
 |---|---|---|
 | 선언 검사 (`npm run validate`) | **예** | 실패로 멈춤 |
 | 미러 생성·드리프트 (CI) | **예** | 병합 차단 |
+| 승인·금지 명령 (플랫폼 permission 설정) | **Claude만 예.** Codex는 미투영 | 확인을 묻거나 막힘 |
 | 워크플로 순서·게이트 | 아니오 | 아무 일도 안 일어남 |
 | 이관 게이트 (red 증거 요구 등) | 아니오 | 아무 일도 안 일어남 |
 | 증거 기록 (`.harness/runs/`) | 아니오 | 기록이 안 남음 |
@@ -252,6 +253,7 @@ integration·e2e를 생략하려면 **사유와 승인**이 있어야 한다.
 | 검증기 규칙 | `tooling/validators/` + `policy-enforcement.mjs` 레지스트리 | `npm run check` |
 | 게이트·훅의 회귀 케이스 | `capabilities/<id>/tests/*.cases.yaml` | 사람이 대조 (러너 없음) |
 | 새 토큰 | `docs/vocabulary.md` **+** `vocabulary.json` | `npm run check` |
+| 승인의 명령 패턴 | `tooling/generators/permissions.json` | `npm run generate` |
 | 플랫폼 모델 이름 | `tooling/generators/platforms.json` | `npm run generate` |
 
 **새 검증기 규칙은 순수 함수로 쓴다.** `validate.mjs`에 인라인으로 쓰면
@@ -312,6 +314,7 @@ mkdir -p capabilities/<id>/{agents,hooks,tests}
 - 어휘가 연 수동 검증 경로를 선언이 안 내놓는 것, `manual` 계층에 러너 명령이 함께 있는 것
 - 선행 토큰의 생산자가 흐름 안에도 `assumes`에도 없는 것 (되돌려도 갈 곳이 없다)
 - 흐름이 스스로 생산하거나 아무도 요구하지 않는 `assumes`가 남아 있는 것
+- 승인을 요구하는 변형이 플랫폼별로 투영되지 않는 것, 투영도 사유도 없는 플랫폼 (생성 실패)
 - 테스트 층 합치기, Git 작업 자동화, 파괴적 작업 자동 진행
 - 오케스트레이터에 도메인 지식 유입, 미러 드리프트
 - 문서 단계 없이 판정으로 가는 워크플로, roster·routing의 없는 실행자 이름
