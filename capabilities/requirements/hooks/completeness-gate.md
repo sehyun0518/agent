@@ -9,8 +9,8 @@
 `requirements-spec` 스킬의 "완결성 판정"이 단일 출처다. 여기서 다시 정의하지 않고
 아래 항목을 그 스킬에 대고 검사한다.
 
-1. 필수 슬롯 6개(`goal`·`target`·`design_ref`·`scope_in`·`scope_out`·
-   `acceptance_criteria`)가 각각 "채워짐 판정 기준"을 통과했는가
+1. 필수 슬롯이 각각 "채워짐 판정 기준"을 통과했는가 — 목록은 그 스킬이 소유한다.
+   여기 옮겨 적지 않는다, 두 곳에 적으면 한 곳이 낡는다
 2. `acceptance_criteria`가 객관적으로 검증 가능한 기준 2개 이상인가
 3. `[추론]` 태그가 붙은 슬롯이 모두 사용자 확인을 받았거나, 미확인 항목이 스펙
    "비고"에 명시됐는가
@@ -22,7 +22,7 @@
 ```yaml
 kind: completeness-check
 status: passed | failed
-summary: "필수 슬롯 6/6, 수용 기준 3개, 미확인 추론 0"
+summary: "필수 슬롯 7/7, 수용 기준 3개, 미확인 추론 0"
 producedBy: requirements
 ```
 

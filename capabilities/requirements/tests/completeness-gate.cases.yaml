@@ -10,7 +10,7 @@ evidence: completeness-check
 
 cases:
   - id: all-slots-filled
-    given: 필수 슬롯 6개가 모두 판정 기준을 통과하고 수용 기준이 3개다.
+    given: 필수 슬롯 7개가 모두 판정 기준을 통과하고 수용 기준이 3개다.
     expect:
       status: passed
 
@@ -19,6 +19,28 @@ cases:
     expect:
       status: failed
       summaryContains: scope_out
+
+  - id: missing-measurement
+    given: measurement가 비어 있고 "없음"이라는 명시도 없다.
+    expect:
+      status: failed
+      summaryContains: measurement
+    why: 무엇을 알고 싶은지 아무도 묻지 않으면 출시 뒤에 확인할 것이 없다.
+
+  - id: measurement-declared-none
+    given: 리팩터링이라 측정할 것이 없고 measurement에 "없음"과 사유가 적혀 있다.
+    expect:
+      status: passed
+    why: scope_out과 같다. 없다는 것을 적게 해서 침묵 생략과 가른다.
+
+  # 수용 기준은 "구현이 됐나"이고 측정은 "실제로 쓰이나"다. 한쪽을 다른 쪽으로
+  # 대신할 수 없다 (ADR-0021).
+  - id: measurement-confused-with-acceptance
+    given: measurement에 "버튼이 정상 동작한다"처럼 병합 전에 판정되는 항목만 적혀 있다.
+    expect:
+      status: failed
+      summaryContains: measurement
+    why: 그건 수용 기준이다. 출시 뒤에 답이 나오는 지표여야 한다.
 
   - id: acceptance-criteria-too-few
     given: 수용 기준이 1개뿐이다.

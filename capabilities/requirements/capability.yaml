@@ -46,7 +46,7 @@ entrypoints:
     - event: after-capability
       file: hooks/completeness-gate.md
       blocking: true
-      description: 필수 슬롯 6개·수용 기준 2개 이상·미확인 추론 0개를 검사하고 미달이면 산출을 막는다.
+      description: 필수 슬롯·수용 기준 2개 이상·미확인 추론 0개를 검사하고 미달이면 산출을 막는다. 슬롯 목록은 requirements-spec 스킬이 소유한다.
 
 failure:
   transient:
