@@ -7,10 +7,9 @@
 //
 // `artifactRequired`는 스키마에 있었지만 기본값이 false였고 어느 kind가 이것을 켜야
 // 하는지 정한 것이 없었다. 그래서 켠 곳과 안 켠 곳이 갈렸는데, 안 켠 쪽이 하필
-// `approval-record`·`policy-decision`·`test.skip-justification`·`completeness-check`,
-// 즉 status만으로는 아무것도 재구성할 수 없는 것들이었다. `approval-record: granted`는
-// 누가 무엇을 언제 승인했는지 말하지 않고, `test.skip-justification: recorded`는
-// status 자체가 정보를 하나도 담지 않는다.
+// `approval-record`·`policy-decision`·`completeness-check`, 즉 status만으로는 아무것도
+// 재구성할 수 없는 것들이었다. `approval-record: granted`는 누가 무엇을 언제 승인했는지
+// 말하지 않는다.
 //
 // 경계 1: 프로파일 네임스페이스 증거(`frontend:` 등)는 대상이 아니다. 코어가 프로파일
 // 증거의 status를 규정하지 않는 것과 같은 이유다 — 프로파일이 자기 증거를 소유한다.
