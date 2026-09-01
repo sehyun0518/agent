@@ -85,12 +85,19 @@ variants:
       - kind: test.integration.red-proof
         required: false
         artifactRequired: true
+      # 러너가 저장소 밖 환경(에뮬레이터·기기·실 서버)을 요구해 둘 수 없는 저장소가 있다.
+      # 그때 문서화된 수동 절차로 검증한 결과를 여기 남긴다 — 생략이 아니므로 승인을
+      # 요구하지 않는다. 성립 조건은 require-test-evidence 게이트가 정한다 (ADR-0013).
+      - kind: test.integration.manual-result
+        required: false
+        artifactRequired: true
       - kind: test.skip-justification
         required: false
         artifactRequired: true
     completion:
+      # 러너 결과이거나 수동 검증 결과이거나. 둘 중 하나면 이 계층은 검증된 것이다.
       requiresEvidence:
-        - test.integration.result
+        - [test.integration.result, test.integration.manual-result]
 
   e2e:
     title: E2E 실행
@@ -106,12 +113,19 @@ variants:
       - kind: test.e2e.red-proof
         required: false
         artifactRequired: true
+      # 러너가 저장소 밖 환경(에뮬레이터·기기·실 서버)을 요구해 둘 수 없는 저장소가 있다.
+      # 그때 문서화된 수동 절차로 검증한 결과를 여기 남긴다 — 생략이 아니므로 승인을
+      # 요구하지 않는다. 성립 조건은 require-test-evidence 게이트가 정한다 (ADR-0013).
+      - kind: test.e2e.manual-result
+        required: false
+        artifactRequired: true
       - kind: test.skip-justification
         required: false
         artifactRequired: true
     completion:
+      # 러너 결과이거나 수동 검증 결과이거나. 둘 중 하나면 이 계층은 검증된 것이다.
       requiresEvidence:
-        - test.e2e.result
+        - [test.e2e.result, test.e2e.manual-result]
 
 failure:
   transient:
