@@ -4,7 +4,7 @@
 // 파일을 읽고 쓰는 것까지가 이 파일의 일이다. 판단은 init.mjs에 있고 회귀 케이스가
 // 거기 붙는다.
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, readdirSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync } from 'node:fs'
 import { join, dirname, basename, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse as parseYaml } from 'yaml'
@@ -23,6 +23,10 @@ if (!target) {
 const repo = resolve(target)
 if (!existsSync(repo)) {
   console.error(`${target} 가 없다.`)
+  process.exit(2)
+}
+if (!statSync(repo).isDirectory()) {
+  console.error(`${target} 은 디렉터리가 아니다.`)
   process.exit(2)
 }
 
@@ -63,7 +67,15 @@ if (existsSync(harnessDir)) {
 }
 
 // ── 남은 것 ─────────────────────────────────────────────────────────────
-const profile = parseYaml(readFileSync(profilePath, 'utf8'))
+// 이미 있는 프로파일이 깨져 있을 수 있다. 여기서 죽으면 무엇이 남았는지도 못 본다.
+let profile
+try {
+  profile = parseYaml(readFileSync(profilePath, 'utf8'))
+} catch (error) {
+  console.error(`\n${profilePath} 을 읽지 못했다.`)
+  console.error(`  ${String(error.message).split('\n')[0]}`)
+  process.exit(1)
+}
 const { missing, conventionsMissing } = whatIsLeft(profile, commandKeys, CONVENTION_KEYS)
 
 if (missing.length) {

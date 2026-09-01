@@ -2832,9 +2832,15 @@ test('인덱스에 없는 git 저장소는 중첩이다', () => {
   assert.match(submoduleProblem({ gitlink: false, dotGit: true }), /중첩/)
 })
 
+// 제대로 붙은 것은 둘 다 참일 때뿐이다. 처음에 둘 다 거짓인 것을 정상으로 뒀는데,
+// 그것도 파일 복사본이다 — 인덱스에도 없고 저장소도 아닌 디렉터리가 거기 있다는
+// 뜻이다. 케이스가 그 버그를 고정하고 있었다 (#101 리뷰).
 test('제대로 붙었으면 아무 말 안 한다', () => {
   assert.equal(submoduleProblem({ gitlink: true, dotGit: true }), null)
-  assert.equal(submoduleProblem({ gitlink: false, dotGit: false }), null)
+})
+
+test('인덱스에도 없고 .git도 없으면 파일 복사본이다', () => {
+  assert.match(submoduleProblem({ gitlink: false, dotGit: false }), /파일 복사본/)
 })
 
 test('아직 안 채운 키를 낸다', () => {

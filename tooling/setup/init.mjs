@@ -56,20 +56,25 @@ permissions:
 /**
  * 서브모듈이 제대로 붙었는지.
  *
+ * **디렉터리가 있다는 전제로 부른다.** 없으면 부르지 않는다 — 나란히 두는 배치가
+ * 정당하기 때문이다(ADR-0020).
+ *
  * 실제 저장소가 **파일 복사본**이었다 — git 인덱스는 gitlink인데 디렉터리에 `.git`이
  * 없고 `node_modules`까지 들어 있었다. 그 상태로는 버전을 올릴 수 없다.
+ *
+ * 제대로 붙은 것은 **둘 다 참일 때뿐**이다. 처음에 `!gitlink && !dotGit`을 정상으로
+ * 뒀는데, 그것도 파일 복사본이다 — 인덱스에도 없고 저장소도 아닌 디렉터리가 거기
+ * 있다는 뜻이다 (#101 리뷰).
  *
  * @param {{gitlink: boolean, dotGit: boolean}} state
  * @returns {string|null} 문제 설명. 정상이면 null
  */
 export function submoduleProblem({ gitlink, dotGit }) {
-  if (gitlink && !dotGit) {
-    return '인덱스는 서브모듈로 기록됐는데 디렉터리에 .git이 없다 — 파일 복사본이다. git submodule add로 다시 붙인다.'
-  }
+  if (gitlink && dotGit) return null
   if (!gitlink && dotGit) {
     return '디렉터리는 git 저장소인데 인덱스에 서브모듈로 기록되지 않았다 — 중첩 저장소다 (ADR-0020).'
   }
-  return null
+  return '파일 복사본이다 — 서브모듈로 동작하지 않아 버전을 올릴 수 없다. git submodule add로 다시 붙인다.'
 }
 
 /**
