@@ -12,6 +12,11 @@ Agent Harness는 에이전트 작업을 **Capability 단위의 레이어**로 �
 > 현재 저장소는 선언, 정적 검증, 플랫폼별 설정 생성을 제공합니다. 워크플로 실행 엔진과
 > 증거 저장소는 아직 제공하지 않습니다. 실제 단계 호출과 증거 기록은 사람 또는 메인
 > 에이전트가 수행합니다.
+>
+> 예외가 하나 있습니다. **승인이 필요한 작업과 금지된 명령은 플랫폼이 실제로 막습니다** —
+> 선언을 `.claude/settings.json`으로 내보내 플랫폼의 permission 런타임에 맡깁니다
+> ([ADR-0015](docs/adr/0015-permission-projection.md)). 하네스가 런타임을 만들지 않고
+> 강제를 얻는 유일한 자리입니다.
 
 ## 빠르게 이해하기
 
@@ -20,8 +25,8 @@ Agent Harness는 에이전트 작업을 **Capability 단위의 레이어**로 �
 ```text
 요구사항
   → 계약과 테스트 계획
-  → Unit Red → 순수 로직 → Unit Green
-  → UI Red → 컴포넌트 → UI Green
+  → 로직 스캐폴드 → Unit Red → 순수 로직 → Unit Green
+  → UI 스캐폴드   → UI Red   → 컴포넌트   → UI Green
   → Integration Red → 연결 구현 → Integration Green
   → E2E Red → 사용자 여정 연결 → E2E Green
   → 문서 갱신
@@ -31,6 +36,15 @@ Agent Harness는 에이전트 작업을 **Capability 단위의 레이어**로 �
 각 화살표는 상태 플래그가 아니라 **증거**를 전달합니다. 테스트가 실패했다는 사실만으로는
 구현을 시작하지 않습니다. 테스트가 예상한 단언 때문에 실패했다는 `red-proof`가 있어야
 같은 계층의 구현을 시작합니다.
+
+**스캐폴드는 red보다 앞에 옵니다.** 계약이 신규 모듈을 들이면 그 파일이 없는 동안
+테스트가 import를 해석하지 못하고, 모듈 해석 실패는 red가 아닙니다. red 없이는 파일을
+못 만들고 파일 없이는 red를 못 만드는 순환을 스캐폴드가 끊습니다. 동작을 담지 않으므로
+red 증거를 요구하지 않습니다 ([ADR-0011](docs/adr/0011-logic-scaffold.md)).
+
+`integration`·`e2e`에는 비울 스캐폴드가 없습니다. 그래서 선행 계층이 이미 만든 협력을
+보느라 red가 관찰되지 않을 수 있고, 그 경우를 `moot`으로 기록합니다
+([ADR-0012](docs/adr/0012-red-proof-moot.md)).
 
 Git 작업은 위 흐름에 자동으로 연결하지 않습니다. 상태 확인, 커밋, 푸시, PR 생성은
 사용자가 각각 명시적으로 요청할 때만 수행합니다.
@@ -46,7 +60,7 @@ Git 작업은 위 흐름에 자동으로 연결하지 않습니다. 상태 확�
 | 2 | [Specification](capabilities/specification/README.md) | 계약과 계층별 테스트 계획을 고정합니다. | 제품 코드나 테스트를 구현하지 않습니다. |
 | 3 | [Test Design](capabilities/test-design/README.md) | 계층별 테스트를 작성합니다. | 테스트를 실행하거나 제품 코드를 수정하지 않습니다. |
 | 4 | [Test Execution](capabilities/test-execution/README.md) | 테스트를 실행하고 red 또는 green 증거를 남깁니다. | 테스트나 제품 코드를 수정하지 않습니다. |
-| 5 | [Implementation](capabilities/implementation/README.md) | 확인된 red를 같은 계층의 구현으로 green으로 만듭니다. | 인수 기준 테스트를 새로 작성하지 않습니다. |
+| 5 | [Implementation](capabilities/implementation/README.md) | 확인된 red를 같은 계층의 구현으로 green으로 만듭니다. 계약 스캐폴드는 예외로 red 앞에 옵니다. | 인수 기준 테스트를 새로 작성하지 않습니다. |
 | 6 | [Documentation](capabilities/documentation/README.md) | 변경 때문에 낡은 문서를 갱신하고 근거를 남깁니다. | 문서 영향 범위를 스스로 판정하거나 제품 코드를 수정하지 않습니다. |
 | 7 | [Review](capabilities/review/README.md) | 계약과 테스트·문서 증거를 읽고 최종 판정을 내립니다. | 테스트를 다시 실행하거나 코드를 수정하지 않습니다. |
 | 수동 | [Git Operations](capabilities/git-operations/README.md) | Git과 GitHub 작업을 한 번에 하나씩 수행합니다. | 다음 Git 작업을 자동으로 이어서 수행하지 않습니다. |
@@ -72,10 +86,14 @@ profiles/                     도메인별 도구와 규칙을 주입합니다.
 packages/                     스키마, 어휘, 정책 계약, 조정자를 제공합니다.
 policies/                     권한과 데이터 처리 정책을 정의합니다.
 tooling/                      선언 검증기와 플랫폼 생성기를 제공합니다.
+  validators/                 선언끼리 앞뒤가 맞는지 검사합니다.
+  generators/                 플랫폼 미러와 permission 설정을 냅니다.
+  vendoring/                  벤더링한 파일이 기록과 같은지 대조합니다.
 docs/                         운영 문서, 결정 기록, 이관 문서를 보관합니다.
 
 .claude/ .codex/              소스에서 생성한 플랫폼별 산출물입니다.
   .claude/commands/           수동 실행 대상의 슬래시 커맨드입니다.
+  .claude/settings.json       승인·금지 명령을 플랫폼 permission으로 냅니다.
 ```
 
 ## 설계 원칙
