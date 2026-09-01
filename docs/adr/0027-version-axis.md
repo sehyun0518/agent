@@ -60,9 +60,9 @@ tooling/vendoring/manifest.json:134:  ...monorepo-single-dependency-versions.md 
 **그 셋은 자기 스키마와 항상 같이 움직인다.**
 
 ```text
-capabilities/*/capability.yaml   하네스 안
-workflows/*.yaml                 하네스 안
-packages/orchestrator/…yaml      하네스 안
+capabilities/*/capability.yaml           하네스 안
+workflows/*.yaml                         하네스 안
+packages/orchestrator/orchestrator.yaml  하네스 안
 ```
 
 하네스 안의 파일은 자기 하네스의 검증기로 검사된다. 스키마와 어긋날 수 있는 순간이
