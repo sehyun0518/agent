@@ -13,6 +13,26 @@
 
 const ADR_FILE = /^(\d{4})-/
 const ADR_LINK = /docs\/adr\/(\d{4})-/g
+const INDEX_HEADING = '## 결정 기록'
+
+/**
+ * 결정 기록 절만 떼어낸다.
+ *
+ * 문서 전체를 보면 **본문의 링크가 표의 누락을 가린다.** README는 설명 중에 특정 ADR을
+ * 링크한다 — 표에서 그 줄을 지워도 본문 링크가 남아 있어 검사가 통과한다. 실제로
+ * ADR-0011을 표에서 빼 봤더니 0건이 나왔다.
+ *
+ * 다음 `## `까지만 자른다. 문서 끝까지 자르면 뒤에 절이 하나 붙는 순간 같은 구멍이
+ * 다시 생긴다.
+ */
+function indexSection(markdown) {
+  const text = markdown ?? ''
+  const start = text.indexOf(INDEX_HEADING)
+  if (start === -1) return ''
+  const rest = text.slice(start + INDEX_HEADING.length)
+  const end = rest.indexOf('\n## ')
+  return end === -1 ? rest : rest.slice(0, end)
+}
 
 /** `0011-logic-scaffold.md` → `0011` */
 export function adrNumbers(fileNames) {
@@ -25,10 +45,12 @@ export function adrNumbers(fileNames) {
  * 양방향으로 본다. 새 ADR이 표에 안 들어간 것이 지금 난 일이고, 파일을 지웠는데 표가
  * 남은 것은 죽은 링크가 된다.
  *
+ * 결정 기록 절이 없으면 모든 ADR이 누락으로 나온다 — 표가 통째로 사라진 것도 드리프트다.
+ *
  * @returns {Array<{number: string, problem: 'not-in-index'|'no-file'}>}
  */
 export function findAdrIndexDrift(markdown, fileNames) {
-  const listed = new Set([...(markdown ?? '').matchAll(ADR_LINK)].map((m) => m[1]))
+  const listed = new Set([...indexSection(markdown).matchAll(ADR_LINK)].map((m) => m[1]))
   const actual = new Set(adrNumbers(fileNames))
 
   return [
