@@ -21,6 +21,8 @@ import { findMissingMootBranches } from './workflow-red-proof.mjs'
 import { walk } from '../walk.mjs'
 import { findBrokenSectionRefs } from './doc-refs.mjs'
 import { findUnknownHookEvents, knownHookEvents, isHookDoc } from './hook-events.mjs'
+import { findLayerAdvice, renderLayerAdvice } from './layer-advice.mjs'
+import { findLayerStepsWithoutEscape, findUnproducedVerdicts } from './layer-applicability.mjs'
 import { findMissingScaffolds } from './workflow-scaffold.mjs'
 import { findUnisolatedBackgroundAgents } from './background-isolation.mjs'
 import { toolRequirement } from './tools.mjs'
@@ -68,6 +70,13 @@ const POLICY_SCHEMA_DIR = join(ROOT, 'packages', 'policy-contracts')
 
 const problems = []
 const checked = []
+
+// 조언은 실패가 아니다. 저장소가 자기 도구를 고르는 자리라 막지 않는다 (ADR-0037).
+// 이 채널이 없어서 "말은 해야 하는데 막으면 안 되는 것"을 담을 자리가 없었다.
+const advisories = []
+function advise(file, message) {
+  advisories.push({ file: relative(ROOT, file), message })
+}
 
 function fail(file, message) {
   problems.push({ file: relative(ROOT, file), message })
@@ -153,6 +162,9 @@ function collectProfilePaths() {
 }
 
 const PROFILE_PATHS = collectProfilePaths()
+
+/** 도메인 제안을 고를 때 쓰는 후보. 어느 도메인인지는 정하지 않고 전부 보여준다. */
+const PROFILE_DOCS_ALL = PROFILE_PATHS.map((p) => readYaml(p)).filter(Boolean)
 
 /** 프로파일이 선언한 네임스페이스. 확장 토큰의 접두사는 여기 등록돼 있어야 한다. */
 function collectNamespaces() {
@@ -520,10 +532,6 @@ function checkWorkflowSteps(file, doc) {
       }
     }
 
-    // 승인이 필요한 생략은 승인 증거를 남길 수 있어야 한다.
-    if (step.skippable?.approvalRequired && !CORE_EVIDENCE.has('approval-record')) {
-      fail(file, `step:${step.id}: approval-record 증거가 어휘에 없다.`)
-    }
   }
 }
 
@@ -560,10 +568,6 @@ function checkWorkflowTokens(file, doc) {
         checkExpectation(step, item, `step:${step.id}.expectAnyOf[${groupIndex}]`)
       }
     }
-    if (step.skippable) {
-      checkToken(file, step.skippable.evidenceOnSkip, CORE_EVIDENCE, `step:${step.id}.skippable`)
-    }
-
     const capability = CAPABILITIES.get(step.capability)
     const scope = capability?.variants?.[step.variant] ?? capability
     const requiredTokens = [...(capability?.requires ?? []), ...(scope?.requires ?? [])]
@@ -597,6 +601,20 @@ function checkWorkflowTokens(file, doc) {
   }
 
   // 스캐폴드 변형이 선언된 계층은 그 단계를 red 앞에 두고 있어야 한다 (ADR-0011).
+  // 계층은 전부 필수다. 해당 없을 때 넘어갈 근거가 없으면 그 계층이 해당 없는 작업에서
+  // 흐름이 막힌다 (ADR-0038).
+  for (const { step, layer } of findLayerStepsWithoutEscape(steps)) {
+    fail(
+      file,
+      `step:${step}: test.${layer}.applicability = not-applicable 을 expectAnyOf에 두지 않았다. ` +
+        `그 계층이 해당 없는 작업에서 넘어갈 근거가 없다. (ADR-0038)`,
+    )
+  }
+
+  for (const missing of findUnproducedVerdicts(steps, CAPABILITIES)) {
+    fail(file, `${missing}: 그 판정을 내는 단계가 흐름 안에 없다. (ADR-0038)`)
+  }
+
   for (const { step, scaffold } of findMissingScaffolds(steps, graph, CAPABILITIES)) {
     fail(
       file,
@@ -868,6 +886,13 @@ function checkProfilePermissions(file, doc) {
       signatures.set(signature, layer)
     }
 
+  }
+
+  // 명령은 있는데 계층 규약이 없으면 테스트를 쓰는 단계가 무엇을 쓸지 모른다.
+  // 막지 않는다 — 저장소가 고르는 자리이고, 하네스가 라이브러리를 아는 순간
+  // 도메인 무관이 무너진다 (ADR-0037).
+  for (const line of renderLayerAdvice(findLayerAdvice(doc, PROFILE_DOCS_ALL))) {
+    advise(file, line)
   }
 
   // 선언했는데 아무도 부르지 않는 명령 키. 오타가 나면 양쪽이 조용하다 (ADR-0026).
@@ -1227,6 +1252,20 @@ if (checked.length === 0) {
   console.log('검사할 선언 파일이 없다.')
 }
 for (const line of checked) console.log(`  ${line}`)
+
+if (advisories.length > 0) {
+  // 파일별로 묶는다. 한 프로파일에 조언이 넷이면 경로가 네 번 나온다.
+  const byFile = new Map()
+  for (const { file, message } of advisories) {
+    if (!byFile.has(file)) byFile.set(file, [])
+    byFile.get(file).push(message)
+  }
+  console.log(`\n${advisories.length}건의 조언 — 막지 않는다:`)
+  for (const [file, messages] of byFile) {
+    console.log(`  · ${file}`)
+    for (const message of messages) console.log(`      ${message}`)
+  }
+}
 
 if (problems.length > 0) {
   console.error(`\n${problems.length}건의 문제:`)

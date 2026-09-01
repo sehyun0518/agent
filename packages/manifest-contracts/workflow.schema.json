@@ -163,29 +163,6 @@
           "default": [],
           "description": "이 step이 낼 토큰. Capability의 produces를 좁힐 수는 있어도 넓힐 수는 없다."
         },
-        "skippable": {
-          "type": "object",
-          "description": "생략 가능한 단계. 침묵 생략은 금지하고 사유를 증거로 남기게 한다.",
-          "additionalProperties": false,
-          "required": [
-            "evidenceOnSkip"
-          ],
-          "properties": {
-            "evidenceOnSkip": {
-              "$ref": "#/$defs/evidenceKind",
-              "description": "생략 시 반드시 기록할 증거. 보통 test.skip-justification."
-            },
-            "reasonRequired": {
-              "type": "boolean",
-              "default": true
-            },
-            "approvalRequired": {
-              "type": "boolean",
-              "default": false,
-              "description": "true면 사유 기록만으로 부족하고 approval-record가 granted여야 생략할 수 있다."
-            }
-          }
-        },
         "onFailure": {
           "type": "object",
           "description": "Capability의 failure 기본 동작을 이 워크플로 맥락에서 좁힐 때만 쓴다. 넓힐 수는 없다.",

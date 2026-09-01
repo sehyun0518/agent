@@ -33,7 +33,7 @@ test suite → Test Execution#<layer> → red-proof 또는 green result → Impl
 | red 신호 | `test.<layer>.red-confirmed` | 예상한 단언 실패가 확인됐음을 알립니다. |
 | 결과 증거 | `test.<layer>.result` | 실행 결과와 원본 로그 위치를 기록합니다. |
 | red 증거 | `test.<layer>.red-proof` | 실패 테스트명과 실패 메시지를 기록합니다. |
-| 생략 증거 | `test.skip-justification` | 허용된 계층 생략 사유를 기록합니다. |
+| 해당 여부 | `test.<layer>.applicability` | 계약 고정 단계가 판정합니다. 이 레이어가 만들지 않습니다. |
 
 ## 실행 단위
 

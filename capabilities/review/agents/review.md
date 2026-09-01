@@ -15,11 +15,11 @@
      연결 지점)?
 3. 테스트 증거를 **읽습니다**. 직접 돌리지 않습니다.
    - `test.unit.result` — 생략 불가
-   - `test.ui.result` 또는 테스트 계획에 연결된 UI 생략 사유
-   - `test.integration.result` 또는 생략 사유(`test.skip-justification`)
-   - `test.e2e.result` 또는 생략 사유
+   - `test.ui.result` 또는 해당 없음 판정(`test.ui.applicability: not-applicable`)
+   - `test.integration.result` 또는 해당 없음 판정(`test.integration.applicability: not-applicable`)
+   - `test.e2e.result` 또는 해당 없음 판정(`test.e2e.applicability: not-applicable`)
    - 각 증거의 `status`와 **원본 아티팩트**를 확인합니다. 요약 문자열만 믿지 않습니다.
-   - 증거가 없거나 생략 사유가 비어 있으면 **판정하지 않고 되돌립니다.** 어디로
+   - 증거가 없거나 해당 없음 판정이 비어 있으면 **판정하지 않고 되돌립니다.** 어디로
      보낼지는 하네스의 routing이 정합니다.
    도메인 프로파일이 추가 검증(비주얼 회귀·접근성 등)을 요구하면 그 증거도 같은
    방식으로 소비합니다.

@@ -96,9 +96,8 @@ E2E는 선행 계층 green 뒤에 red를 확인한다. 스캐폴드가 앞에 �
 | `test.<layer>.red-proof` | 해당 계층 실패가 예상한 단언 때문임을 보이는 근거 | `confirmed` · `rejected` · `moot`(integration·e2e만) |
 | `test.integration.manual-result` | 러너 대신 문서화된 수동 절차로 검증한 결과 | `passed` · `failed` |
 | `test.e2e.manual-result` | 러너 대신 문서화된 수동 절차로 검증한 결과 | `passed` · `failed` |
-| `test.skip-justification` | 어떤 테스트 층을 왜 생략했는지 | `recorded` |
+| `test.<layer>.applicability` | 이 변경에 그 계층이 해당되는지, 아니면 왜 아닌지 | `applicable` · `not-applicable` |
 | `documentation-impact` | 이 변경이 어떤 문서에 영향을 주는지, 없다면 왜 없는지 | `required` · `not-applicable` |
-| `documentation.skip-justification` | 문서를 왜 고치지 않았는지 | `recorded` |
 | `review-findings` | 지적 목록 + 우선순위 + 소유자 | `recorded` |
 | `policy-decision` | 정책 판정 기록 (허용/거부 + 근거 정책 id) | `allowed` · `denied` |
 | `approval-record` | 파괴적 작업에 대한 사람의 승인 기록 | `granted` · `refused` |
@@ -113,8 +112,13 @@ E2E는 선행 계층 green 뒤에 red를 확인한다. 스캐폴드가 앞에 �
 
 `moot`는 우회 통로가 아니다. 성립 조건은 `workflows/gates/require-red-evidence.md`가 정한다.
 
-`test.skip-justification`이 있어야 integration·e2e를 생략할 수 있다. 침묵 생략은
-"전부 통과"처럼 읽히므로 워크플로가 생략 사유를 증거로 남기도록 강제한다.
+**계층은 전부 필수다.** 건너뛸 수 있는 것이 아니라, 그 계층이 **이 변경에 해당되지
+않을 때** 넘어간다. 그 판정은 실행자가 아니라 **계약 고정 단계가** 한다 —
+`test.<layer>.applicability`가 `not-applicable`이면 그 계층 단계들이 그것을 전이 근거로
+쓴다 (ADR-0038).
+
+`documentation-impact`와 같은 구조다. 자기 일의 유무를 스스로 선언하면 **그 판정을
+검증할 근거가 사라진다.**
 
 `manual-result`는 생략이 **아니다.** 검증은 했고 러너를 쓰지 않았을 뿐이라 승인이 필요
 없다. 승인은 "검증을 포기한다"에 붙는 것이지 "다른 방법으로 검증했다"에 붙는 것이 아니다.
@@ -132,8 +136,10 @@ E2E는 선행 계층 green 뒤에 red를 확인한다. 스캐폴드가 앞에 �
 
 문서도 같은 구조를 쓴다. `documentation-impact`는 **계약 고정 단계가** 남긴다 —
 문서화 레이어가 자기 일의 유무를 스스로 선언하면 그 판정을 검증할 근거가 사라지기
-때문이다(ADR-0005 결정 1). 판정이 `not-applicable`이면 `documentation.skip-justification`이
-구체적 사유와 함께 있어야 하고, `required`면 `documentation.changeset`이 있어야 한다.
+때문이다(ADR-0005 결정 1). 판정이 `not-applicable`이면 그 사유가 판정 자체에 담기고,
+`required`면 `documentation.changeset`이 있어야 한다.
+
+테스트 계층이 `test.<layer>.applicability`로 같은 구조를 쓴다 (ADR-0038).
 
 ## 4. 프로파일 확장 예시
 
@@ -146,10 +152,11 @@ frontend:visual.snapshot-result    # 비주얼 스냅샷 증거
 
 이 토큰들은 코어 표에 등록하지 않는다. 프론트엔드 프로파일을 떼어내면 함께 사라진다.
 
-**도메인 단계의 생략 어휘도 여기 온다.** `test.skip-justification`은 테스트 계층용이고
-`documentation.skip-justification`은 문서용이라, 프로파일이 끼운 단계의 생략은 자기
-네임스페이스에 만든다 — `frontend:state.skip-justification`처럼. 코어에 두면 코어가
-도메인 축을 알기 시작한다 (ADR-0017).
+**도메인 단계의 생략 어휘는 여기 온다.** 코어 계층은 `specification`이 해당 여부를
+판정하지만, **`specification`은 `state-data`를 모른다** — 도메인 단계의 해당 여부를
+판정할 코어 증거가 없다. 그래서 프로파일이 끼운 단계는 자기 네임스페이스에 생략 어휘를
+만든다 — `frontend:state.skip-justification`처럼. 코어에 두면 코어가 도메인 축을 알기
+시작한다 (ADR-0017 · ADR-0038).
 
 ## 5. 증거 레코드 형식
 

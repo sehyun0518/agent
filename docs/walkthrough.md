@@ -226,20 +226,24 @@ status: passed
 summary: "2 passed"
 ```
 
-### 생략하려면
+### 해당되지 않으면
 
-unit은 생략 불가다. UI가 없는 작업은 test-plan의 구체적 사유로 UI 체인을 생략할 수
-있다. integration·e2e는 **사유와 승인**이 둘 다 있어야 한다.
+**계층은 전부 필수다. 생략하는 것이 아니라 해당되지 않을 때 넘어간다.**
+
+그리고 **그 판정은 계약 고정 단계가 한다.** 실행자가 자기 일의 유무를 스스로
+선언하면 그 판정을 검증할 근거가 사라진다 (ADR-0038).
 
 ```yaml
-kind: test.skip-justification
-status: recorded
-summary: "e2e 생략 — 이번 변경은 기존 설정 페이지에 토글 하나를 더한 것이고
-          라우팅·인증 경로를 건드리지 않음"
-
-kind: approval-record
-status: granted
+# specification 단계가 남긴다. 실행 계층은 읽기만 한다.
+kind: test.e2e.applicability
+status: not-applicable
+summary: "이번 변경은 기존 설정 페이지에 토글 하나를 더한 것이고
+          라우팅·인증 경로를 건드리지 않는다"
+producedBy: specification
+step: specification
 ```
+
+`unit`은 판정 대상이 아니다. 동작 변경이면 항상 해당된다 (ADR-0004).
 
 ```text
 ✅ "이번 변경은 순수 함수만 건드리고 UI 경로가 없음"

@@ -57,7 +57,7 @@ agent는 쓰기 권한을 갖지만 대상은 문서로 한정합니다. `.claud
 ## 완료와 실패
 
 `changed-files`가 원본 경로와 함께 기록되어야 레이어를 완료합니다. 고친 문서가 없으면
-완료가 아니라 생략이며, 생략에는 `documentation.skip-justification` 증거가 필요합니다.
+완료가 아니라 해당 없음이며, 그 판정은 계약 고정 단계의 `documentation-impact`가 담습니다.
 
 | 상황 | 처리 방식 |
 |---|---|

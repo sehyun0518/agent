@@ -78,23 +78,44 @@ function commandFor(variant, profiles) {
   // 그 키가 없다"는 다른 상태이고, 뒤쪽은 프로파일이 잘못된 것이다 — blog가
   // `test.ui`를 `test.component`로 부르고 있었다 (ADR-0035).
   let sawCommands = false
-  for (const profile of profiles ?? []) {
-    // 빈 객체는 봤다고 세지 않는다 — 도메인 프로파일이 `commands: {}`를 갖고 있다.
-    if (Object.keys(profile?.commands ?? {}).length > 0) sawCommands = true
-    const found = profile?.commands?.[key]
-    if (found?.command) {
-      return { key, command: found.command, cwd: found.cwd, from: profile.id }
+  // 여기도 순서에 기대고 있었다. testLayerFor만 고치고 넘어갔더니 테스트를 뒤집자
+  // 도메인의 명령이 저장소 것을 이겼다 (#99 리뷰). 같은 규칙을 쓴다.
+  for (const kind of ['repository', 'domain']) {
+    for (const profile of profiles ?? []) {
+      if (profile?.kind !== kind) continue
+      // 빈 객체는 봤다고 세지 않는다 — 도메인 프로파일이 `commands: {}`를 갖고 있다.
+      if (Object.keys(profile?.commands ?? {}).length > 0) sawCommands = true
+      const found = profile?.commands?.[key]
+      if (found?.command) {
+        return { key, command: found.command, cwd: found.cwd, from: profile.id }
+      }
     }
   }
   return { key, command: null, sawCommands }
 }
 
-/** 이 계층의 라이브러리·파일 규약. 프로파일이 소유한다. */
+/**
+ * 이 계층의 라이브러리·파일 규약. 프로파일이 소유한다.
+ *
+ * **어느 프로파일에서 왔는지가 중요하다.** 소비 저장소가 그 계층을 안 적었는데 도메인의
+ * 값을 그대로 보여주면, 읽는 사람은 자기 저장소가 그렇게 선언한 줄 안다 — blog가
+ * 정확히 그 상태였다. 도메인에서 왔으면 **제안**이라고 말한다 (ADR-0037).
+ */
 function testLayerFor(variantId, profiles) {
   if (!variantId) return null
-  for (const profile of profiles ?? []) {
-    const layer = profile?.testing?.layers?.[variantId]
-    if (layer) return { layer: variantId, ...layer, from: profile.id }
+  // 배열 순서에 기대지 않는다. 순서로 판정했더니 도메인이 앞에 오는 순간 저장소가
+  // 적은 것이 가려졌다 — #96에서 한 번 그랬다. kind로 두 번 훑는다 (#99 리뷰).
+  //
+  // kind가 없는 프로파일은 어느 쪽으로도 안 센다. 스키마가 필수로 요구하므로 그런
+  // 문서는 이미 깨진 것이고, 깨진 것을 권위로 삼는 것보다 무시하는 편이 낫다.
+  for (const kind of ['repository', 'domain']) {
+    for (const profile of profiles ?? []) {
+      if (profile?.kind !== kind) continue
+      const layer = profile?.testing?.layers?.[variantId]
+      if (layer) {
+        return { layer: variantId, ...layer, from: profile.id, suggested: kind === 'domain' }
+      }
+    }
   }
   return null
 }
@@ -202,7 +223,10 @@ export function renderStepBriefing(b) {
   }
 
   if (b.testLayer) {
-    out.push('', '이 계층의 규약')
+    out.push('', b.testLayer.suggested ? '이 계층의 규약  (제안)' : '이 계층의 규약')
+    if (b.testLayer.suggested) {
+      out.push(bullet([`이 저장소는 안 적었다. ${b.testLayer.from}이 쓰는 것을 보여준다`]))
+    }
     if (b.testLayer.manual) out.push(bullet([`수동 — 러너가 없다 (${b.testLayer.from})`]))
     if (b.testLayer.libraries?.length) out.push(bullet([`라이브러리  ${b.testLayer.libraries.join(' · ')}`]))
     if (b.testLayer.filePatterns?.length) out.push(bullet([`파일        ${b.testLayer.filePatterns.join(' · ')}`]))

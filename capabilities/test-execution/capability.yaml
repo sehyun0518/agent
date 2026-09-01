@@ -64,9 +64,6 @@ variants:
       - kind: test.ui.red-proof
         required: false
         artifactRequired: true
-      - kind: test.skip-justification
-        required: false
-        artifactRequired: true
     completion:
       requiresEvidence: [test.ui.result]
 
@@ -88,9 +85,6 @@ variants:
       # 그때 문서화된 수동 절차로 검증한 결과를 여기 남긴다 — 생략이 아니므로 승인을
       # 요구하지 않는다. 성립 조건은 require-test-evidence 게이트가 정한다 (ADR-0013).
       - kind: test.integration.manual-result
-        required: false
-        artifactRequired: true
-      - kind: test.skip-justification
         required: false
         artifactRequired: true
     completion:
@@ -116,9 +110,6 @@ variants:
       # 그때 문서화된 수동 절차로 검증한 결과를 여기 남긴다 — 생략이 아니므로 승인을
       # 요구하지 않는다. 성립 조건은 require-test-evidence 게이트가 정한다 (ADR-0013).
       - kind: test.e2e.manual-result
-        required: false
-        artifactRequired: true
-      - kind: test.skip-justification
         required: false
         artifactRequired: true
     completion:

@@ -47,6 +47,8 @@ import { matchExpectations, readEvidenceRecords } from '../briefing/evidence.mjs
 import { findUnansweredReviews, findPendingChecks, reviewers } from '../briefing/reviews.mjs'
 import { findBrokenSectionRefs, sectionNumbers } from './doc-refs.mjs'
 import { findUnknownHookEvents, hookEventOf, knownHookEvents, isHookDoc } from './hook-events.mjs'
+import { findLayerAdvice, renderLayerAdvice, testLayersInCommands } from './layer-advice.mjs'
+import { findLayerStepsWithoutEscape, findUnproducedVerdicts, layerOfStep } from './layer-applicability.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -2200,7 +2202,7 @@ test('탐색이 없는 디렉터리에 터지지 않는다', () => {
 test('변형이 부르는 명령을 낸다', () => {
   const wf = { id: 'w', steps: [{ id: 's', capability: 'te', variant: 'unit' }] }
   const caps = new Map([['te', { variants: { unit: { commandKey: 'test.unit' } } }]])
-  const profiles = [{ id: 'blog', commands: { 'test.unit': { command: 'vitest run', cwd: 'apps/x' } } }]
+  const profiles = [{ id: 'blog', kind: 'repository', commands: { 'test.unit': { command: 'vitest run', cwd: 'apps/x' } } }]
   const b = buildStepBriefing({ workflow: wf, stepId: 's', capabilities: caps, profiles })
   assert.deepEqual(b.command, { key: 'test.unit', command: 'vitest run', cwd: 'apps/x', from: 'blog' })
   const text = renderStepBriefing(b)
@@ -2218,7 +2220,7 @@ test('프로파일을 읽었는데 키가 없는 것과 안 읽은 것을 가른
 
   const 있음 = buildStepBriefing({
     workflow: wf, stepId: 's', capabilities: caps,
-    profiles: [{ id: 'blog', commands: { 'test.component': { command: 'x' } } }],
+    profiles: [{ id: 'blog', kind: 'repository', commands: { 'test.component': { command: 'x' } } }],
   })
   assert.equal(있음.command.sawCommands, true)
   assert.match(renderStepBriefing(있음), /다른 이름으로 선언했는지/)
@@ -2245,7 +2247,7 @@ test('commandKey가 없는 변형은 명령 절이 없다', () => {
 test('그 계층의 라이브러리·파일 규약을 낸다', () => {
   const wf = { id: 'w', steps: [{ id: 's', capability: 'td', variant: 'unit' }] }
   const caps = new Map([['td', { variants: { unit: {} } }]])
-  const profiles = [{ id: 'fe', testing: { layers: { unit: { libraries: ['vitest'], filePatterns: ['**/*.unit.test.ts'] } } } }]
+  const profiles = [{ id: 'fe', kind: 'domain', testing: { layers: { unit: { libraries: ['vitest'], filePatterns: ['**/*.unit.test.ts'] } } } }]
   const text = renderStepBriefing(buildStepBriefing({ workflow: wf, stepId: 's', capabilities: caps, profiles }))
   assert.match(text, /라이브러리 {2}vitest/)
   assert.match(text, /\*\*\/\*\.unit\.test\.ts/)
@@ -2256,9 +2258,11 @@ test('그 계층의 라이브러리·파일 규약을 낸다', () => {
 test('소비 저장소 계층이 도메인을 덮는다', () => {
   const wf = { id: 'w', steps: [{ id: 's', capability: 'td', variant: 'unit' }] }
   const caps = new Map([['td', { variants: { unit: { commandKey: 'test.unit' } } }]])
+  // 도메인을 **먼저** 둔다. 순서로 판정하면 여기서 도메인이 이긴다 — kind로 가르는지
+  // 보는 것이 이 케이스의 내용이다 (#99 리뷰).
   const profiles = [
-    { id: 'blog', testing: { layers: { unit: { filePatterns: ['a'] } } }, commands: { 'test.unit': { command: '저장소' } } },
-    { id: 'frontend', testing: { layers: { unit: { filePatterns: ['a', 'b'] } } }, commands: { 'test.unit': { command: '도메인' } } },
+    { id: 'frontend', kind: 'domain', testing: { layers: { unit: { filePatterns: ['a', 'b'] } } }, commands: { 'test.unit': { command: '도메인' } } },
+    { id: 'blog', kind: 'repository', testing: { layers: { unit: { filePatterns: ['a'] } } }, commands: { 'test.unit': { command: '저장소' } } },
   ]
   const b = buildStepBriefing({ workflow: wf, stepId: 's', capabilities: caps, profiles })
   assert.deepEqual(b.testLayer.filePatterns, ['a'])
@@ -2270,8 +2274,8 @@ test('소비 저장소에 그 계층이 없으면 도메인이 남는다', () =>
   const wf = { id: 'w', steps: [{ id: 's', capability: 'td', variant: 'unit' }] }
   const caps = new Map([['td', { variants: { unit: {} } }]])
   const profiles = [
-    { id: 'blog', testing: { layers: {} } },
-    { id: 'frontend', testing: { layers: { unit: { libraries: ['vitest'] } } } },
+    { id: 'blog', kind: 'repository', testing: { layers: {} } },
+    { id: 'frontend', kind: 'domain', testing: { layers: { unit: { libraries: ['vitest'] } } } },
   ]
   const b = buildStepBriefing({ workflow: wf, stepId: 's', capabilities: caps, profiles })
   assert.equal(b.testLayer.from, 'frontend')
@@ -2280,7 +2284,7 @@ test('소비 저장소에 그 계층이 없으면 도메인이 남는다', () =>
 test('수동 계층은 러너가 없다고 낸다', () => {
   const wf = { id: 'w', steps: [{ id: 's', capability: 'td', variant: 'integration' }] }
   const caps = new Map([['td', { variants: { integration: {} } }]])
-  const profiles = [{ id: 'fe', testing: { layers: { integration: { manual: { document: 'x' } } } } }]
+  const profiles = [{ id: 'fe', kind: 'domain', testing: { layers: { integration: { manual: { document: 'x' } } } } }]
   assert.match(
     renderStepBriefing(buildStepBriefing({ workflow: wf, stepId: 's', capabilities: caps, profiles })),
     /수동 — 러너가 없다/,
@@ -2637,5 +2641,164 @@ test('실제 훅 문서가 전부 실재하는 이벤트를 쓴다', async () =>
   const events = knownHookEvents(schema)
   assert.ok(events.length > 0, '스키마에서 이벤트를 못 읽었다')
   assert.deepEqual(findUnknownHookEvents(docs, events), [])
+})
+
+// ── 계층 추천 (ADR-0037) ──────────────────────────────────────────────────
+//
+// blog가 명령 넷을 선언하고 testing.layers는 하나도 안 적었다. 아무도 아무 말을
+// 안 했다 — 테스트를 쓰는 단계가 vitest인지 jest인지 모르는 상태다.
+//
+// 막지 않는다. 저장소가 자기 도구를 고르는 자리이고, 하네스가 라이브러리를 아는
+// 순간 도메인 무관이 무너진다.
+
+const 소비 = (over = {}) => ({ id: 'blog', kind: 'repository', commands: { 'test.unit': { command: 'x' } }, ...over })
+const 도메인 = (layers) => ({ id: 'frontend', kind: 'domain', testing: { layers } })
+
+test('명령 키에서 계층 이름을 뽑는다', () => {
+  assert.deepEqual(
+    testLayersInCommands({ 'test.unit': {}, 'test.e2e': {}, preflight: {}, 'lint': {} }),
+    ['unit', 'e2e'],
+  )
+  assert.deepEqual(testLayersInCommands(undefined), [])
+})
+
+test('계층 선언이 없으면 도메인의 것을 제안한다', () => {
+  const advice = findLayerAdvice(소비(), [도메인({ unit: { libraries: ['vitest'] } })])
+  assert.deepEqual(advice, [{ layer: 'unit', suggestions: [{ from: 'frontend', libraries: ['vitest'], filePatterns: [] }] }])
+})
+
+test('저장소가 적었으면 조언하지 않는다', () => {
+  const advice = findLayerAdvice(
+    소비({ testing: { layers: { unit: { libraries: ['jest'] } } } }),
+    [도메인({ unit: { libraries: ['vitest'] } })],
+  )
+  assert.deepEqual(advice, [])
+})
+
+// 도메인이 그 계층을 모르면 지어내지 않는다. 이름이 틀린 계층이 여기로 온다.
+test('도메인에도 없으면 제안 없이 빠졌다는 것만 말한다', () => {
+  const advice = findLayerAdvice(소비(), [도메인({ ui: { libraries: ['x'] } })])
+  assert.deepEqual(advice, [{ layer: 'unit', suggestions: [] }])
+  assert.match(renderLayerAdvice(advice)[0], /제안할 것이 없다/)
+})
+
+// 어느 도메인인지 하네스가 정하지 않는다. 소비 프로파일에 도메인을 가리키는 자리가
+// 없고, 단정하면 그것이 곧 도메인을 아는 것이다.
+test('도메인이 여럿이면 전부 출처와 함께 낸다', () => {
+  const advice = findLayerAdvice(소비(), [
+    도메인({ unit: { libraries: ['vitest'] } }),
+    { id: 'backend', kind: 'domain', testing: { layers: { unit: { libraries: ['jest'] } } } },
+  ])
+  assert.deepEqual(advice[0].suggestions.map((s) => s.from), ['frontend', 'backend'])
+})
+
+// 자기 자신을 id로 거르는 가드를 뒀다가 뺐다. consumer는 repository이고 후보는
+// domain이라 같을 수 없는데, id로 걸면 두 프로파일이 같은 id를 쓸 때 멀쩡한 제안이
+// 사라진다 — 없는 위험을 막으려다 있는 것을 막는다 (#99 리뷰).
+test('id가 같아도 도메인 제안은 살아 있다', () => {
+  const advice = findLayerAdvice(
+    { id: '같은이름', kind: 'repository', commands: { 'test.unit': { command: 'x' } } },
+    [{ id: '같은이름', kind: 'domain', testing: { layers: { unit: { libraries: ['vitest'] } } } }],
+  )
+  assert.deepEqual(advice[0].suggestions.map((x) => x.from), ['같은이름'])
+})
+
+test('suggestions가 없어도 렌더가 터지지 않는다', () => {
+  assert.deepEqual(renderLayerAdvice([{ layer: 'unit' }]), [
+    'testing.layers.unit가 없다. 도메인 프로파일에도 그 계층이 없어 제안할 것이 없다.',
+  ])
+  assert.deepEqual(renderLayerAdvice(undefined), [])
+})
+
+test('kind가 repository가 아니면 대상이 아니다', () => {
+  assert.deepEqual(findLayerAdvice(도메인({ unit: {} }), []), [])
+  assert.deepEqual(findLayerAdvice(undefined, []), [])
+})
+
+// 수동 계층은 러너가 없는 것이 선언의 내용이라 라이브러리를 제안하지 않는다.
+test('수동 계층은 제안하지 않는다', () => {
+  const advice = findLayerAdvice(소비(), [도메인({ unit: { manual: { document: 'x' } } })])
+  assert.deepEqual(advice, [{ layer: 'unit', suggestions: [] }])
+})
+
+// ── 계층 해당 여부 (ADR-0038) ─────────────────────────────────────────────
+//
+// 계층은 전부 필수다. 건너뛰는 것이 아니라 해당되지 않을 때 넘어간다. 판정은 실행자가
+// 아니라 계약 고정 단계가 한다 — 스스로 선언하면 그 판정을 검증할 근거가 사라진다.
+//
+// 전에는 skippable이 단계마다 있었다. 설계가 "UI가 있다"고 해도 실행자가 사유 한 줄로
+// 통째로 건너뛸 수 있었고, 둘이 어긋나도 아무도 몰랐다.
+
+const 탈출 = (layer) => ({
+  conditions: [{ evidence: `test.${layer}.applicability`, status: 'not-applicable', from: 'specification' }],
+})
+
+test('계층 단계를 id로 가린다', () => {
+  assert.equal(layerOfStep('ui-scaffold'), 'ui')
+  // review.yaml의 단계는 하이픈 없이 계층 이름 그 자체다. 접두사만 봤더니 그 흐름이
+  // 통째로 검사에서 빠졌다 — 실패가 아니라 검사가 조용히 꺼졌다 (#100 리뷰).
+  assert.equal(layerOfStep('ui'), 'ui')
+  assert.equal(layerOfStep('integration'), 'integration')
+  assert.equal(layerOfStep('e2e'), 'e2e')
+  assert.equal(layerOfStep('integration-design'), 'integration')
+  assert.equal(layerOfStep('e2e-red'), 'e2e')
+  assert.equal(layerOfStep('unit-red'), null) // unit은 판정 대상이 아니다 (ADR-0004)
+  assert.equal(layerOfStep('review'), null)
+  assert.equal(layerOfStep(undefined), null)
+})
+
+test('탈출구가 있으면 통과한다', () => {
+  assert.deepEqual(findLayerStepsWithoutEscape([{ id: 'ui-red', expectAnyOf: [탈출('ui')] }]), [])
+})
+
+test('탈출구가 없으면 검출한다', () => {
+  assert.deepEqual(
+    findLayerStepsWithoutEscape([{ id: 'ui-red', expect: [{ evidence: 'x', status: 'y' }] }]),
+    [{ step: 'ui-red', layer: 'ui' }],
+  )
+})
+
+// 다른 계층의 판정으로는 넘어갈 수 없다.
+test('다른 계층의 탈출구는 세지 않는다', () => {
+  assert.deepEqual(
+    findLayerStepsWithoutEscape([{ id: 'e2e-red', expectAnyOf: [탈출('ui')] }]),
+    [{ step: 'e2e-red', layer: 'e2e' }],
+  )
+})
+
+test('unit 단계는 탈출구를 요구하지 않는다', () => {
+  assert.deepEqual(findLayerStepsWithoutEscape([{ id: 'unit-red', expect: [] }]), [])
+})
+
+test('판정을 내는 단계가 흐름 안에 있어야 한다', () => {
+  const steps = [
+    { id: 'specification', capability: 'specification' },
+    { id: 'ui-red', expectAnyOf: [탈출('ui')] },
+  ]
+  const 있음 = new Map([['specification', { evidence: [{ kind: 'test.ui.applicability' }] }]])
+  assert.deepEqual(findUnproducedVerdicts(steps, 있음), [])
+  const 없음 = new Map([['specification', { evidence: [] }]])
+  assert.deepEqual(findUnproducedVerdicts(steps, 없음), ['test.ui.applicability (from specification)'])
+})
+
+// review는 앞선 실행의 판정을 받는다. from이 없으면 흐름 밖이라는 뜻이다 (ADR-0014).
+test('from이 없으면 흐름 밖 판정이라 보지 않는다', () => {
+  const steps = [{ id: 'ui', expectAnyOf: [{ conditions: [{ evidence: 'test.ui.applicability', status: 'not-applicable' }] }] }]
+  assert.deepEqual(findUnproducedVerdicts(steps, new Map()), [])
+})
+
+// 검사가 실제로 review.yaml을 보는지 — 세 단계가 전부 탈출구를 갖는지 확인한다.
+test('실제 review 흐름의 계층 단계가 전부 탈출구를 갖는다', async () => {
+  const { readFileSync } = await import('node:fs')
+  const { parse } = await import('yaml')
+  const wf = parse(readFileSync(new URL('../../workflows/review.yaml', import.meta.url), 'utf8'))
+  const layered = (wf.steps ?? []).filter((s) => layerOfStep(s.id))
+  assert.equal(layered.length, 3, `계층 단계를 ${layered.length}개만 찾았다`)
+  assert.deepEqual(findLayerStepsWithoutEscape(wf.steps), [])
+})
+
+test('입력이 없어도 터지지 않는다', () => {
+  assert.deepEqual(findLayerStepsWithoutEscape(undefined), [])
+  assert.deepEqual(findUnproducedVerdicts(undefined, undefined), [])
 })
 
