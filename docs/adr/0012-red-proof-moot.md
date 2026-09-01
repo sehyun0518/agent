@@ -40,10 +40,10 @@ FE 저장소에 `change`를 태우다 두 번째 교착이 나왔다. ADR-0011�
 
 생략과 다르다 — **테스트를 썼고, 돌렸고, 통과했다.** 그래서 승인이 필요 없다.
 
-`workflows/change.yaml`과 `workflows/bugfix.yaml`의 `integration-implementation`·
-`e2e-implementation`에 `expectAnyOf` 분기를 하나 더한다. 구현 변형은 **건너뛰지 않고
-무동작으로 실행되어 빈 `changed-files`를 남긴다** — ADR-0011이 `logic-scaffold`에 세운
-원칙과 같다. "만들 것이 없었다"와 "확인하지 않았다"는 다른 사건이다.
+`workflows/change.yaml`의 `integration-implementation`·`e2e-implementation`과
+`workflows/bugfix.yaml`의 `integration-fix`·`e2e-fix`에 `expectAnyOf` 분기를 하나
+더한다. 구현 변형은 **건너뛰지 않고 무동작으로 실행되어 빈 `changed-files`를 남긴다**
+— ADR-0011이 `logic-scaffold`에 세운 원칙과 같다. "만들 것이 없었다"와 "확인하지 않았다"는 다른 사건이다.
 
 ### 왜 `unit`·`ui`에는 없나
 

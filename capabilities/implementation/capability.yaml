@@ -53,8 +53,9 @@ variants:
   # 이 변형이 unit 계층에 같은 것을 놓는다 (ADR-0011).
   logic-scaffold:
     title: 순수 로직 계약 스캐폴드
-    # red를 요구하지 않는다. 동작을 담지 않기 때문이다.
-    requires: [specification.contract, specification.test-plan]
+    # 변형 requires를 두지 않는다. 루트의 specification.contract·test-plan 외에 요구하는
+    # 것이 없다는 뜻이다 — 특히 red를 요구하지 않는다. 동작을 담지 않기 때문이다.
+    # 다른 변형이 여기 적는 것은 전부 자기 계층의 선행 신호다 (ui-scaffold는 test.unit.completed).
     produces: [implementation.logic-scaffold.completed]
     evidence: &implementation-evidence
       - kind: changed-files
