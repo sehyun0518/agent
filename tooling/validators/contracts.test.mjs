@@ -555,6 +555,32 @@ test('anchorStep이 있으면 step id까지 맞아야 한다', () => {
   assert.deepEqual(틀림, [])
 })
 
+// YAML은 값 없는 키를 null로 파싱한다. undefined만 보면 그 선언이 어떤 step과도 맞지
+// 않아 삽입이 커맨드에서 통째로 사라진다 — 이 모듈이 막으려는 실패와 같은 모양이다.
+test('anchorStep이 값 없는 키로 들어와도 삽입이 사라지지 않는다', () => {
+  const profiles = [
+    {
+      id: 'p',
+      workflowExtensions: [
+        {
+          workflow: '*',
+          insert: [
+            { id: 'state-data', runner: 'state-data', anchorCapability: 'implementation', anchorStep: null },
+          ],
+        },
+      ],
+    },
+  ]
+  const found = insertionsForWorkflow(
+    { id: 'change', steps: [{ id: 'logic', capability: 'implementation' }] },
+    profiles,
+  )
+  assert.deepEqual(
+    found.map((i) => i.id),
+    ['state-data'],
+  )
+})
+
 test('프로파일이 없으면 삽입도 없다', () => {
   const w = { id: 'change', steps: [{ id: 'specification', capability: 'specification' }] }
   assert.deepEqual(insertionsForWorkflow(w, []), [])

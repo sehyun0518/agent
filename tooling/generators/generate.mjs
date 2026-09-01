@@ -128,6 +128,10 @@ function collectSources() {
     const profilePath = join(dir, 'profile.yaml')
     if (!existsSync(profilePath)) continue
     const profile = parseYaml(readFileSync(profilePath, 'utf8'))
+    if (!isDocument(profile)) {
+      errors.push(`profiles/${id}/profile.yaml: 파싱 결과가 객체가 아니다. 빈 파일이거나 문법이 깨졌다.`)
+      continue
+    }
     profiles.push(profile)
 
     for (const agent of profile.agents ?? []) {
@@ -167,7 +171,13 @@ function collectSources() {
   }
 
   for (const path of listFiles(join(ROOT, 'workflows'))) {
-    if (path.endsWith('.yaml')) workflows.push(parseYaml(readFileSync(path, 'utf8')))
+    if (!path.endsWith('.yaml')) continue
+    const workflow = parseYaml(readFileSync(path, 'utf8'))
+    if (!isDocument(workflow)) {
+      errors.push(`${relative(ROOT, path)}: 파싱 결과가 객체가 아니다. 빈 파일이거나 문법이 깨졌다.`)
+      continue
+    }
+    workflows.push(workflow)
   }
 
   // 수동 실행 대상은 계약에서 유도한다. 중앙 목록을 두면 새 변형을 넣으면서
@@ -214,6 +224,17 @@ function renderClaudeAgent(agent, config) {
 }
 
 // ------------------------------------------------------------------ 공통
+
+/**
+ * 빈 파일이나 깨진 YAML은 `null`로 파싱된다.
+ *
+ * 걸러내지 않고 오류로 세운다. 조용히 버리면 워크플로 하나가 통째로 빠진 미러가
+ * 정상처럼 생성되고, 그것이 이 PR이 고치는 바로 그 실패다 (#52). 스키마 위반은
+ * `npm run validate`가 잡지만 `npm run generate`는 단독으로도 돈다.
+ */
+function isDocument(doc) {
+  return doc !== null && typeof doc === 'object' && !Array.isArray(doc)
+}
 
 function sourcePathOf(agent) {
   return relative(ROOT, join(agent.dir, agent.file))

@@ -94,12 +94,20 @@ export function insertionsForWorkflow(workflow, profiles) {
   return out
 }
 
-/** anchorStep이 있으면 capability만 같아서는 안 된다. 같은 capability의 다른 단계에 붙는다. */
+/**
+ * anchorStep이 있으면 capability만 같아서는 안 된다. 같은 capability의 다른 단계에 붙는다.
+ *
+ * `== null`인 것은 YAML이 값 없는 키(`anchorStep:`)를 `null`로 파싱하기 때문이다.
+ * `=== undefined`로 보면 그 선언이 어떤 step과도 안 맞아 **삽입이 커맨드에서 통째로
+ * 사라진다** — 이 파일이 고치려는 바로 그 실패다. 값 없는 키는 스키마 위반이라
+ * `npm run validate`가 거부하지만, 거부당하는 입력에 대고 조용히 단계를 지우는 것과
+ * 없는 제약으로 보는 것 중에서는 후자가 낫다.
+ */
 function hasAnchor(steps, insert) {
   return steps.some(
     (step) =>
       step.capability === insert.anchorCapability &&
-      (insert.anchorStep === undefined || step.id === insert.anchorStep),
+      (insert.anchorStep == null || step.id === insert.anchorStep),
   )
 }
 
