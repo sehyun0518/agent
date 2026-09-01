@@ -11,6 +11,11 @@ import { findForeignNamespaceTokens, insertTokens } from './profile-namespace.mj
 import { findUndeclaredNestedRepos, submodulePathsFrom } from './nested-repo.mjs'
 import { findWidenedHosts, findUnfilledAllowlist } from './network-scope.mjs'
 import {
+  CONVENTION_KEYS,
+  declaredCommandKeys,
+  findUnusedCommandKeys,
+} from './command-keys.mjs'
+import {
   normalize,
   classifyPack,
   extractVendoredBody,
@@ -1600,4 +1605,42 @@ test('allowlist가 아니면 대상이 아니다', () => {
   assert.equal(findUnfilledAllowlist({ network: 'none' }, 'repository'), false)
   assert.equal(findUnfilledAllowlist({ network: 'allowlist', networkAllowlist: ['x'] }, 'repository'), false)
   assert.equal(findUnfilledAllowlist(undefined, 'repository'), false)
+})
+
+// ---------------------------------------------------------------- 명령 키
+// commands는 임의 키를 받고 commandKey가 그것을 찾는다. 한쪽에 오타가 나면
+// 선언한 명령은 아무도 안 부르고 부르는 쪽은 없는 키를 찾는다 — 둘 다 조용하다
+// (ADR-0026).
+
+const 능력 = new Map([
+  ['test-execution', { variants: { unit: { commandKey: 'test.unit' }, ui: { commandKey: 'test.ui' } } }],
+  ['review', {}],
+])
+
+test('변형이 선언한 commandKey를 모은다', () => {
+  assert.deepEqual(declaredCommandKeys(능력), ['test.ui', 'test.unit'])
+  assert.deepEqual(declaredCommandKeys(undefined), [])
+})
+
+test('오타 난 명령 키를 검출한다', () => {
+  const found = findUnusedCommandKeys({ 'test.unit': {}, 'test.unti': {} }, declaredCommandKeys(능력))
+  assert.deepEqual(found, ['test.unti'])
+})
+
+// 규약 키는 어느 변형도 가리키지 않지만 하네스가 뜻을 안다. 오타와 가르려면
+// 아는 이름을 적어 둬야 한다.
+test('규약 키는 대상이 아니다', () => {
+  assert.deepEqual(findUnusedCommandKeys({ preflight: {} }, declaredCommandKeys(능력)), [])
+  assert.ok(CONVENTION_KEYS.includes('preflight'))
+})
+
+// 반대 방향은 보지 않는다. 러너 없이 수동으로 검증하는 계층은 명령이 없는 것이
+// 정상이고(ADR-0013), 그 판정은 findTestLayerConflicts가 계층별로 한다.
+test('선언되지 않은 commandKey는 여기서 보지 않는다', () => {
+  assert.deepEqual(findUnusedCommandKeys({ 'test.unit': {} }, declaredCommandKeys(능력)), [])
+})
+
+test('빈 입력은 대상이 아니다', () => {
+  assert.deepEqual(findUnusedCommandKeys(undefined, undefined), [])
+  assert.deepEqual(findUnusedCommandKeys({}, ['test.unit']), [])
 })
