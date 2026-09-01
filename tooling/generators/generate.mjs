@@ -11,7 +11,11 @@ import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, statSy
 import { join, dirname, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
-import { buildSettings, findPermissionMismatches } from './permissions.mjs'
+import {
+  buildSettings,
+  findPermissionMismatches,
+  findUndeclaredPlatforms,
+} from './permissions.mjs'
 import {
   commandsFromCapabilities,
   commandsFromProfile,
@@ -397,6 +401,7 @@ function emit(path, content) {
 const permissionTable = JSON.parse(readFileSync(join(ROOT, 'tooling', 'generators', 'permissions.json'), 'utf8'))
 
 const sources = collectSources()
+const CAPABILITY_MAP = new Map(sources.capabilities.map((c) => [c.id, c]))
 const { agents, skills } = sources
 
 for (const [platform, config] of Object.entries(platforms)) {
@@ -414,17 +419,6 @@ for (const [platform, config] of Object.entries(platforms)) {
       for (const { rel, path } of skillFiles(dir)) emit(out(config.skillDir, name, rel), readFileSync(path, 'utf8'))
     }
 
-    // 승인 선언을 플랫폼 permission 런타임으로 투영한다 (ADR-0015). 이 저장소에는
-    // 런타임이 없지만 플랫폼에는 있다 — 여기가 실제 강제를 얻는 유일한 자리다.
-    const capabilityMap = new Map(sources.capabilities.map((c) => [c.id, c]))
-    for (const { key, problem } of findPermissionMismatches(capabilityMap, permissionTable)) {
-      errors.push(
-        problem === 'unprojected'
-          ? `${key}: requiresApproval인데 permissions.json에 명령 패턴이 없다. 선언이 런타임에 도달하지 않는다.`
-          : `permissions.json의 "${key}": 그런 변형이 없거나 승인을 요구하지 않는다. 표가 오래됐다.`,
-      )
-    }
-    emit(out('settings.json'), `${JSON.stringify(buildSettings(capabilityMap, permissionTable), null, 2)}\n`)
   } else if (platform === 'codex') {
     for (const agent of agents) emit(out(config.agentDir, `${agent.id}.md`), renderCodexAgent(agent))
     for (const [name, dir] of skills) {
@@ -443,6 +437,37 @@ for (const [platform, config] of Object.entries(platforms)) {
   } else {
     errors.push(`플랫폼 "${platform}"이 켜져 있지만 렌더러가 없다.`)
   }
+
+  // 승인 선언을 이 플랫폼의 permission 런타임으로 투영한다 (ADR-0015). 이 저장소에는
+  // 런타임이 없지만 플랫폼에는 있다 — 여기가 실제 강제를 얻는 유일한 자리다.
+  // 투영 대상이 없는 플랫폼은 건너뛴다. 사유는 permissions.json이 갖고 있고, 사유
+  // 없이 비어 있으면 아래 findUndeclaredPlatforms가 잡는다.
+  if (!config.permissionFile) continue
+  if (config.permissionFormat !== 'claude-settings') {
+    errors.push(`플랫폼 "${platform}"의 permissionFormat "${config.permissionFormat}"에 렌더러가 없다.`)
+    continue
+  }
+  for (const { key, problem } of findPermissionMismatches(CAPABILITY_MAP, permissionTable, platform)) {
+    errors.push(
+      problem === 'unprojected'
+        ? `${key}: requiresApproval인데 permissions.json에 "${platform}" 명령 패턴이 없다. 선언이 그 플랫폼의 런타임에 도달하지 않는다.`
+        : `permissions.json의 "${key}": 그런 변형이 없거나 승인을 요구하지 않는다. 표가 오래됐다.`,
+    )
+  }
+  emit(
+    out(config.permissionFile),
+    `${JSON.stringify(buildSettings(CAPABILITY_MAP, permissionTable, platform), null, 2)}\n`,
+  )
+}
+
+// 켜져 있는데 투영도 안 하고 사유도 없는 플랫폼. 투영하지 않는 것 자체는 정당할 수
+// 있고, 조용한 것이 문제다 — 사유가 없으면 그 플랫폼에서 승인이 강제되지 않는다는
+// 사실을 아무도 모른다.
+for (const name of findUndeclaredPlatforms(platforms, permissionTable)) {
+  errors.push(
+    `플랫폼 "${name}": permissionFile도 없고 permissions.json의 unprojected에도 없다. ` +
+      `투영하지 않을 거면 왜인지 적어라 — 승인이 강제되지 않는다는 사실이 조용히 묻힌다.`,
+  )
 }
 
 // ------------------------------------------------- 고아 정리
