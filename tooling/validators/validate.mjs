@@ -18,6 +18,7 @@ import { findDocumentationBypass } from './documentation-gate.mjs'
 import { findReadonlyWriteTools } from './agent-readonly.mjs'
 import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
 import { findMissingMootBranches } from './workflow-red-proof.mjs'
+import { walk } from '../walk.mjs'
 import { findMissingScaffolds } from './workflow-scaffold.mjs'
 import { findUnisolatedBackgroundAgents } from './background-isolation.mjs'
 import { toolRequirement } from './tools.mjs'
@@ -79,19 +80,6 @@ function readYaml(path) {
   }
 }
 
-/** 디렉터리를 재귀 순회하며 조건에 맞는 파일 경로를 모은다. */
-function walk(dir, match, found = []) {
-  if (!existsSync(dir)) return found
-  for (const entry of readdirSync(dir)) {
-    if (entry === 'node_modules' || entry.startsWith('.')) continue
-    const path = join(dir, entry)
-    // lstat이라 심볼릭 링크로 들어가지 않는다. 링크가 조상을 가리키면 무한히 돈다 —
-    // profiles/ 아래에 그런 링크를 두니 ELOOP로 죽었다.
-    if (lstatSync(path).isDirectory()) walk(path, match, found)
-    else if (match(path)) found.push(path)
-  }
-  return found
-}
 
 // ---------------------------------------------------------------- 스키마 준비
 

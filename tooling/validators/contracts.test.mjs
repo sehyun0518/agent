@@ -36,6 +36,7 @@ import {
 import { findUnknownTelemetryEvents, knownEventNames } from './telemetry-mapping.mjs'
 import { TOOL_COMMANDS, findMissingToolScripts, extensionApplies, anchoredAt } from '../generators/commands.mjs'
 import { buildStepBriefing, renderStepBriefing, parseGateHeader, stepIds } from '../briefing/step.mjs'
+import { walk } from '../walk.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -2166,6 +2167,22 @@ test('망가진 선언에도 터지지 않는다', () => {
   assert.match(text, /agent: r/)
   assert.match(text, /expect  ok = passed/)
   assert.doesNotMatch(text, /undefined/)
+})
+
+// 브리핑이 한 겹만 봤다. 검증기는 재귀로 걷고 워크플로 참조까지 대조하므로, 중첩된
+// capability를 워크플로가 가리키면 검증은 통과하는데 브리핑에서만 조용히 사라졌다
+// (#92 리뷰). 이제 같은 walk를 쓴다.
+test('탐색이 중첩된 선언도 찾는다', () => {
+  const found = walk(
+    new URL('../../capabilities', import.meta.url).pathname,
+    (p) => p.endsWith('capability.yaml'),
+  )
+  assert.ok(found.length >= 8, `capability.yaml을 ${found.length}개만 찾았다`)
+  assert.ok(found.every((p) => p.endsWith('capability.yaml')))
+})
+
+test('탐색이 없는 디렉터리에 터지지 않는다', () => {
+  assert.deepEqual(walk('/없는경로/여기', () => true), [])
 })
 
 test('단계 목록을 낸다', () => {
