@@ -369,14 +369,16 @@
               },
               "background": {
                 "type": "boolean",
-                "default": false
+                "default": false,
+                "description": "부른 쪽을 막지 않고 도는가. true면 둘이 같은 작업 트리를 동시에 본다."
               },
               "isolation": {
                 "enum": [
                   "none",
                   "worktree"
                 ],
-                "default": "none"
+                "default": "none",
+                "description": "이 역할이 자기 worktree에서 도는가. background로 도는 쓰기 역할은 부른 쪽과 같은 트리를 고치므로 격리해야 한다 (ADR-0028). 격리 안에는 증거를 쓰지 않는다 — worktree 정리와 함께 사라진다 (ADR-0018)."
               },
               "readonly": {
                 "type": "boolean",

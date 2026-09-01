@@ -25,6 +25,7 @@ import {
 } from '../vendoring/vendored-files.mjs'
 import { findMissingMootBranches } from './workflow-red-proof.mjs'
 import { findMissingScaffolds } from './workflow-scaffold.mjs'
+import { findUnisolatedBackgroundAgents } from './background-isolation.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -1699,3 +1700,56 @@ test('설명이 달라도 번호가 맞으면 통과한다', () => {
   const md = '## 결정 기록\n| [ADR-0011](docs/adr/0011-logic-scaffold.md) | 전혀 다른 한 줄 요약 |'
   assert.deepEqual(findAdrIndexDrift(md, ['0011-logic-scaffold.md']), [])
 })
+
+// ── 백그라운드 격리 (ADR-0028 · #84) ───────────────────────────────────────
+//
+// 규칙은 선언에서 나왔다. background: true가 둘이고 isolation: worktree도 정확히
+// 그 둘이다. 짝은 맞는데 강제가 없었다.
+
+const 역할 = (over = {}) => ({
+  id: 'implementation',
+  tools: ['Read', 'Grep', 'Bash', 'Write', 'Edit'],
+  background: true,
+  isolation: 'worktree',
+  ...over,
+})
+const 맵 = (...agents) => new Map([['implementation', { entrypoints: { agents } }]])
+
+test('백그라운드인데 격리 없이 쓰면 검출한다', () => {
+  assert.deepEqual(findUnisolatedBackgroundAgents(맵(역할({ isolation: 'none' }))),
+    [{ capability: 'implementation', agent: 'implementation' }])
+})
+
+test('isolation을 아예 안 적어도 none으로 본다', () => {
+  const { isolation, ...격리없음 } = 역할()
+  assert.deepEqual(findUnisolatedBackgroundAgents(맵(격리없음)),
+    [{ capability: 'implementation', agent: 'implementation' }])
+})
+
+test('백그라운드이고 격리했으면 통과한다', () => {
+  assert.deepEqual(findUnisolatedBackgroundAgents(맵(역할())), [])
+})
+
+// 같은 트리를 봐도 고치지 않으면 부딪히지 않는다.
+test('백그라운드여도 읽기만 하면 대상이 아니다', () => {
+  assert.deepEqual(findUnisolatedBackgroundAgents(
+    맵(역할({ isolation: 'none', tools: ['Read', 'Grep', 'Glob'] }))), [])
+})
+
+// Bash는 쓰기 표시로 세지 않는다. 세면 규칙이 "백그라운드면 무조건 격리"가 되고,
+// 그것은 선언에서 나온 규칙이 아니다.
+test('Bash만 있으면 쓰기로 세지 않는다', () => {
+  assert.deepEqual(findUnisolatedBackgroundAgents(
+    맵(역할({ isolation: 'none', tools: ['Read', 'Bash'] }))), [])
+})
+
+test('포그라운드는 격리 없이 써도 대상이 아니다', () => {
+  assert.deepEqual(findUnisolatedBackgroundAgents(
+    맵(역할({ background: false, isolation: 'none' }))), [])
+})
+
+test('역할이 없어도 터지지 않는다', () => {
+  assert.deepEqual(findUnisolatedBackgroundAgents(new Map([['x', {}]])), [])
+  assert.deepEqual(findUnisolatedBackgroundAgents(undefined), [])
+})
+
