@@ -320,7 +320,7 @@
           "items": {
             "type": "string"
           },
-          "description": "network가 allowlist일 때의 호스트 목록.",
+          "description": "network가 allowlist일 때의 호스트 목록. 빈 목록은 \"아무 데도 못 나간다\"가 아니라 \"아직 안 정했다\"는 뜻이다 — 호스트는 저장소마다 다르므로 공용 하네스가 이름을 담지 않고 소비 저장소가 채운다 (ADR-0024).",
           "default": []
         }
       }
