@@ -52,6 +52,9 @@ tooling/vendoring/manifest.json:134:  ...monorepo-single-dependency-versions.md 
 **등급을 기계가 정하지 못한다는 판단도 그대로 산다.** `version-advice`가 판정하지 않고
 추천만 하는 이유가 그것이고, 파일마다 숫자를 두면 그 판단이 파일 수만큼 늘어난다.
 
+그리고 **막는 것이 아니라 조언한다.** 등급을 기계가 못 정하므로 절대 실패하지 않는다.
+`docs/operations.md` §0에 그 자리를 적었다 — 표에 "예/아니오"만 있었고 조언 칸이 없었다.
+
 ## 결정 2 — `version`을 capability·workflow·orchestrator에서 뺀다
 
 **그 셋은 자기 스키마와 항상 같이 움직인다.**
