@@ -13,6 +13,11 @@
 // 호스트는 저장소마다 다르므로(github·gitlab·사내 호스트) 공용 하네스가 이름을 담지
 // 않는다 — 명령을 담지 않는 것과 같은 이유다(`AGENT.md`). 소비 저장소가 채운다.
 
+// 코어 기준은 capability들의 **합집합**이다. 프로파일 `permissions`는 프로파일 전체에
+// 걸리는 선언이라 특정 capability와 짝지을 수 없다 — 정책이 말한 "이 범위"를 프로파일
+// 층위에서 읽으면 합집합이 맞다. capability별로 좁히는 것은 그 capability의 선언이
+// 이미 한다.
+
 /**
  * 프로파일이 코어 범위를 넓힌 호스트.
  *
@@ -30,6 +35,11 @@ export function findWidenedHosts(coreAllowlist, profileAllowlist) {
 
 /**
  * 소비 저장소가 채워야 하는데 비어 있는 곳.
+ *
+ * **이 저장소에서는 돌지 않는다.** `kind: repository` 프로파일은 소비 저장소에 있고
+ * 이 검증기는 `profiles/`만 걷는다. 배포가 정해져 소비 저장소에서 검증기가 돌 때 처음
+ * 돈다(ADR-0001 D9). `commands.test.<layer>`를 같은 조건으로 요구하는 검사가 이미 같은
+ * 모양으로 있다 — 새 패턴이 아니다.
  *
  * `kind: repository`는 실제로 도는 저장소다. 거기서 `network: allowlist`인데 목록이
  * 비면 나갈 곳이 정해지지 않은 채 나가게 된다. `commands.test.<layer>`를 같은 이유로
