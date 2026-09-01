@@ -12,7 +12,10 @@ import {
   normalizeRequiredEvidence,
   findUndeclaredCompletionEvidence,
 } from './completion-alternatives.mjs'
-import { findUnofferedManualResults } from './manual-result.mjs'
+import {
+  findUnofferedManualResults,
+  findMissingManualBranches,
+} from './manual-result.mjs'
 import {
   VALIDATOR_REGISTRY,
   findUnknownValidators,
@@ -943,4 +946,62 @@ test('domain 프로파일에는 명령을 요구하지 않는다', () => {
 
 test('빈 입력은 대상이 아니다', () => {
   assert.deepEqual(findTestLayerConflicts(undefined, undefined, 'repository'), [])
+})
+
+// 선언이 경로를 내놓아도 워크플로가 그 분기를 안 두면 결과는 같다 — 그 계층은 러너
+// 결과와 승인된 생략 둘뿐이 된다. review.yaml이 실제로 그 상태였다 (ADR-0013).
+
+test('result를 조건으로 보는데 manual 분기가 없으면 검출한다', () => {
+  const found = findMissingManualBranches(
+    [
+      {
+        id: 'e2e',
+        expectAnyOf: [
+          { conditions: [{ evidence: 'test.integration.result', status: 'passed' }] },
+          { conditions: [{ evidence: 'test.skip-justification', status: 'recorded' }] },
+        ],
+      },
+    ],
+    결과어휘,
+  )
+  assert.deepEqual(found, [{ step: 'e2e', kind: 'test.integration.manual-result' }])
+})
+
+test('manual 분기가 있으면 통과한다', () => {
+  const found = findMissingManualBranches(
+    [
+      {
+        id: 'e2e-design',
+        expectAnyOf: [
+          { conditions: [{ evidence: 'test.integration.result', status: 'passed' }] },
+          { conditions: [{ evidence: 'test.integration.manual-result', status: 'passed' }] },
+        ],
+      },
+    ],
+    결과어휘,
+  )
+  assert.deepEqual(found, [])
+})
+
+// unit은 어휘에 manual-result가 없다. 분기를 요구하지 않는다.
+test('어휘에 짝이 없는 계층은 대상이 아니다', () => {
+  const found = findMissingManualBranches(
+    [{ id: 'review', expect: [{ evidence: 'test.unit.result', status: 'passed' }] }],
+    결과어휘,
+  )
+  assert.deepEqual(found, [])
+})
+
+// expect는 AND라 대안이 아예 없다. 분기를 두려면 expectAnyOf로 가야 한다.
+test('expect로만 요구하면 대안이 없으므로 검출한다', () => {
+  const found = findMissingManualBranches(
+    [{ id: 'x', expect: [{ evidence: 'test.e2e.result', status: 'passed' }] }],
+    결과어휘,
+  )
+  assert.deepEqual(found, [{ step: 'x', kind: 'test.e2e.manual-result' }])
+})
+
+test('result를 안 보는 단계와 빈 입력은 대상이 아니다', () => {
+  assert.deepEqual(findMissingManualBranches([{ id: 'spec' }], 결과어휘), [])
+  assert.deepEqual(findMissingManualBranches(undefined, 결과어휘), [])
 })

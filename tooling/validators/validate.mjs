@@ -19,7 +19,10 @@ import { findReadonlyWriteTools } from './agent-readonly.mjs'
 import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
 import { findMissingMootBranches } from './workflow-red-proof.mjs'
 import { findMissingScaffolds } from './workflow-scaffold.mjs'
-import { findUnofferedManualResults } from './manual-result.mjs'
+import {
+  findUnofferedManualResults,
+  findMissingManualBranches,
+} from './manual-result.mjs'
 import {
   normalizeRequiredEvidence,
   findUndeclaredCompletionEvidence,
@@ -536,6 +539,15 @@ function checkWorkflowTokens(file, doc) {
       file,
       `step:${step}: 변형 "${scaffold}"가 선언돼 있는데 그것을 쓰는 조상 단계가 없다. ` +
         `계약이 신규 모듈을 도입하면 red를 만들 수 없는 순환에 갇힌다. (ADR-0011)`,
+    )
+  }
+
+  // 어휘가 수동 검증 경로를 연 계층은 워크플로도 그 분기를 둬야 한다 (ADR-0013).
+  for (const { step, kind } of findMissingManualBranches(steps, vocabulary.evidence)) {
+    fail(
+      file,
+      `step:${step}: "${kind}"를 받을 분기가 없다. ` +
+        `러너를 둘 수 없는 저장소가 승인된 생략 말고는 이 계층을 통과할 방법이 없어진다. (ADR-0013)`,
     )
   }
 

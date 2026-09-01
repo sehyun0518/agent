@@ -36,3 +36,39 @@ export function findUnofferedManualResults(scopes, evidenceVocabulary) {
   }
   return unoffered
 }
+
+/**
+ * `test.<layer>.result`를 조건으로 보면서 수동 검증 분기를 두지 않은 step.
+ *
+ * 선언이 경로를 내놓아도(위 검사) 워크플로가 그 분기를 두지 않으면 결과는 같다 — 그
+ * 계층을 만족시킬 방법이 다시 러너와 승인된 생략 둘뿐이 된다. `review.yaml`이 실제로
+ * 그 상태였다.
+ *
+ * `expect`와 `expectAnyOf`를 함께 본다. `expect`는 AND라 대안이 아예 없으므로,
+ * 그쪽에만 있으면 분기가 없는 것과 같다.
+ *
+ * @param {Array} steps
+ * @param {Record<string, unknown>} evidenceVocabulary
+ * @returns {Array<{step: string, kind: string}>}
+ */
+export function findMissingManualBranches(steps, evidenceVocabulary) {
+  const missing = []
+  for (const step of steps ?? []) {
+    const kinds = new Set(
+      [
+        ...(step.expect ?? []),
+        ...(step.expectAnyOf ?? []).flatMap((group) => group.conditions ?? []),
+      ].map((condition) => condition.evidence),
+    )
+
+    for (const kind of kinds) {
+      const match = RESULT.exec(kind ?? '')
+      if (!match) continue
+      const manual = `${match[1]}.manual-result`
+      if (!Object.hasOwn(evidenceVocabulary ?? {}, manual)) continue
+      if (kinds.has(manual)) continue
+      missing.push({ step: step.id, kind: manual })
+    }
+  }
+  return missing
+}
