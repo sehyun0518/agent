@@ -595,11 +595,25 @@ function checkOrchestratorPurity(file, doc) {
 }
 
 /** workflows/*.yaml 전체. 프로파일의 워크플로 확장 검증에 쓴다. */
+/**
+ * 워크플로를 id로 찾을 수 있게 미리 읽어 둔다.
+ *
+ * 이 맵은 **스키마 검증 전**에 만들어진다. 프로파일 검사가 워크플로를 가로질러 봐야
+ * 하는데, 그 시점에 워크플로 파일은 아직 자기 차례를 받지 못했기 때문이다. 그래서
+ * 여기 들어오는 step은 object라는 보장이 없다 — 빈 원소 하나가 profile.yaml 검사를
+ * TypeError로 죽였다.
+ *
+ * 깨진 step을 걸러내고 나머지로 진행한다. 원인은 그 워크플로 파일 차례에 "스키마 위반
+ * /steps/N: must be object"로 정확히 보고되므로 여기서 다시 말하지 않는다. 다른 파일의
+ * 검사가 남의 파일 문법 오류로 멈추지 않게 하는 것이 목적이다.
+ */
 function loadWorkflows() {
   const map = new Map()
   for (const path of walk(join(ROOT, 'workflows'), (p) => p.endsWith('.yaml'))) {
     const doc = readYaml(path)
-    if (doc?.id) map.set(doc.id, doc)
+    if (!doc?.id) continue
+    const steps = (doc.steps ?? []).filter((step) => step !== null && typeof step === 'object')
+    map.set(doc.id, { ...doc, steps })
   }
   return map
 }
