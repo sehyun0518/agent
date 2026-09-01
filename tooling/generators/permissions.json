@@ -1,0 +1,30 @@
+{
+  "$comment": "하네스의 승인 선언을 플랫폼 permission 런타임으로 투영하는 표. 여기 있는 것은 명령 패턴뿐이고 무엇이 승인 대상인지는 capability.yaml의 requiresApproval이 정한다. 생성기가 양방향으로 대조한다 — 선언에 있는데 여기 없으면 투영이 빠진 것이고, 여기 있는데 선언에 없으면 고아다. 패턴 문법은 플랫폼 것이라 선언을 건드리지 않고 여기서 고칠 수 있다.",
+  "approvalRequired": {
+    "git-operations#push": ["Bash(git push:*)"],
+    "git-operations#pr-create": ["Bash(gh pr create:*)"],
+    "git-operations#pr-update": ["Bash(gh pr edit:*)", "Bash(gh pr comment:*)"]
+  },
+  "neverAllowed": [
+    {
+      "pattern": "Bash(git push --force:*)",
+      "why": "이력 재작성. destructive-approval의 rationale이 이름 붙였는데 어떤 변형도 이것을 선언하지 않는다"
+    },
+    {
+      "pattern": "Bash(git push -f:*)",
+      "why": "위와 같은 것의 다른 표기"
+    },
+    {
+      "pattern": "Bash(git reset --hard:*)",
+      "why": "이력 재작성. 커밋되지 않은 작업이 되돌릴 수 없이 사라진다"
+    },
+    {
+      "pattern": "Bash(git filter-branch:*)",
+      "why": "이력 재작성"
+    },
+    {
+      "pattern": "Bash(rm -rf:*)",
+      "why": "파일 삭제. rationale이 이름 붙인 넷째 범주다"
+    }
+  ]
+}

@@ -11,6 +11,7 @@ import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, statSy
 import { join, dirname, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
+import { buildSettings, findPermissionMismatches } from './permissions.mjs'
 import {
   commandsFromCapabilities,
   commandsFromProfile,
@@ -393,6 +394,8 @@ function emit(path, content) {
   written.push(rel)
 }
 
+const permissionTable = JSON.parse(readFileSync(join(ROOT, 'tooling', 'generators', 'permissions.json'), 'utf8'))
+
 const sources = collectSources()
 const { agents, skills } = sources
 
@@ -410,6 +413,18 @@ for (const [platform, config] of Object.entries(platforms)) {
     for (const [name, dir] of skills) {
       for (const { rel, path } of skillFiles(dir)) emit(out(config.skillDir, name, rel), readFileSync(path, 'utf8'))
     }
+
+    // 승인 선언을 플랫폼 permission 런타임으로 투영한다 (ADR-0015). 이 저장소에는
+    // 런타임이 없지만 플랫폼에는 있다 — 여기가 실제 강제를 얻는 유일한 자리다.
+    const capabilityMap = new Map(sources.capabilities.map((c) => [c.id, c]))
+    for (const { key, problem } of findPermissionMismatches(capabilityMap, permissionTable)) {
+      errors.push(
+        problem === 'unprojected'
+          ? `${key}: requiresApproval인데 permissions.json에 명령 패턴이 없다. 선언이 런타임에 도달하지 않는다.`
+          : `permissions.json의 "${key}": 그런 변형이 없거나 승인을 요구하지 않는다. 표가 오래됐다.`,
+      )
+    }
+    emit(out('settings.json'), `${JSON.stringify(buildSettings(capabilityMap, permissionTable), null, 2)}\n`)
   } else if (platform === 'codex') {
     for (const agent of agents) emit(out(config.agentDir, `${agent.id}.md`), renderCodexAgent(agent))
     for (const [name, dir] of skills) {

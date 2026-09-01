@@ -26,6 +26,11 @@ import {
   findUnreferencedValidators,
 } from './policy-enforcement.mjs'
 import {
+  approvalRequiredVariants,
+  findPermissionMismatches,
+  buildSettings,
+} from '../generators/permissions.mjs'
+import {
   commandsFromCapabilities,
   commandsFromProfile,
   commandsFromWorkflows,
@@ -1099,4 +1104,58 @@ test('필요하고 흐름 밖인 assumes는 통과한다', () => {
   const steps = [{ id: 'spec', capability: 'specification' }]
   assert.deepEqual(findUnusedAssumes(steps, 계약, ['requirements.spec']), [])
   assert.deepEqual(findUnusedAssumes(steps, 계약), [])
+})
+
+// ---------------------------------------------------------------- 승인 투영
+// 승인 선언을 플랫폼 permission 런타임으로 옮긴다. 무엇이 승인 대상인지는
+// capability.yaml이 정하고 표는 명령 패턴만 안다 (ADR-0015).
+
+const 승인표 = {
+  approvalRequired: { 'git-operations#push': ['Bash(git push:*)'] },
+  neverAllowed: [{ pattern: 'Bash(rm -rf:*)', why: '파일 삭제' }],
+}
+
+const 선언 = new Map([
+  ['git-operations', { variants: { push: { requiresApproval: true }, commit: {} } }],
+  ['review', {}],
+])
+
+test('requiresApproval인 변형만 모은다', () => {
+  assert.deepEqual(approvalRequiredVariants(선언), ['git-operations#push'])
+})
+
+// 변형이 없는 capability는 루트가 직접 선언한다.
+test('변형 없는 capability의 루트 선언도 본다', () => {
+  const found = approvalRequiredVariants(new Map([['x', { requiresApproval: true }]]))
+  assert.deepEqual(found, ['x'])
+})
+
+// 승인을 요구하는데 명령 패턴이 없으면 그 선언은 런타임에 도달하지 않는다.
+test('투영되지 않은 승인 선언을 검출한다', () => {
+  const found = findPermissionMismatches(선언, { approvalRequired: {} })
+  assert.deepEqual(found, [{ key: 'git-operations#push', problem: 'unprojected' }])
+})
+
+// 표가 오래된 경우. 변형을 지웠는데 패턴이 남으면 없는 것을 막고 있는 셈이다.
+test('선언에 없는 표 항목을 검출한다', () => {
+  const found = findPermissionMismatches(선언, {
+    approvalRequired: { 'git-operations#push': ['x'], '없어진#변형': ['y'] },
+  })
+  assert.deepEqual(found, [{ key: '없어진#변형', problem: 'orphan' }])
+})
+
+test('양쪽이 맞으면 통과한다', () => {
+  assert.deepEqual(findPermissionMismatches(선언, 승인표), [])
+})
+
+test('ask는 승인 선언에서, deny는 표에서 온다', () => {
+  assert.deepEqual(buildSettings(선언, 승인표), {
+    permissions: { ask: ['Bash(git push:*)'], deny: ['Bash(rm -rf:*)'] },
+  })
+})
+
+// 표에 있어도 선언이 승인을 요구하지 않으면 ask에 넣지 않는다. 단일 출처는 선언이다.
+test('선언이 승인을 요구하지 않으면 패턴이 있어도 ask에 안 들어간다', () => {
+  const settings = buildSettings(new Map([['git-operations', { variants: { push: {} } }]]), 승인표)
+  assert.deepEqual(settings.permissions.ask, [])
 })
