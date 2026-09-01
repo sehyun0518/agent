@@ -24,6 +24,7 @@
 | 필요한 것 | 어디에 |
 |---|---|
 | 디자인 토큰·시각 규칙 | `profiles/frontend/knowledge/DESIGN.md` |
+| 성능 예산·에러 계측을 계약에 넣는 법 | `profiles/frontend/knowledge/OBSERVABILITY.md` |
 | 도메인 규칙 팩·패턴 스킬 | `profiles/frontend/skills/` |
 | 로스터·라우팅·워크플로 확장 | `profiles/frontend/profile.yaml` |
 | 작업별 계약 | `capabilities/<id>/capability.yaml` |

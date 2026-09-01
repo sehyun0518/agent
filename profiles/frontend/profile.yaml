@@ -371,6 +371,7 @@ routing:
 # ---------------------------------------------------------------- 지식
 knowledge:
   design: ./knowledge/DESIGN.md
+  observability: ./knowledge/OBSERVABILITY.md
 
 # ---------------------------------------------------------------- 정책
 git:
