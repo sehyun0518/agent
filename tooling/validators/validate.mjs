@@ -21,6 +21,7 @@ import { findMissingMootBranches } from './workflow-red-proof.mjs'
 import { walk } from '../walk.mjs'
 import { findBrokenSectionRefs } from './doc-refs.mjs'
 import { findUnknownHookEvents, knownHookEvents, isHookDoc } from './hook-events.mjs'
+import { findLayerAdvice, renderLayerAdvice } from './layer-advice.mjs'
 import { findMissingScaffolds } from './workflow-scaffold.mjs'
 import { findUnisolatedBackgroundAgents } from './background-isolation.mjs'
 import { toolRequirement } from './tools.mjs'
@@ -68,6 +69,13 @@ const POLICY_SCHEMA_DIR = join(ROOT, 'packages', 'policy-contracts')
 
 const problems = []
 const checked = []
+
+// 조언은 실패가 아니다. 저장소가 자기 도구를 고르는 자리라 막지 않는다 (ADR-0037).
+// 이 채널이 없어서 "말은 해야 하는데 막으면 안 되는 것"을 담을 자리가 없었다.
+const advisories = []
+function advise(file, message) {
+  advisories.push({ file: relative(ROOT, file), message })
+}
 
 function fail(file, message) {
   problems.push({ file: relative(ROOT, file), message })
@@ -153,6 +161,9 @@ function collectProfilePaths() {
 }
 
 const PROFILE_PATHS = collectProfilePaths()
+
+/** 도메인 제안을 고를 때 쓰는 후보. 어느 도메인인지는 정하지 않고 전부 보여준다. */
+const PROFILE_DOCS_ALL = PROFILE_PATHS.map((p) => readYaml(p)).filter(Boolean)
 
 /** 프로파일이 선언한 네임스페이스. 확장 토큰의 접두사는 여기 등록돼 있어야 한다. */
 function collectNamespaces() {
@@ -870,6 +881,13 @@ function checkProfilePermissions(file, doc) {
 
   }
 
+  // 명령은 있는데 계층 규약이 없으면 테스트를 쓰는 단계가 무엇을 쓸지 모른다.
+  // 막지 않는다 — 저장소가 고르는 자리이고, 하네스가 라이브러리를 아는 순간
+  // 도메인 무관이 무너진다 (ADR-0037).
+  for (const line of renderLayerAdvice(findLayerAdvice(doc, PROFILE_DOCS_ALL))) {
+    advise(file, line)
+  }
+
   // 선언했는데 아무도 부르지 않는 명령 키. 오타가 나면 양쪽이 조용하다 (ADR-0026).
   //
   // 무엇이 불리는지 함께 낸다. 실제 소비 저장소가 `test.component`를 선언했는데 코어는
@@ -1227,6 +1245,19 @@ if (checked.length === 0) {
   console.log('검사할 선언 파일이 없다.')
 }
 for (const line of checked) console.log(`  ${line}`)
+
+if (advisories.length > 0) {
+  // 파일별로 묶는다. 한 프로파일에 조언이 넷이면 경로가 네 번 나온다.
+  const byFile = new Map()
+  for (const { file, message } of advisories) {
+    byFile.set(file, [...(byFile.get(file) ?? []), message])
+  }
+  console.log(`\n${advisories.length}건의 조언 — 막지 않는다:`)
+  for (const [file, messages] of byFile) {
+    console.log(`  · ${file}`)
+    for (const message of messages) console.log(`      ${message}`)
+  }
+}
 
 if (problems.length > 0) {
   console.error(`\n${problems.length}건의 문제:`)

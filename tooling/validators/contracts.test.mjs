@@ -47,6 +47,7 @@ import { matchExpectations, readEvidenceRecords } from '../briefing/evidence.mjs
 import { findUnansweredReviews, findPendingChecks, reviewers } from '../briefing/reviews.mjs'
 import { findBrokenSectionRefs, sectionNumbers } from './doc-refs.mjs'
 import { findUnknownHookEvents, hookEventOf, knownHookEvents, isHookDoc } from './hook-events.mjs'
+import { findLayerAdvice, renderLayerAdvice, testLayersInCommands } from './layer-advice.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -2637,5 +2638,65 @@ test('실제 훅 문서가 전부 실재하는 이벤트를 쓴다', async () =>
   const events = knownHookEvents(schema)
   assert.ok(events.length > 0, '스키마에서 이벤트를 못 읽었다')
   assert.deepEqual(findUnknownHookEvents(docs, events), [])
+})
+
+// ── 계층 추천 (ADR-0037) ──────────────────────────────────────────────────
+//
+// blog가 명령 넷을 선언하고 testing.layers는 하나도 안 적었다. 아무도 아무 말을
+// 안 했다 — 테스트를 쓰는 단계가 vitest인지 jest인지 모르는 상태다.
+//
+// 막지 않는다. 저장소가 자기 도구를 고르는 자리이고, 하네스가 라이브러리를 아는
+// 순간 도메인 무관이 무너진다.
+
+const 소비 = (over = {}) => ({ id: 'blog', kind: 'repository', commands: { 'test.unit': { command: 'x' } }, ...over })
+const 도메인 = (layers) => ({ id: 'frontend', kind: 'domain', testing: { layers } })
+
+test('명령 키에서 계층 이름을 뽑는다', () => {
+  assert.deepEqual(
+    testLayersInCommands({ 'test.unit': {}, 'test.e2e': {}, preflight: {}, 'lint': {} }),
+    ['unit', 'e2e'],
+  )
+  assert.deepEqual(testLayersInCommands(undefined), [])
+})
+
+test('계층 선언이 없으면 도메인의 것을 제안한다', () => {
+  const advice = findLayerAdvice(소비(), [도메인({ unit: { libraries: ['vitest'] } })])
+  assert.deepEqual(advice, [{ layer: 'unit', suggestions: [{ from: 'frontend', libraries: ['vitest'], filePatterns: [] }] }])
+})
+
+test('저장소가 적었으면 조언하지 않는다', () => {
+  const advice = findLayerAdvice(
+    소비({ testing: { layers: { unit: { libraries: ['jest'] } } } }),
+    [도메인({ unit: { libraries: ['vitest'] } })],
+  )
+  assert.deepEqual(advice, [])
+})
+
+// 도메인이 그 계층을 모르면 지어내지 않는다. 이름이 틀린 계층이 여기로 온다.
+test('도메인에도 없으면 제안 없이 빠졌다는 것만 말한다', () => {
+  const advice = findLayerAdvice(소비(), [도메인({ ui: { libraries: ['x'] } })])
+  assert.deepEqual(advice, [{ layer: 'unit', suggestions: [] }])
+  assert.match(renderLayerAdvice(advice)[0], /제안할 것이 없다/)
+})
+
+// 어느 도메인인지 하네스가 정하지 않는다. 소비 프로파일에 도메인을 가리키는 자리가
+// 없고, 단정하면 그것이 곧 도메인을 아는 것이다.
+test('도메인이 여럿이면 전부 출처와 함께 낸다', () => {
+  const advice = findLayerAdvice(소비(), [
+    도메인({ unit: { libraries: ['vitest'] } }),
+    { id: 'backend', kind: 'domain', testing: { layers: { unit: { libraries: ['jest'] } } } },
+  ])
+  assert.deepEqual(advice[0].suggestions.map((s) => s.from), ['frontend', 'backend'])
+})
+
+test('kind가 repository가 아니면 대상이 아니다', () => {
+  assert.deepEqual(findLayerAdvice(도메인({ unit: {} }), []), [])
+  assert.deepEqual(findLayerAdvice(undefined, []), [])
+})
+
+// 수동 계층은 러너가 없는 것이 선언의 내용이라 라이브러리를 제안하지 않는다.
+test('수동 계층은 제안하지 않는다', () => {
+  const advice = findLayerAdvice(소비(), [도메인({ unit: { manual: { document: 'x' } } })])
+  assert.deepEqual(advice, [{ layer: 'unit', suggestions: [] }])
 })
 

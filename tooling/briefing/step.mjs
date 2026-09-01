@@ -89,12 +89,20 @@ function commandFor(variant, profiles) {
   return { key, command: null, sawCommands }
 }
 
-/** 이 계층의 라이브러리·파일 규약. 프로파일이 소유한다. */
+/**
+ * 이 계층의 라이브러리·파일 규약. 프로파일이 소유한다.
+ *
+ * **어느 프로파일에서 왔는지가 중요하다.** 소비 저장소가 그 계층을 안 적었는데 도메인의
+ * 값을 그대로 보여주면, 읽는 사람은 자기 저장소가 그렇게 선언한 줄 안다 — blog가
+ * 정확히 그 상태였다. 도메인에서 왔으면 **제안**이라고 말한다 (ADR-0037).
+ */
 function testLayerFor(variantId, profiles) {
   if (!variantId) return null
   for (const profile of profiles ?? []) {
     const layer = profile?.testing?.layers?.[variantId]
-    if (layer) return { layer: variantId, ...layer, from: profile.id }
+    if (layer) {
+      return { layer: variantId, ...layer, from: profile.id, suggested: profile.kind === 'domain' }
+    }
   }
   return null
 }
@@ -202,7 +210,10 @@ export function renderStepBriefing(b) {
   }
 
   if (b.testLayer) {
-    out.push('', '이 계층의 규약')
+    out.push('', b.testLayer.suggested ? '이 계층의 규약  (제안)' : '이 계층의 규약')
+    if (b.testLayer.suggested) {
+      out.push(bullet([`이 저장소는 안 적었다. ${b.testLayer.from}이 쓰는 것을 보여준다`]))
+    }
     if (b.testLayer.manual) out.push(bullet([`수동 — 러너가 없다 (${b.testLayer.from})`]))
     if (b.testLayer.libraries?.length) out.push(bullet([`라이브러리  ${b.testLayer.libraries.join(' · ')}`]))
     if (b.testLayer.filePatterns?.length) out.push(bullet([`파일        ${b.testLayer.filePatterns.join(' · ')}`]))
