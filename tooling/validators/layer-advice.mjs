@@ -46,14 +46,16 @@ export function findLayerAdvice(consumer, profiles) {
 
     const suggestions = []
     for (const profile of profiles ?? []) {
-      if (profile?.kind !== 'domain' || profile === consumer) continue
+      // id로 가른다. 같은 파일이어도 따로 파싱하면 다른 객체다 (#99 리뷰).
+      if (profile?.kind !== 'domain' || profile?.id === consumer?.id) continue
       const found = layerOf(profile, layer)
       if (!found || found.manual) continue
-      suggestions.push({
-        from: profile.id,
-        libraries: found.libraries ?? [],
-        filePatterns: found.filePatterns ?? [],
-      })
+      const libraries = found.libraries ?? []
+      const filePatterns = found.filePatterns ?? []
+      // 둘 다 비면 보여줄 것이 없다. 빈 제안은 "…은 이렇게 쓴다 — "로 끝나서
+      // 무엇을 말하려는지 알 수 없다 (#99 리뷰).
+      if (libraries.length === 0 && filePatterns.length === 0) continue
+      suggestions.push({ from: profile.id, libraries, filePatterns })
     }
     advice.push({ layer, suggestions })
   }

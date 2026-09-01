@@ -2201,7 +2201,7 @@ test('탐색이 없는 디렉터리에 터지지 않는다', () => {
 test('변형이 부르는 명령을 낸다', () => {
   const wf = { id: 'w', steps: [{ id: 's', capability: 'te', variant: 'unit' }] }
   const caps = new Map([['te', { variants: { unit: { commandKey: 'test.unit' } } }]])
-  const profiles = [{ id: 'blog', commands: { 'test.unit': { command: 'vitest run', cwd: 'apps/x' } } }]
+  const profiles = [{ id: 'blog', kind: 'repository', commands: { 'test.unit': { command: 'vitest run', cwd: 'apps/x' } } }]
   const b = buildStepBriefing({ workflow: wf, stepId: 's', capabilities: caps, profiles })
   assert.deepEqual(b.command, { key: 'test.unit', command: 'vitest run', cwd: 'apps/x', from: 'blog' })
   const text = renderStepBriefing(b)
@@ -2219,7 +2219,7 @@ test('프로파일을 읽었는데 키가 없는 것과 안 읽은 것을 가른
 
   const 있음 = buildStepBriefing({
     workflow: wf, stepId: 's', capabilities: caps,
-    profiles: [{ id: 'blog', commands: { 'test.component': { command: 'x' } } }],
+    profiles: [{ id: 'blog', kind: 'repository', commands: { 'test.component': { command: 'x' } } }],
   })
   assert.equal(있음.command.sawCommands, true)
   assert.match(renderStepBriefing(있음), /다른 이름으로 선언했는지/)
@@ -2246,7 +2246,7 @@ test('commandKey가 없는 변형은 명령 절이 없다', () => {
 test('그 계층의 라이브러리·파일 규약을 낸다', () => {
   const wf = { id: 'w', steps: [{ id: 's', capability: 'td', variant: 'unit' }] }
   const caps = new Map([['td', { variants: { unit: {} } }]])
-  const profiles = [{ id: 'fe', testing: { layers: { unit: { libraries: ['vitest'], filePatterns: ['**/*.unit.test.ts'] } } } }]
+  const profiles = [{ id: 'fe', kind: 'domain', testing: { layers: { unit: { libraries: ['vitest'], filePatterns: ['**/*.unit.test.ts'] } } } }]
   const text = renderStepBriefing(buildStepBriefing({ workflow: wf, stepId: 's', capabilities: caps, profiles }))
   assert.match(text, /라이브러리 {2}vitest/)
   assert.match(text, /\*\*\/\*\.unit\.test\.ts/)
@@ -2257,9 +2257,11 @@ test('그 계층의 라이브러리·파일 규약을 낸다', () => {
 test('소비 저장소 계층이 도메인을 덮는다', () => {
   const wf = { id: 'w', steps: [{ id: 's', capability: 'td', variant: 'unit' }] }
   const caps = new Map([['td', { variants: { unit: { commandKey: 'test.unit' } } }]])
+  // 도메인을 **먼저** 둔다. 순서로 판정하면 여기서 도메인이 이긴다 — kind로 가르는지
+  // 보는 것이 이 케이스의 내용이다 (#99 리뷰).
   const profiles = [
-    { id: 'blog', testing: { layers: { unit: { filePatterns: ['a'] } } }, commands: { 'test.unit': { command: '저장소' } } },
-    { id: 'frontend', testing: { layers: { unit: { filePatterns: ['a', 'b'] } } }, commands: { 'test.unit': { command: '도메인' } } },
+    { id: 'frontend', kind: 'domain', testing: { layers: { unit: { filePatterns: ['a', 'b'] } } }, commands: { 'test.unit': { command: '도메인' } } },
+    { id: 'blog', kind: 'repository', testing: { layers: { unit: { filePatterns: ['a'] } } }, commands: { 'test.unit': { command: '저장소' } } },
   ]
   const b = buildStepBriefing({ workflow: wf, stepId: 's', capabilities: caps, profiles })
   assert.deepEqual(b.testLayer.filePatterns, ['a'])
@@ -2271,8 +2273,8 @@ test('소비 저장소에 그 계층이 없으면 도메인이 남는다', () =>
   const wf = { id: 'w', steps: [{ id: 's', capability: 'td', variant: 'unit' }] }
   const caps = new Map([['td', { variants: { unit: {} } }]])
   const profiles = [
-    { id: 'blog', testing: { layers: {} } },
-    { id: 'frontend', testing: { layers: { unit: { libraries: ['vitest'] } } } },
+    { id: 'blog', kind: 'repository', testing: { layers: {} } },
+    { id: 'frontend', kind: 'domain', testing: { layers: { unit: { libraries: ['vitest'] } } } },
   ]
   const b = buildStepBriefing({ workflow: wf, stepId: 's', capabilities: caps, profiles })
   assert.equal(b.testLayer.from, 'frontend')
@@ -2281,7 +2283,7 @@ test('소비 저장소에 그 계층이 없으면 도메인이 남는다', () =>
 test('수동 계층은 러너가 없다고 낸다', () => {
   const wf = { id: 'w', steps: [{ id: 's', capability: 'td', variant: 'integration' }] }
   const caps = new Map([['td', { variants: { integration: {} } }]])
-  const profiles = [{ id: 'fe', testing: { layers: { integration: { manual: { document: 'x' } } } } }]
+  const profiles = [{ id: 'fe', kind: 'domain', testing: { layers: { integration: { manual: { document: 'x' } } } } }]
   assert.match(
     renderStepBriefing(buildStepBriefing({ workflow: wf, stepId: 's', capabilities: caps, profiles })),
     /수동 — 러너가 없다/,

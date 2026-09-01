@@ -1250,7 +1250,8 @@ if (advisories.length > 0) {
   // 파일별로 묶는다. 한 프로파일에 조언이 넷이면 경로가 네 번 나온다.
   const byFile = new Map()
   for (const { file, message } of advisories) {
-    byFile.set(file, [...(byFile.get(file) ?? []), message])
+    if (!byFile.has(file)) byFile.set(file, [])
+    byFile.get(file).push(message)
   }
   console.log(`\n${advisories.length}건의 조언 — 막지 않는다:`)
   for (const [file, messages] of byFile) {
