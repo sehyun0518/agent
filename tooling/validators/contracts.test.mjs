@@ -1194,6 +1194,35 @@ test('투영도 안 하고 사유도 없는 플랫폼을 검출한다', () => {
   assert.deepEqual(findUndeclaredPlatforms(platforms, table), ['codex'])
 })
 
+// 변형 둘이 같은 패턴을 요구하면 목록에 두 번 들어간다. 생성물이 그대로 두면 무엇이
+// 왜 있는지 읽기 어렵고 드리프트 비교도 흔들린다.
+test('같은 패턴을 여러 변형이 요구해도 한 번만 낸다', () => {
+  const 선언둘 = new Map([
+    ['git-operations', { variants: { push: { requiresApproval: true }, sync: { requiresApproval: true } } }],
+  ])
+  const 표 = {
+    approvalRequired: {
+      'git-operations#push': { claude: ['Bash(git push:*)'] },
+      'git-operations#sync': { claude: ['Bash(git push:*)'] },
+    },
+  }
+  assert.deepEqual(buildSettings(선언둘, 표, 'claude').permissions.ask, ['Bash(git push:*)'])
+})
+
+// 빈 배열은 "패턴을 적었다"가 아니다. 문자열 하나를 배열 대신 적은 것도 마찬가지다 —
+// 둘 다 그 플랫폼에는 투영이 없는 상태다.
+test('빈 배열이나 배열 아닌 값은 투영으로 보지 않는다', () => {
+  const 빈것 = { approvalRequired: { 'git-operations#push': { claude: [] } } }
+  const 문자열 = { approvalRequired: { 'git-operations#push': { claude: 'Bash(git push:*)' } } }
+  assert.deepEqual(findPermissionMismatches(선언, 빈것, 'claude'), [
+    { key: 'git-operations#push', problem: 'unprojected' },
+  ])
+  assert.deepEqual(findPermissionMismatches(선언, 문자열, 'claude'), [
+    { key: 'git-operations#push', problem: 'unprojected' },
+  ])
+  assert.deepEqual(buildSettings(선언, 문자열, 'claude').permissions.ask, [])
+})
+
 test('빈 입력은 대상이 아니다', () => {
   assert.deepEqual(findUndeclaredPlatforms(undefined, undefined), [])
   assert.deepEqual(approvalRequiredVariants(undefined), [])

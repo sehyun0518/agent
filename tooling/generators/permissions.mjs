@@ -14,6 +14,17 @@
 // `unprojected`에 사유와 함께 적어, 구멍이 하네스 전체가 아니라 그 플랫폼의 것임을
 // 드러낸다.
 
+/**
+ * 이 플랫폼에 실제로 투영된 패턴.
+ *
+ * 배열이 아니거나 비어 있으면 투영이 아니다. 판정과 생성이 같은 함수를 봐야 한다 —
+ * 한쪽만 문자열을 받아들이면 "투영이 없다"고 보고하면서 그 패턴을 설정에 쓰게 된다.
+ */
+function patternsFor(entry, platform) {
+  const value = entry?.[platform]
+  return Array.isArray(value) ? value.filter((p) => typeof p === 'string' && p.length > 0) : []
+}
+
 /** `{ 'git-operations': {variants: {push: {requiresApproval: true}}} }` → `['git-operations#push']` */
 export function approvalRequiredVariants(capabilities) {
   const found = []
@@ -38,7 +49,7 @@ export function findPermissionMismatches(capabilities, table, platform) {
   const entries = table?.approvalRequired ?? {}
   const projected = new Set(
     Object.entries(entries)
-      .filter(([, patterns]) => (patterns?.[platform] ?? []).length > 0)
+      .filter(([, patterns]) => patternsFor(patterns, platform).length > 0)
       .map(([key]) => key),
   )
 
@@ -63,13 +74,22 @@ export function findUndeclaredPlatforms(platforms, table) {
     .map(([name]) => name)
 }
 
-/** 플랫폼이 읽는 설정. ask는 승인 선언에서, deny는 어떤 변형도 선언하지 않은 것에서 온다. */
+/**
+ * 플랫폼이 읽는 설정. ask는 승인 선언에서, deny는 어떤 변형도 선언하지 않은 것에서 온다.
+ *
+ * 중복을 없앤다. 변형 둘이 같은 패턴을 요구하면 목록에 두 번 들어가는데, 생성물이
+ * 그대로 두면 무엇이 왜 있는지 읽기 어렵고 드리프트 비교도 흔들린다.
+ */
 export function buildSettings(capabilities, table, platform) {
-  const ask = approvalRequiredVariants(capabilities)
-    .flatMap((key) => table?.approvalRequired?.[key]?.[platform] ?? [])
-    .sort()
-  const deny = Object.values(table?.neverAllowed ?? {})
-    .flatMap((group) => group?.[platform] ?? [])
-    .sort()
+  const unique = (entries) => [...new Set(entries)].sort()
+
+  const ask = unique(
+    approvalRequiredVariants(capabilities).flatMap((key) =>
+      patternsFor(table?.approvalRequired?.[key], platform),
+    ),
+  )
+  const deny = unique(
+    Object.values(table?.neverAllowed ?? {}).flatMap((group) => patternsFor(group, platform)),
+  )
   return { permissions: { ask, deny } }
 }
