@@ -67,10 +67,13 @@ export function findPermissionMismatches(capabilities, table, platform) {
  */
 export function findUndeclaredPlatforms(platforms, table) {
   const excused = table?.unprojected ?? {}
+  // 한 조건으로 둔다. 앞의 `config?.enabled`가 단축 평가로 뒤를 지키므로 뒤에 옵셔널
+  // 체이닝을 또 붙일 필요가 없고, 나눠 놓으면 그 보장이 다른 줄에 있어 없는 것처럼 읽힌다.
   return Object.entries(platforms ?? {})
-    .filter(([name]) => !name.startsWith('$'))
-    .filter(([, config]) => config?.enabled)
-    .filter(([name, config]) => !config.permissionFile && !excused[name])
+    .filter(
+      ([name, config]) =>
+        !name.startsWith('$') && config?.enabled && !config.permissionFile && !excused[name],
+    )
     .map(([name]) => name)
 }
 
