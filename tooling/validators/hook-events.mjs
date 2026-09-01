@@ -8,6 +8,23 @@
 //
 // 이벤트 목록은 `policy.schema.json`이 갖는다. 여기 옮겨 적지 않는다 (ADR-0036).
 
+/**
+ * 훅 문서인가.
+ *
+ * 경로 구분자를 문자열로 가정하지 않는다. `p.includes('/hooks/')`로 썼더니 Windows의
+ * `\hooks\`에서 **아무것도 안 걸렸다** — 실패가 아니라 검사가 조용히 꺼진다.
+ * 이 저장소가 반복해 싸운 모양이다 (#49 · #97 리뷰).
+ *
+ * `README.md`는 훅이 아니다. `hooks/` 안에 설명 문서를 두면 이벤트가 없다고 걸린다.
+ * 지금은 없지만 두는 것이 자연스러운 자리다.
+ */
+export function isHookDoc(path) {
+  const text = String(path ?? '')
+  if (!/\.md$/i.test(text) || /(^|[/\\])readme\.md$/i.test(text)) return false
+  // 맨 앞에 오는 상대 경로(`hooks/x.md`)도 받는다. 구분자를 요구했더니 그것이 빠졌다.
+  return /(^|[/\\])hooks[/\\]/.test(text)
+}
+
 const EVENT_LINE = /^- 이벤트:\s*`([^`]+)`/m
 
 /** 정책 스키마가 아는 훅 이벤트. */

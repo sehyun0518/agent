@@ -20,7 +20,7 @@ import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
 import { findMissingMootBranches } from './workflow-red-proof.mjs'
 import { walk } from '../walk.mjs'
 import { findBrokenSectionRefs } from './doc-refs.mjs'
-import { findUnknownHookEvents, knownHookEvents } from './hook-events.mjs'
+import { findUnknownHookEvents, knownHookEvents, isHookDoc } from './hook-events.mjs'
 import { findMissingScaffolds } from './workflow-scaffold.mjs'
 import { findUnisolatedBackgroundAgents } from './background-isolation.mjs'
 import { toolRequirement } from './tools.mjs'
@@ -1048,7 +1048,7 @@ const HOOK_EVENTS = knownHookEvents(readJson(POLICY_SCHEMA))
 if (HOOK_EVENTS.length === 0) {
   fail(POLICY_SCHEMA, '훅 이벤트 목록을 읽지 못했다. 검사가 판정할 근거가 없다. (ADR-0036)')
 } else {
-  const HOOK_DOCS = walk(join(ROOT, 'capabilities'), (p) => p.includes('/hooks/') && p.endsWith('.md'))
+  const HOOK_DOCS = walk(join(ROOT, 'capabilities'), isHookDoc)
   for (const { hook, event } of findUnknownHookEvents(
     HOOK_DOCS.map((p) => ({ path: relative(ROOT, p), text: readFileSync(p, 'utf8') })),
     HOOK_EVENTS,

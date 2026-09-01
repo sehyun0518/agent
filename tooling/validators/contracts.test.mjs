@@ -46,7 +46,7 @@ import { walk } from '../walk.mjs'
 import { matchExpectations, readEvidenceRecords } from '../briefing/evidence.mjs'
 import { findUnansweredReviews, findPendingChecks, reviewers } from '../briefing/reviews.mjs'
 import { findBrokenSectionRefs, sectionNumbers } from './doc-refs.mjs'
-import { findUnknownHookEvents, hookEventOf, knownHookEvents } from './hook-events.mjs'
+import { findUnknownHookEvents, hookEventOf, knownHookEvents, isHookDoc } from './hook-events.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -2593,6 +2593,24 @@ test('이벤트 목록을 정책 스키마에서 뽑는다', () => {
   assert.deepEqual(knownHookEvents(undefined), [])
 })
 
+// p.includes('/hooks/')로 썼더니 Windows의 \hooks\에서 아무것도 안 걸렸다. 실패가
+// 아니라 검사가 조용히 꺼진다 — 이 저장소가 반복해 싸운 모양이다 (#49 · #97 리뷰).
+test('경로 구분자와 무관하게 훅 문서를 가린다', () => {
+  assert.equal(isHookDoc('a/hooks/x.md'), true)
+  assert.equal(isHookDoc('a\\hooks\\x.md'), true)
+  assert.equal(isHookDoc('hooks/x.md'), true) // 맨 앞에 와도 훅이다
+  assert.equal(isHookDoc('a/x.md'), false)
+  assert.equal(isHookDoc('a/hooks/x.txt'), false)
+  assert.equal(isHookDoc(undefined), false)
+})
+
+// hooks/ 안에 설명 문서를 두면 이벤트가 없다고 걸린다. 지금은 없지만 자연스러운 자리다.
+test('hooks 안의 README는 훅이 아니다', () => {
+  assert.equal(isHookDoc('a/hooks/README.md'), false)
+  assert.equal(isHookDoc('a/hooks/readme.md'), false)
+  assert.equal(isHookDoc('a\\hooks\\README.md'), false)
+})
+
 test('실제 훅 문서가 전부 실재하는 이벤트를 쓴다', async () => {
   const { readFileSync, readdirSync } = await import('node:fs')
   const base = new URL('../../capabilities/', import.meta.url)
@@ -2600,7 +2618,7 @@ test('실제 훅 문서가 전부 실재하는 이벤트를 쓴다', async () =>
   for (const dir of readdirSync(base)) {
     let files = []
     try { files = readdirSync(new URL(`${dir}/hooks/`, base)) } catch { continue }
-    for (const f of files.filter((n) => n.endsWith('.md'))) {
+    for (const f of files.filter((n) => isHookDoc(`hooks/${n}`))) {
       docs.push({ path: `${dir}/hooks/${f}`, text: readFileSync(new URL(`${dir}/hooks/${f}`, base), 'utf8') })
     }
   }
