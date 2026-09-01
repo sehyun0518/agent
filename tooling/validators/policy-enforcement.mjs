@@ -24,7 +24,7 @@ export const VALIDATOR_REGISTRY = {
   },
   'network-within-allowlist': {
     status: 'implemented',
-    by: 'checkAgentPermissions — network 등급 대조',
+    by: 'checkAgentPermissions — network 등급 대조 + checkProfilePermissions — 호스트 목록 좁힘·미충전 대조 (ADR-0024)',
   },
   'destructive-requires-manual-and-approval': {
     status: 'implemented',

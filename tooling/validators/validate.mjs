@@ -41,6 +41,7 @@ import {
 import { findChecksMissingFromCi } from './pipeline.mjs'
 import { findForeignNamespaceTokens, insertTokens } from './profile-namespace.mjs'
 import { findUndeclaredNestedRepos, submodulePathsFrom } from './nested-repo.mjs'
+import { findWidenedHosts, findUnfilledAllowlist } from './network-scope.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const SCHEMA_DIR = join(ROOT, 'packages', 'manifest-contracts')
@@ -406,6 +407,19 @@ function loadCapabilities() {
 }
 
 const CAPABILITIES = loadCapabilities()
+
+// 코어가 정한 네트워크 범위의 합집합. 프로파일은 이 안에서만 좁힌다.
+// 비어 있으면 아직 정해지지 않은 것이고, 그때는 프로파일이 처음 정한다 (ADR-0024).
+const CORE_NETWORK_ALLOWLIST = [
+  ...new Set(
+    [...CAPABILITIES.values()].flatMap((capability) => [
+      ...(capability.permissions?.networkAllowlist ?? []),
+      ...Object.values(capability.variants ?? {}).flatMap(
+        (variant) => variant.permissions?.networkAllowlist ?? [],
+      ),
+    ]),
+  ),
+]
 
 /** step.gate는 문자열 하나 또는 배열이다. 둘을 같은 목록으로 다룬다. */
 function gateNames(gate) {
@@ -834,6 +848,24 @@ function checkProfilePermissions(file, doc) {
       signatures.set(signature, layer)
     }
 
+  }
+
+  // 네트워크 범위 선언이 실제로 범위인지 (ADR-0024). 정책이 두 문장을 적어 뒀는데
+  // 둘 다 아무도 읽지 않고 있었다.
+  const profilePermissions = doc.permissions ?? {}
+  for (const host of findWidenedHosts(CORE_NETWORK_ALLOWLIST, profilePermissions.networkAllowlist)) {
+    fail(
+      file,
+      `permissions.networkAllowlist "${host}": 코어에 없는 호스트다. 프로파일은 범위를 ` +
+        `좁힐 수만 있고 넓힐 수 없다. (policy: network-access)`,
+    )
+  }
+  if (findUnfilledAllowlist(profilePermissions, doc.kind)) {
+    fail(
+      file,
+      `permissions.network가 allowlist인데 networkAllowlist가 비었다. repository 프로파일은 ` +
+        `나갈 호스트를 정해야 한다 — 빈 목록은 "아직 안 정했다"는 뜻이다. (ADR-0024)`,
+    )
   }
 
   // 러너와 수동 절차는 택일이다 (ADR-0013). 판정은 profile-testing.mjs가 한다.

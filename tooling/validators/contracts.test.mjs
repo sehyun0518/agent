@@ -9,6 +9,7 @@ import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
 import { commandsInScript, findChecksMissingFromCi } from './pipeline.mjs'
 import { findForeignNamespaceTokens, insertTokens } from './profile-namespace.mjs'
 import { findUndeclaredNestedRepos, submodulePathsFrom } from './nested-repo.mjs'
+import { findWidenedHosts, findUnfilledAllowlist } from './network-scope.mjs'
 import {
   normalize,
   classifyPack,
@@ -1563,4 +1564,40 @@ test('.gitmodules에서 path만 뽑는다', () => {
   ].join('\n')
   assert.deepEqual(submodulePathsFrom(text), ['vendor/lib', 'tools/other'])
   assert.deepEqual(submodulePathsFrom(undefined), [])
+})
+
+// ---------------------------------------------------------------- 네트워크 범위
+// 정책이 "등재된 호스트로만 나갈 수 있다"와 "프로파일은 좁힐 수만 있다"를 적어 뒀는데
+// 둘 다 아무도 읽지 않았다. networkAllowlist는 선언돼 있고 검증기가 값을 본 적이 없다
+// (ADR-0024).
+
+test('프로파일이 코어 밖 호스트를 더하면 검출한다', () => {
+  const found = findWidenedHosts(['github.com'], ['github.com', 'evil.example.com'])
+  assert.deepEqual(found, ['evil.example.com'])
+})
+
+test('좁히는 것은 통과한다', () => {
+  assert.deepEqual(findWidenedHosts(['github.com', 'npmjs.org'], ['github.com']), [])
+  assert.deepEqual(findWidenedHosts(['github.com'], []), [])
+})
+
+// 코어 목록이 비면 아직 정해지지 않은 것이다. 그때 프로파일이 처음 정하는 것을
+// "넓힘"으로 보면 아무도 호스트를 정할 수 없게 된다.
+test('코어가 비어 있으면 넓힘을 판정하지 않는다', () => {
+  assert.deepEqual(findWidenedHosts([], ['github.com']), [])
+  assert.deepEqual(findWidenedHosts(undefined, ['github.com']), [])
+})
+
+// 호스트는 저장소의 사실이다. 공용 하네스와 domain 프로파일은 비어 있는 것이 정상이고,
+// 실제로 도는 저장소에서만 채워져야 한다 — commands.test.<layer>와 같은 이유다.
+test('repository 프로파일의 빈 allowlist를 검출한다', () => {
+  const perms = { network: 'allowlist', networkAllowlist: [] }
+  assert.equal(findUnfilledAllowlist(perms, 'repository'), true)
+  assert.equal(findUnfilledAllowlist(perms, 'domain'), false)
+})
+
+test('allowlist가 아니면 대상이 아니다', () => {
+  assert.equal(findUnfilledAllowlist({ network: 'none' }, 'repository'), false)
+  assert.equal(findUnfilledAllowlist({ network: 'allowlist', networkAllowlist: ['x'] }, 'repository'), false)
+  assert.equal(findUnfilledAllowlist(undefined, 'repository'), false)
 })
