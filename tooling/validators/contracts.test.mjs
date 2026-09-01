@@ -423,6 +423,12 @@ test('레지스트리의 모든 항목에 status가 있다', () => {
   for (const [name, entry] of Object.entries(VALIDATOR_REGISTRY)) {
     assert.ok(허용.has(entry.status), `${name}: 알 수 없는 status "${entry.status}"`)
     assert.ok(entry.by, `${name}: 어느 검사인지 by에 적어야 한다`)
+    // 덜 강제되는데 무엇이 남았는지 안 적으면 policies/README.md의 표가 거짓말을 한다.
+    // 투영 레지스트리도 같은 규칙을 쓴다 — 두 축이 다른 모양이면 표를 읽는 사람이
+    // 어느 쪽이 덜 강제되는지 가릴 수 없다.
+    if (entry.status !== 'implemented') {
+      assert.ok(entry.pending, `${name}: status가 "${entry.status}"인데 남은 것이 안 적혀 있다`)
+    }
   }
 })
 
@@ -1314,7 +1320,7 @@ test('실제 레지스트리의 모든 항목에 근거와 출처가 있다', ()
 })
 
 // 덜 강제되는데 무엇이 남았는지 안 적으면 표가 "이 정책이 강제된다"로 읽힌다.
-// 검증기 레지스트리가 같은 이유로 pending을 요구한다 (#49).
+// 검증기 레지스트리도 같은 규칙을 쓴다 (위 "status가 있다").
 test('전부 강제하지 못하는 항목은 무엇이 남았는지 적는다', () => {
   for (const [id, entry] of Object.entries(PROJECTION_REGISTRY)) {
     if (entry.status === 'implemented') continue
