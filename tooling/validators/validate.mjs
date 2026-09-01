@@ -18,6 +18,7 @@ import { findDocumentationBypass } from './documentation-gate.mjs'
 import { findReadonlyWriteTools } from './agent-readonly.mjs'
 import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
 import { findMissingMootBranches } from './workflow-red-proof.mjs'
+import { findMissingScaffolds } from './workflow-scaffold.mjs'
 import {
   VALIDATOR_REGISTRY,
   findUnknownValidators,
@@ -511,6 +512,15 @@ function checkWorkflowTokens(file, doc) {
         )
       }
     }
+  }
+
+  // 스캐폴드 변형이 선언된 계층은 그 단계를 red 앞에 두고 있어야 한다 (ADR-0011).
+  for (const { step, scaffold } of findMissingScaffolds(steps, graph, CAPABILITIES)) {
+    fail(
+      file,
+      `step:${step}: 변형 "${scaffold}"가 선언돼 있는데 그것을 쓰는 조상 단계가 없다. ` +
+        `계약이 신규 모듈을 도입하면 red를 만들 수 없는 순환에 갇힌다. (ADR-0011)`,
+    )
   }
 
   // moot을 허용하는 계층은 그 분기를 갖고 있어야 한다 (ADR-0012). 허용되지 않는

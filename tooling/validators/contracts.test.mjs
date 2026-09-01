@@ -7,6 +7,7 @@ import { findDocumentationBypass } from './documentation-gate.mjs'
 import { findReadonlyWriteTools } from './agent-readonly.mjs'
 import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
 import { findMissingMootBranches } from './workflow-red-proof.mjs'
+import { findMissingScaffolds } from './workflow-scaffold.mjs'
 import {
   VALIDATOR_REGISTRY,
   findUnknownValidators,
@@ -705,4 +706,89 @@ test('red-proof를 안 보는 단계와 빈 입력은 대상이 아니다', () =
   )
   assert.deepEqual(found, [])
   assert.deepEqual(findMissingMootBranches(undefined, 어휘), [])
+})
+
+// ---------------------------------------------------------------- 스캐폴드 단계
+// ADR-0011이 만든 단계를 지워도 아무것도 빨개지지 않았다 (#51 통제 1). 규칙은
+// 변형 이름에서 나온다 — logic ↔ logic-scaffold, ui ↔ ui-scaffold.
+
+const 구현 = {
+  implementation: {
+    variants: {
+      'logic-scaffold': { produces: ['implementation.logic-scaffold.completed'] },
+      logic: { produces: ['implementation.logic.completed'] },
+      'ui-scaffold': { produces: ['implementation.ui-scaffold.completed'] },
+      ui: { produces: ['implementation.ui.completed'] },
+      integration: { produces: ['implementation.integration.completed'] },
+    },
+  },
+}
+
+function 그래프(steps) {
+  return createWorkflowGraph(steps)
+}
+
+test('스캐폴드 변형이 선언됐는데 워크플로가 안 쓰면 검출한다', () => {
+  const steps = [
+    { id: 'specification' },
+    { id: 'unit-design', dependsOn: ['specification'] },
+    { id: 'logic-fix', capability: 'implementation', variant: 'logic', dependsOn: ['unit-design'] },
+  ]
+  const found = findMissingScaffolds(steps, 그래프(steps), new Map(Object.entries(구현)))
+  assert.deepEqual(found, [{ step: 'logic-fix', scaffold: 'logic-scaffold' }])
+})
+
+test('스캐폴드 단계가 조상에 있으면 통과한다', () => {
+  const steps = [
+    {
+      id: 'logic-scaffold',
+      capability: 'implementation',
+      variant: 'logic-scaffold',
+      produces: ['implementation.logic-scaffold.completed'],
+    },
+    { id: 'unit-design', dependsOn: ['logic-scaffold'] },
+    { id: 'logic', capability: 'implementation', variant: 'logic', dependsOn: ['unit-design'] },
+  ]
+  const found = findMissingScaffolds(steps, 그래프(steps), new Map(Object.entries(구현)))
+  assert.deepEqual(found, [])
+})
+
+// 존재하는 것으로는 부족하다. 조상이 아니면 red 앞에 온다는 보장이 없다.
+test('스캐폴드 단계가 있어도 조상이 아니면 검출한다', () => {
+  const steps = [
+    {
+      id: 'ui-scaffold',
+      capability: 'implementation',
+      variant: 'ui-scaffold',
+      produces: ['implementation.ui-scaffold.completed'],
+    },
+    { id: 'ui-design' },
+    { id: 'ui-implementation', capability: 'implementation', variant: 'ui', dependsOn: ['ui-design'] },
+  ]
+  const found = findMissingScaffolds(steps, 그래프(steps), new Map(Object.entries(구현)))
+  assert.deepEqual(found, [{ step: 'ui-implementation', scaffold: 'ui-scaffold' }])
+})
+
+// integration·e2e에는 비울 스캐폴드가 없다. moot이 그 자리를 대신한다 (ADR-0012).
+test('스캐폴드 변형이 선언되지 않은 계층은 대상이 아니다', () => {
+  const steps = [
+    { id: 'integration-implementation', capability: 'implementation', variant: 'integration' },
+  ]
+  const found = findMissingScaffolds(steps, 그래프(steps), new Map(Object.entries(구현)))
+  assert.deepEqual(found, [])
+})
+
+// 스캐폴드 단계 자신은 자기를 요구하지 않는다. logic-scaffold-scaffold는 없다.
+test('스캐폴드 단계 자신은 대상이 아니다', () => {
+  const steps = [
+    { id: 'logic-scaffold', capability: 'implementation', variant: 'logic-scaffold' },
+  ]
+  const found = findMissingScaffolds(steps, 그래프(steps), new Map(Object.entries(구현)))
+  assert.deepEqual(found, [])
+})
+
+test('다른 capability의 단계와 빈 입력은 대상이 아니다', () => {
+  const steps = [{ id: 'review', capability: 'review' }, { id: 'x' }]
+  assert.deepEqual(findMissingScaffolds(steps, 그래프(steps), new Map(Object.entries(구현))), [])
+  assert.deepEqual(findMissingScaffolds(undefined, 그래프([]), new Map()), [])
 })

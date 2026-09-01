@@ -2,7 +2,7 @@
 description: 버그를 가장 낮은 책임 경계에서 먼저 재현하고 unit부터 E2E까지 필요한 계층을 red-green으로 진행한다. 기존 계약의 변경이 없어도 테스트 계획은 고정한다.
 ---
 
-`workflows/bugfix.yaml`를 읽고 그 순서대로 진행한다. 단계 26개다.
+`workflows/bugfix.yaml`를 읽고 그 순서대로 진행한다. 단계 27개다.
 
 각 step의 `expect`·`expectAnyOf`가 전이 조건이고, `gate`가 가리키는
 `workflows/gates/*.md`가 무엇을 봐야 하는지 정한다. `skippable`이 있는 단계만
