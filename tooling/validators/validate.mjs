@@ -27,6 +27,7 @@ import {
   findAggregationTableDrift,
   AGGREGATION_INPUTS,
 } from './reliability-inputs.mjs'
+import { findUnknownTelemetryEvents, knownEventNames } from './telemetry-mapping.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -999,6 +1000,21 @@ const gitmodules = existsSync(join(ROOT, '.gitmodules'))
 const EVENT_SCHEMA = join(ROOT, 'packages', 'telemetry-contracts', 'event.schema.json')
 for (const { field, metric } of findMissingAggregationInputs(readJson(EVENT_SCHEMA), AGGREGATION_INPUTS)) {
   fail(EVENT_SCHEMA, `집계 입력 '${field}'이 없다 — ${metric}. (ADR-0030)`)
+}
+
+// 프로파일이 없는 이벤트를 매핑하면 차원 하나를 통째로 잃고, 그 사실이 어디서도 안 보인다.
+const PROFILE_DOCS = new Map(
+  PROFILE_PATHS.map((path) => [relative(ROOT, path), readYaml(path)]).filter(([, doc]) => doc),
+)
+for (const { profile, event } of findUnknownTelemetryEvents(
+  PROFILE_DOCS,
+  knownEventNames(readJson(join(ROOT, 'packages', 'telemetry-contracts', 'event.schema.json'))),
+)) {
+  fail(
+    join(ROOT, profile),
+    `telemetry 매핑의 '${event}'은 코어 이벤트가 아니다. ` +
+      `없는 이름은 영영 안 걸리고 Adapter는 오지 않는 이벤트를 기다린다. (ADR-0031)`,
+  )
 }
 
 // 목록과 ADR 대조표가 갈리면 왜 그 필드가 있는지가 사라진다.
