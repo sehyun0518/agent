@@ -23,16 +23,24 @@ Capability 기본 설정
 | data-handling | `secrets-redaction` | blocking hook (`on-evidence`·`before-tool`) ⏳ |
 | data-handling | `sensitive-data-storage` | blocking hook (`on-evidence`) ⏳ |
 | data-handling | `audit-trail` | validator `completion-requires-evidence` ✅ + hook ⏳ |
-| destructive-actions | `destructive-approval` | validator ✅ + blocking hook ⏳ |
+| destructive-actions | `destructive-approval` | validator `destructive-requires-manual-and-approval` ✅ + 플랫폼 투영 🛡️ + blocking hook ⏳ |
 
 ✅ 은 `npm run validate`에서 실제로 도는 검사, 🟡 는 일부만 정적으로 강제되고 나머지가
-런타임을 기다리는 것, ⏳ 은 훅 런타임(ADR-0002)이 필요한 것이다. 선언만 있고 몸이 없는
+런타임을 기다리는 것, 🛡️ 는 **플랫폼의 permission 런타임이 강제하는 것**, ⏳ 은 훅
+런타임(ADR-0002)이 필요한 것이다. 선언만 있고 몸이 없는
 상태를 표로 드러내 둔다 — 강제되지 않는 정책을 강제되는 것처럼 읽지 않기 위해서다.
 
 `blocking-hooks-preserved`가 🟡 인 이유: 프로파일이 blocking 훅을 `blocking:false`로
 낮추는 것은 검증기가 막는다. 훅 제거와 재시도 우회는 아직 막지 못한다.
 
+🛡️ 는 이 저장소가 만든 강제가 아니다. `requiresApproval` 선언을 플랫폼 설정으로 내고
+플랫폼이 그것을 집행한다(ADR-0015). **플랫폼마다 다르다** — 지금은 Claude 쪽만 투영되고
+Codex 쪽은 선언으로만 남는다. 어느 플랫폼이 투영되고 무엇이 왜 빠졌는지는
+`tooling/generators/permissions.json`이 소유한다. 여기 옮겨 적지 않는 이유는 두 곳이
+갈라지기 때문이다.
+
 **이 표의 단일 출처는 `tooling/validators/policy-enforcement.mjs`의 레지스트리다.**
+검증기 축은 `VALIDATOR_REGISTRY`가, 그 밖의 강제 수단은 `PROJECTION_REGISTRY`가 갖는다.
 `enforcement.validator`가 실재하는 검사를 가리키는지, 레지스트리에만 있고 근거 정책이
 사라진 검사가 없는지를 `npm run validate`가 대조한다. 전에는 정책과 검사의 연결이 코드
 주석 한 줄뿐이라 양쪽 어디가 어긋나도 조용했다 — 이 표가 ⏳ 로 적어 둔 것 하나가 실제로는
