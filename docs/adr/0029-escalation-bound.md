@@ -64,6 +64,22 @@ documentation · git-operations · review · requirements → orchestrator
 없는 대상을 순환으로 세지 않는다. 두 검사가 나눠 갖고 겹치지 않는다 — `findMissingScaffolds`와
 `findMissingMootBranches`가 계층을 나눠 가진 것과 같다.
 
+### 스키마를 믿지 않는다
+
+`action`이 `const: "escalate"`이므로 다른 값은 통과하지 못한다. 그래도 이 검사는
+`action`을 직접 본다.
+
+**검증기는 스키마 검증과 독립적으로 돌기 때문이다.** `loadCapabilities()`가 `id`만
+있으면 문서를 담고, 스키마에서 떨어진 문서도 그 맵에 들어온다.
+
+확인했다. `action`을 `halt`로 바꾸고 `escalateTo`를 순환하게 두니 스키마 위반과 함께
+"에스컬레이션이 돈다"가 **같이** 났다. 그 Capability는 에스컬레이션을 하지 않는데도
+사슬로 세어진 것이다 — **틀린 지적 하나가 맞는 지적 옆에 붙는다**(#89 리뷰).
+
+이 세션이 같은 자리를 한 번 봤다. `checkWorkflowExtensions`가 망가진 워크플로에서
+터져 다른 파일의 검증을 통째로 죽였다. **스키마가 막아준다는 가정이 검증기 안에서는
+성립하지 않는다.**
+
 **이 검사는 지금 아무것도 막지 않는다.** 여덟이 이미 종점에 닿는다. 현재 상태를 규칙으로
 바꾸는 것이다.
 

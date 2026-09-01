@@ -1825,6 +1825,26 @@ test('escalateTo가 없으면 orchestrator로 본다', () => {
   assert.deepEqual(findDanglingEscalations(new Map([['a', {}]])), [])
 })
 
+// 스키마가 action을 const로 막지만 이 검사는 스키마 검증과 독립적으로 돈다.
+// 스키마 실패한 문서도 여기 들어오므로 action을 직접 본다 (#89 리뷰).
+test('action이 escalate가 아니면 escalateTo를 따라가지 않는다', () => {
+  const capabilities = new Map([
+    ['a', { failure: { 'contract-violation': { action: 'halt', escalateTo: 'b' } } }],
+    ['b', 넘김('a')],
+  ])
+  assert.deepEqual(findEscalationCycles(capabilities), [])
+  assert.deepEqual(findDanglingEscalations(capabilities), [])
+})
+
+test('action이 escalate가 아니면 없는 대상도 보고하지 않는다', () => {
+  assert.deepEqual(
+    findDanglingEscalations(new Map([
+      ['a', { failure: { 'contract-violation': { action: 'halt', escalateTo: 'ghost' } } }],
+    ])),
+    [],
+  )
+})
+
 test('없는 Capability를 가리키면 검출한다', () => {
   assert.deepEqual(
     findDanglingEscalations(사슬([['a', 'ghost']])),

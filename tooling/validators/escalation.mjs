@@ -21,8 +21,20 @@
 
 const TERMINAL = 'orchestrator'
 
-const escalationTargetOf = (capability) =>
-  capability?.failure?.['contract-violation']?.escalateTo ?? TERMINAL
+// action이 escalate일 때만 대상을 따라간다.
+//
+// 스키마는 contract-violation.action을 const: "escalate"로 고정하므로 다른 값은
+// 통과하지 못한다. 그런데 이 검사는 스키마 검증과 독립적으로 돈다 —
+// loadCapabilities()가 id만 있으면 담고, 스키마 실패한 문서도 여기 들어온다.
+//
+// 확인했다. action을 halt로 바꾸고 escalateTo를 순환하게 두니 스키마 위반과 함께
+// "에스컬레이션이 돈다"가 같이 났다. 그 Capability는 에스컬레이션을 하지 않는데도
+// 사슬로 세어진 것이다 — 틀린 지적 하나가 맞는 지적 옆에 붙는다 (#89 리뷰).
+const escalationTargetOf = (capability) => {
+  const violation = capability?.failure?.['contract-violation']
+  if (violation?.action !== 'escalate') return TERMINAL
+  return violation.escalateTo ?? TERMINAL
+}
 
 /**
  * 존재하지 않는 Capability로 에스컬레이션하는 선언.
