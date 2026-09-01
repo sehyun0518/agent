@@ -34,6 +34,9 @@ import {
   AGGREGATION_INPUTS,
 } from './reliability-inputs.mjs'
 import { findUnknownTelemetryEvents, knownEventNames } from './telemetry-mapping.mjs'
+import { TOOL_COMMANDS, findMissingToolScripts, extensionApplies, anchoredAt } from '../generators/commands.mjs'
+import { buildStepBriefing, renderStepBriefing, parseGateHeader, stepIds } from '../briefing/step.mjs'
+import { walk } from '../walk.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -2013,5 +2016,191 @@ test('telemetry가 문자열이어도 터지지 않는다', () => {
 
 test('telemetry가 null이어도 터지지 않는다', () => {
   assert.deepEqual(findUnknownTelemetryEvents(매핑프로파일(null), 코어이벤트), [])
+})
+
+// ── 단계 브리핑 (ADR-0032) ────────────────────────────────────────────────
+//
+// 파일 다섯을 열어야 하던 것을 한 번으로 줄인다. 실행하지 않고 읽어서 인쇄만 한다.
+
+const 워크플로 = {
+  id: 'change',
+  steps: [
+    { id: 'spec', capability: 'specification', variant: 'freeze' },
+    {
+      id: 'logic',
+      capability: 'implementation',
+      variant: 'logic',
+      gate: 'require-red-evidence',
+      dependsOn: ['spec'],
+      expect: [{ evidence: 'test.unit.red-proof', status: 'confirmed', from: 'unit-red' }],
+      produces: ['implementation.logic.completed'],
+    },
+  ],
+}
+const 역량 = new Map([
+  ['implementation', {
+    title: '구현',
+    entrypoints: { agents: [{ id: 'implementation', background: true, isolation: 'worktree' }] },
+    variants: {
+      logic: {
+        title: '순수 로직 구현',
+        requires: ['test.unit.red-confirmed'],
+        evidence: [{ kind: 'changed-files', required: true, artifactRequired: true }],
+        completion: { requiresEvidence: ['changed-files'] },
+      },
+    },
+  }],
+])
+
+test('단계를 찾아 브리핑을 만든다', () => {
+  const b = buildStepBriefing({ workflow: 워크플로, stepId: 'logic', capabilities: 역량 })
+  assert.equal(b.position.index, 2)
+  assert.equal(b.position.total, 2)
+  assert.equal(b.title, '순수 로직 구현')
+  assert.deepEqual(b.requires, ['test.unit.red-confirmed'])
+  assert.deepEqual(b.agents, [{ id: 'implementation', background: true, isolation: 'worktree' }])
+})
+
+test('없는 단계는 null이다', () => {
+  assert.equal(buildStepBriefing({ workflow: 워크플로, stepId: '없다', capabilities: 역량 }), null)
+})
+
+// 흐름을 안 가리면 bugfix용 삽입이 change 브리핑에 섞인다. 실제로 그랬다.
+test('다른 흐름의 삽입은 섞이지 않는다', () => {
+  const 프로파일 = [{
+    id: 'frontend',
+    workflowExtensions: [
+      { workflow: 'bugfix', insert: [{ id: 'state-data', anchorCapability: 'implementation' }] },
+      { workflow: '*', insert: [{ id: 'design', anchorCapability: 'implementation' }] },
+    ],
+  }]
+  const b = buildStepBriefing({ workflow: 워크플로, stepId: 'logic', capabilities: 역량, profiles: 프로파일 })
+  assert.deepEqual(b.insertions.map((i) => i.id), ['design'])
+})
+
+// anchorStep이 있으면 capability만 같아서는 안 된다.
+test('anchorStep이 다르면 붙지 않는다', () => {
+  const 프로파일 = [{
+    id: 'frontend',
+    workflowExtensions: [{
+      workflow: '*',
+      insert: [{ id: 'x', anchorCapability: 'implementation', anchorStep: '다른단계' }],
+    }],
+  }]
+  const b = buildStepBriefing({ workflow: 워크플로, stepId: 'logic', capabilities: 역량, profiles: 프로파일 })
+  assert.deepEqual(b.insertions, [])
+})
+
+test('삽입 판정을 생성기와 같은 함수로 한다', () => {
+  assert.equal(extensionApplies({ workflow: '*' }, 'change'), true)
+  assert.equal(extensionApplies({ workflow: 'bugfix' }, 'change'), false)
+  assert.equal(anchoredAt({ capability: 'a', id: 's' }, { anchorCapability: 'a' }), true)
+  assert.equal(anchoredAt({ capability: 'a', id: 's' }, { anchorCapability: 'a', anchorStep: 's' }), true)
+  assert.equal(anchoredAt({ capability: 'a', id: 's' }, { anchorCapability: 'a', anchorStep: 't' }), false)
+})
+
+test('게이트 머리에서 blocking과 소비 증거를 뽑는다', () => {
+  const md = '# 게이트\n\n- 소유: 하네스\n- blocking: 예. 통과 못 하면 멈춘다.\n' +
+    '- 소비 증거: `a` · `b`\n\n## 본문\n\n`c`를 산문에서 언급한다.\n'
+  assert.deepEqual(parseGateHeader(md), { blocking: true, consumes: ['a', 'b'] })
+})
+
+test('게이트 문서가 없어도 터지지 않는다', () => {
+  assert.deepEqual(parseGateHeader(undefined), { blocking: false, consumes: [] })
+  const b = buildStepBriefing({ workflow: 워크플로, stepId: 'logic', capabilities: 역량 })
+  assert.deepEqual(b.gates, [{ name: 'require-red-evidence', blocking: false, consumes: [] }])
+})
+
+// 브리핑은 원본을 복제하지 않는다. 렌더가 선언에 있는 값만 담는지 본다.
+test('렌더가 선언에 없는 것을 지어내지 않는다', () => {
+  const b = buildStepBriefing({ workflow: 워크플로, stepId: 'spec', capabilities: 역량 })
+  const text = renderStepBriefing(b)
+  assert.match(text, /단계  spec   \(change 1\/2\)/)
+  assert.doesNotMatch(text, /요구 토큰/)
+  assert.doesNotMatch(text, /프로파일 삽입/)
+  assert.match(text, /자동 아님/)
+})
+
+// expectAnyOf는 {conditions} 묶음의 배열이다 — 바깥이 OR, 안이 AND
+// (workflow.schema.json). 짐작하고 썼다가 undefined=undefined가 인쇄됐다.
+test('expectAnyOf를 묶음 단위로 낸다', () => {
+  const wf = {
+    id: 'review',
+    steps: [{
+      id: 'integration',
+      capability: 'test-execution',
+      expectAnyOf: [
+        { conditions: [{ evidence: 'test.ui.result', status: 'passed', from: 'ui' }] },
+        { conditions: [{ evidence: 'test.skip-justification', status: 'recorded', from: 'ui' }] },
+      ],
+    }],
+  }
+  const text = renderStepBriefing(buildStepBriefing({ workflow: wf, stepId: 'integration', capabilities: new Map() }))
+  assert.match(text, /아래 묶음 중 하나/)
+  assert.match(text, /test\.ui\.result = passed \(from: ui\)/)
+  assert.match(text, /test\.skip-justification = recorded \(from: ui\)/)
+  assert.doesNotMatch(text, /undefined/)
+})
+
+// 증거 이름이 칸보다 길면 상태가 이름에 붙어 읽히지 않았다.
+test('긴 증거 이름에도 상태가 떨어져 나온다', () => {
+  const wf = { id: 'w', steps: [{ id: 's', capability: 'c' }] }
+  const caps = new Map([['c', { evidence: [{ kind: 'test.integration.manual-result', required: false, artifactRequired: true }] }]])
+  const text = renderStepBriefing(buildStepBriefing({ workflow: wf, stepId: 's', capabilities: caps }))
+  assert.match(text, /test\.integration\.manual-result {2,}선택/)
+})
+
+// 이 도구는 검증 안 된 선언을 읽는다 — 고치는 중에 부르는 것이 정상 사용이다.
+// 스키마가 보장한다고 가정하면 스택 트레이스가 난다 (#92 리뷰 · ADR-0029와 같은 자리).
+test('망가진 선언에도 터지지 않는다', () => {
+  const wf = {
+    id: 'w',
+    steps: [{
+      id: 's',
+      capability: 'c',
+      expect: [null, { status: 'x' }, { evidence: 'ok', status: 'passed' }],
+      expectAnyOf: [{ conditions: [null, { evidence: 'a', status: 'b' }] }],
+    }],
+  }
+  const caps = new Map([['c', { entrypoints: { agents: [null, { id: 'r' }] }, evidence: [null, { kind: 'k' }] }]])
+  const text = renderStepBriefing(buildStepBriefing({ workflow: wf, stepId: 's', capabilities: caps }))
+  assert.match(text, /agent: r/)
+  assert.match(text, /expect  ok = passed/)
+  assert.doesNotMatch(text, /undefined/)
+})
+
+// 브리핑이 한 겹만 봤다. 검증기는 재귀로 걷고 워크플로 참조까지 대조하므로, 중첩된
+// capability를 워크플로가 가리키면 검증은 통과하는데 브리핑에서만 조용히 사라졌다
+// (#92 리뷰). 이제 같은 walk를 쓴다.
+test('탐색이 중첩된 선언도 찾는다', () => {
+  const found = walk(
+    new URL('../../capabilities', import.meta.url).pathname,
+    (p) => p.endsWith('capability.yaml'),
+  )
+  assert.ok(found.length >= 8, `capability.yaml을 ${found.length}개만 찾았다`)
+  assert.ok(found.every((p) => p.endsWith('capability.yaml')))
+})
+
+test('탐색이 없는 디렉터리에 터지지 않는다', () => {
+  assert.deepEqual(walk('/없는경로/여기', () => true), [])
+})
+
+test('단계 목록을 낸다', () => {
+  assert.deepEqual(stepIds(워크플로), ['spec', 'logic'])
+  assert.deepEqual(stepIds(undefined), [])
+})
+
+// 커맨드가 없는 스크립트를 가리키면 부른 사람은 무엇이 틀렸는지 모른다.
+test('도구 커맨드가 없는 스크립트를 가리키면 검출한다', () => {
+  assert.deepEqual(
+    findMissingToolScripts([{ name: 'step', script: 'npm run step -- a b' }], { validate: 'x' }),
+    [{ command: 'step', script: 'step' }],
+  )
+})
+
+test('실제 도구 커맨드가 전부 실재하는 스크립트를 가리킨다', async () => {
+  const { readFileSync } = await import('node:fs')
+  const pkg = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'))
+  assert.deepEqual(findMissingToolScripts(TOOL_COMMANDS, pkg.scripts), [])
 })
 

@@ -21,6 +21,7 @@ import {
   commandsFromCapabilities,
   commandsFromProfile,
   commandsFromWorkflows,
+  commandsFromTools,
   findDuplicateCommands,
 } from './commands.mjs'
 
@@ -193,6 +194,7 @@ function collectSources() {
     ...commandsFromWorkflows(workflows, profiles),
     ...commandsFromCapabilities(capabilityMap),
     ...profiles.flatMap((profile) => commandsFromProfile(profile)),
+    ...commandsFromTools(),
   ]
   for (const { name, sources: from } of findDuplicateCommands(commands)) {
     errors.push(`커맨드 이름 "${name}"이 중복됐다: ${from.join(' · ')}`)
@@ -303,6 +305,17 @@ function renderCommand(command) {
       `(ADR-0002). 단계 호출과 증거 기록은 사람 또는 메인 에이전트가 한다. 게이트가\n` +
       `증거를 본다고 돼 있으면 그 증거를 실제로 남겼는지 직접 확인해야 한다.\n\n` +
       `Git 작업은 이 흐름에 자동으로 붙지 않는다. \`/git-commit\`처럼 따로 부른다.\n`
+    )
+  }
+
+  // 도구는 절차를 담지 않고 스크립트를 가리킨다. 스크립트가 호출 시점에 선언을 읽는다.
+  if (command.kind === 'tool') {
+    return (
+      `---\n${stringifyYaml(front, { lineWidth: 0 })}---\n\n` +
+      `\`\`\`bash\n${command.script}\n\`\`\`\n\n` +
+      `출력은 선언에서 그때그때 조립된다. 이 파일에 내용을 옮겨 적지 않는다.\n\n` +
+      `**실행하지 않는다.** 무엇을 해야 하는지 보여줄 뿐이고, 단계를 부르는 것도 증거를\n` +
+      `남기는 것도 사람이 한다 (ADR-0002 · ADR-0032).\n`
     )
   }
 

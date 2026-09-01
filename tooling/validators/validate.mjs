@@ -18,6 +18,7 @@ import { findDocumentationBypass } from './documentation-gate.mjs'
 import { findReadonlyWriteTools } from './agent-readonly.mjs'
 import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
 import { findMissingMootBranches } from './workflow-red-proof.mjs'
+import { walk } from '../walk.mjs'
 import { findMissingScaffolds } from './workflow-scaffold.mjs'
 import { findUnisolatedBackgroundAgents } from './background-isolation.mjs'
 import { toolRequirement } from './tools.mjs'
@@ -28,6 +29,7 @@ import {
   AGGREGATION_INPUTS,
 } from './reliability-inputs.mjs'
 import { findUnknownTelemetryEvents, knownEventNames } from './telemetry-mapping.mjs'
+import { TOOL_COMMANDS, findMissingToolScripts } from '../generators/commands.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -78,19 +80,6 @@ function readYaml(path) {
   }
 }
 
-/** 디렉터리를 재귀 순회하며 조건에 맞는 파일 경로를 모은다. */
-function walk(dir, match, found = []) {
-  if (!existsSync(dir)) return found
-  for (const entry of readdirSync(dir)) {
-    if (entry === 'node_modules' || entry.startsWith('.')) continue
-    const path = join(dir, entry)
-    // lstat이라 심볼릭 링크로 들어가지 않는다. 링크가 조상을 가리키면 무한히 돈다 —
-    // profiles/ 아래에 그런 링크를 두니 ELOOP로 죽었다.
-    if (lstatSync(path).isDirectory()) walk(path, match, found)
-    else if (match(path)) found.push(path)
-  }
-  return found
-}
 
 // ---------------------------------------------------------------- 스키마 준비
 
@@ -1000,6 +989,16 @@ const gitmodules = existsSync(join(ROOT, '.gitmodules'))
 const EVENT_SCHEMA = join(ROOT, 'packages', 'telemetry-contracts', 'event.schema.json')
 for (const { field, metric } of findMissingAggregationInputs(readJson(EVENT_SCHEMA), AGGREGATION_INPUTS)) {
   fail(EVENT_SCHEMA, `집계 입력 '${field}'이 없다 — ${metric}. (ADR-0030)`)
+}
+
+// 도구 커맨드가 없는 npm 스크립트를 가리키면, 부른 사람은 커맨드가 깨졌는지 자기가
+// 틀렸는지 모른다.
+const PACKAGE_JSON = join(ROOT, 'package.json')
+for (const { command, script } of findMissingToolScripts(
+  TOOL_COMMANDS,
+  readJson(PACKAGE_JSON).scripts,
+)) {
+  fail(PACKAGE_JSON, `커맨드 '${command}'이 'npm run ${script}'를 가리키는데 그 스크립트가 없다. (ADR-0032)`)
 }
 
 // 프로파일이 없는 이벤트를 매핑하면 차원 하나를 통째로 잃고, 그 사실이 어디서도 안 보인다.
