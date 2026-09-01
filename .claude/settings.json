@@ -3,7 +3,8 @@
     "ask": [
       "Bash(gh pr comment:*)",
       "Bash(gh pr create:*)",
-      "Bash(gh pr edit:*)"
+      "Bash(gh pr edit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [
       "Bash(git filter-branch:*)",
