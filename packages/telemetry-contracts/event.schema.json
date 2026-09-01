@@ -4,9 +4,12 @@
   "title": "Telemetry Event",
   "description": "공급자 독립 실행 관측 이벤트. Capability 구현은 이 형식으로 이벤트를 내보내기만 하고, 특정 관측 SDK(Sentry·GA 등)를 직접 호출하지 않는다. 공급자 연결은 별도 Adapter가 담당한다.",
   "type": "object",
-  "required": ["event", "runId", "at"],
+  "required": [
+    "event",
+    "runId",
+    "at"
+  ],
   "additionalProperties": false,
-
   "properties": {
     "event": {
       "enum": [
@@ -23,70 +26,126 @@
       ],
       "description": "계층: Agent Run → Capability → Skill → Tool → Hook → Evidence."
     },
-
     "runId": {
       "type": "string",
-      "description": "실행 인스턴스 식별자. 실행 인스턴스는 소스 디렉터리나 패키지로 만들지 않는다."
+      "description": "실행 인스턴스 식별자. 흐름 하나를 식별하며 세션은 그 경계가 아니다 — 한 실행이 여러 세션에 걸치면 같은 값을 이어 쓴다 (ADR-0022). 실행 인스턴스는 소스 디렉터리나 패키지로 만들지 않는다."
     },
     "parentId": {
       "type": "string",
       "description": "상위 span 식별자. 계층 재구성을 위해 쓴다."
     },
-    "spanId": { "type": "string" },
-    "at": { "type": "string", "format": "date-time" },
-
+    "spanId": {
+      "type": "string"
+    },
+    "at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "workItem": {
       "type": "string",
       "description": "요청의 외부 식별자. 예: owner/repository#123. 없으면 생략한다."
     },
-
-    "capability": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
-    "variant": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
-    "profile": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
-    "agent": { "type": "string" },
-    "skill": { "type": "string" },
-    "tool": { "type": "string" },
-    "hookEvent": { "type": "string" },
-
+    "capability": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "variant": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "profile": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "agent": {
+      "type": "string"
+    },
+    "skill": {
+      "type": "string"
+    },
+    "tool": {
+      "type": "string"
+    },
+    "hookEvent": {
+      "type": "string"
+    },
     "outcome": {
-      "enum": ["ok", "failed", "denied", "skipped"],
+      "enum": [
+        "ok",
+        "failed",
+        "denied",
+        "skipped"
+      ],
       "description": "completed 계열 이벤트에만 붙는다."
     },
-
     "failureClass": {
-      "enum": ["transient", "precondition-unmet", "contract-violation", "policy-denied"],
+      "enum": [
+        "transient",
+        "precondition-unmet",
+        "contract-violation",
+        "policy-denied"
+      ],
       "description": "failure.classified 이벤트의 분류. capability.schema.json의 고정 분류와 같다."
     },
-
     "evidence": {
       "type": "object",
       "description": "evidence.recorded 이벤트의 본문.",
-      "required": ["kind", "status"],
+      "required": [
+        "kind",
+        "status"
+      ],
       "additionalProperties": false,
       "properties": {
-        "kind": { "type": "string" },
-        "status": { "type": "string" },
-        "summary": { "type": "string" },
-        "artifact": { "type": "string" },
-        "producedBy": { "type": "string" }
+        "kind": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "artifact": {
+          "type": "string"
+        },
+        "producedBy": {
+          "type": "string"
+        }
       }
     },
-
     "policy": {
       "type": "object",
       "description": "policy.evaluated 이벤트의 본문.",
-      "required": ["id", "decision"],
+      "required": [
+        "id",
+        "decision"
+      ],
       "additionalProperties": false,
       "properties": {
-        "id": { "type": "string" },
-        "decision": { "enum": ["allowed", "denied"] },
-        "level": { "enum": ["immutable", "default"] },
-        "reason": { "type": "string" }
+        "id": {
+          "type": "string"
+        },
+        "decision": {
+          "enum": [
+            "allowed",
+            "denied"
+          ]
+        },
+        "level": {
+          "enum": [
+            "immutable",
+            "default"
+          ]
+        },
+        "reason": {
+          "type": "string"
+        }
       }
     },
-
-    "durationMs": { "type": "integer", "minimum": 0 },
-
+    "durationMs": {
+      "type": "integer",
+      "minimum": 0
+    },
     "attributes": {
       "type": "object",
       "description": "추가 속성. 여기에 비밀정보나 민감 데이터를 넣지 않는다 (data-handling 정책이 강제).",
