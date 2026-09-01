@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { resolveTestingLayers } from './profile-testing.mjs'
+import { resolveTestingLayers, findTestLayerConflicts } from './profile-testing.mjs'
 import { createWorkflowGraph } from './workflow-graph.mjs'
 import { resolveRunners, findUnresolvedRunners, findDuplicateInserts } from './profile-roster.mjs'
 import { findDocumentationBypass } from './documentation-gate.mjs'
@@ -8,6 +8,14 @@ import { findReadonlyWriteTools } from './agent-readonly.mjs'
 import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
 import { findMissingMootBranches } from './workflow-red-proof.mjs'
 import { findMissingScaffolds } from './workflow-scaffold.mjs'
+import {
+  normalizeRequiredEvidence,
+  findUndeclaredCompletionEvidence,
+} from './completion-alternatives.mjs'
+import {
+  findUnofferedManualResults,
+  findMissingManualBranches,
+} from './manual-result.mjs'
 import {
   VALIDATOR_REGISTRY,
   findUnknownValidators,
@@ -791,4 +799,209 @@ test('다른 capability의 단계와 빈 입력은 대상이 아니다', () => {
   const steps = [{ id: 'review', capability: 'review' }, { id: 'x' }]
   assert.deepEqual(findMissingScaffolds(steps, 그래프(steps), new Map(Object.entries(구현))), [])
   assert.deepEqual(findMissingScaffolds(undefined, 그래프([]), new Map()), [])
+})
+
+// ---------------------------------------------------------------- completion 대안
+// 같은 것을 다른 방법으로 증명하는 증거가 생겼다 — 러너 결과와 수동 검증 결과.
+// requiresEvidence가 AND 목록뿐이라 그 둘을 적을 수 없었다 (ADR-0013).
+
+test('문자열 하나는 대안이 하나인 묶음으로 읽는다', () => {
+  assert.deepEqual(normalizeRequiredEvidence(['changed-files']), [['changed-files']])
+})
+
+test('배열은 대안 묶음으로 읽는다', () => {
+  assert.deepEqual(
+    normalizeRequiredEvidence([['test.e2e.result', 'test.e2e.manual-result'], 'changed-files']),
+    [['test.e2e.result', 'test.e2e.manual-result'], ['changed-files']],
+  )
+})
+
+test('requiresEvidence가 없으면 빈 목록이다', () => {
+  assert.deepEqual(normalizeRequiredEvidence(undefined), [])
+})
+
+// 선언하지 않은 경로를 대안으로 내놓을 수 없다. 묶음 안의 하나만 빠져도 그 경로는
+// 실제로는 없는 것이고, 있는 것처럼 읽히면 completion이 느슨해 보인다.
+test('묶음 안에 선언되지 않은 kind가 있으면 검출한다', () => {
+  const found = findUndeclaredCompletionEvidence(
+    [['test.e2e.result', 'test.e2e.manual-result']],
+    new Set(['test.e2e.result']),
+  )
+  assert.deepEqual(found, [{ kind: 'test.e2e.manual-result' }])
+})
+
+test('묶음 안의 kind가 전부 선언돼 있으면 통과한다', () => {
+  const found = findUndeclaredCompletionEvidence(
+    [['test.e2e.result', 'test.e2e.manual-result'], ['changed-files']],
+    new Set(['test.e2e.result', 'test.e2e.manual-result', 'changed-files']),
+  )
+  assert.deepEqual(found, [])
+})
+
+test('단일 항목도 같은 규칙으로 본다', () => {
+  const found = findUndeclaredCompletionEvidence([['completeness-check']], new Set())
+  assert.deepEqual(found, [{ kind: 'completeness-check' }])
+})
+
+// ---------------------------------------------------------------- manual-result 제공
+// 어휘가 경로를 열었는데 선언이 그것을 내놓지 않으면 그 경로는 없는 것이다 (ADR-0013).
+// moot 검사와 같은 모양이고, 붙는 자리만 다르다 — 저쪽은 워크플로 step, 이쪽은 선언.
+
+const 결과어휘 = {
+  'test.unit.result': {},
+  'test.integration.result': {},
+  'test.integration.manual-result': {},
+  'test.e2e.result': {},
+  'test.e2e.manual-result': {},
+}
+
+test('어휘에 manual-result가 있는데 변형이 안 내놓으면 검출한다', () => {
+  const found = findUnofferedManualResults(
+    [{ label: 'variant:e2e', evidence: [{ kind: 'test.e2e.result' }] }],
+    결과어휘,
+  )
+  assert.deepEqual(found, [{ scope: 'variant:e2e', kind: 'test.e2e.manual-result' }])
+})
+
+test('둘 다 내놓으면 통과한다', () => {
+  const found = findUnofferedManualResults(
+    [
+      {
+        label: 'variant:e2e',
+        evidence: [{ kind: 'test.e2e.result' }, { kind: 'test.e2e.manual-result' }],
+      },
+    ],
+    결과어휘,
+  )
+  assert.deepEqual(found, [])
+})
+
+// unit·ui는 같은 프로세스 안에서 도므로 "러너를 둘 수 없다"가 성립하지 않는다.
+// 어휘에 manual-result가 없고, 따라서 요구하지도 않는다.
+test('어휘에 manual-result가 없는 계층은 대상이 아니다', () => {
+  const found = findUnofferedManualResults(
+    [{ label: 'variant:unit', evidence: [{ kind: 'test.unit.result' }] }],
+    결과어휘,
+  )
+  assert.deepEqual(found, [])
+})
+
+test('결과 증거를 선언하지 않은 스코프는 대상이 아니다', () => {
+  const found = findUnofferedManualResults(
+    [{ label: 'capability', evidence: [{ kind: 'changed-files' }] }, { label: 'x' }],
+    결과어휘,
+  )
+  assert.deepEqual(found, [])
+  assert.deepEqual(findUnofferedManualResults(undefined, 결과어휘), [])
+})
+
+// ---------------------------------------------------------------- 계층 검증 수단
+// 러너를 두거나 문서화된 수동 절차로 검증하거나 둘 중 하나다 (ADR-0013).
+
+test('libraries와 manual이 함께 있으면 검출한다', () => {
+  const found = findTestLayerConflicts(
+    { e2e: { libraries: ['@playwright/test'], manual: { procedure: 'docs/e2e/*.md', reason: 'x' } } },
+    {},
+    'domain',
+  )
+  assert.deepEqual(found, [{ layer: 'e2e', problem: 'both-runner-and-manual' }])
+})
+
+// 러너가 있는데 수동으로 하겠다는 뜻이 된다. 어느 쪽이 진짜인지 알 수 없다.
+test('manual인데 러너 명령이 있으면 검출한다', () => {
+  const found = findTestLayerConflicts(
+    { e2e: { manual: { procedure: 'docs/e2e/*.md', reason: 'x' } } },
+    { 'test.e2e': { command: 'pnpm test:e2e' } },
+    'repository',
+  )
+  assert.deepEqual(found, [{ layer: 'e2e', problem: 'manual-with-command' }])
+})
+
+// manual은 러너가 없는 것이 선언의 내용이다. 명령을 요구하면 선언 자체가 불가능해진다.
+test('manual 계층에는 repository여도 명령을 요구하지 않는다', () => {
+  const found = findTestLayerConflicts(
+    { e2e: { manual: { procedure: 'docs/e2e/*.md', reason: 'x' } } },
+    {},
+    'repository',
+  )
+  assert.deepEqual(found, [])
+})
+
+test('러너 계층은 repository면 명령이 필요하다', () => {
+  const 있음 = findTestLayerConflicts(
+    { unit: { libraries: ['vitest'] } },
+    { 'test.unit': { command: 'pnpm test:unit' } },
+    'repository',
+  )
+  const 없음 = findTestLayerConflicts({ unit: { libraries: ['vitest'] } }, {}, 'repository')
+  assert.deepEqual(있음, [])
+  assert.deepEqual(없음, [{ layer: 'unit', problem: 'missing-command' }])
+})
+
+// domain 프로파일은 명령을 소유하지 않는다. 소비 저장소가 채운다.
+test('domain 프로파일에는 명령을 요구하지 않는다', () => {
+  const found = findTestLayerConflicts({ unit: { libraries: ['vitest'] } }, {}, 'domain')
+  assert.deepEqual(found, [])
+})
+
+test('빈 입력은 대상이 아니다', () => {
+  assert.deepEqual(findTestLayerConflicts(undefined, undefined, 'repository'), [])
+})
+
+// 선언이 경로를 내놓아도 워크플로가 그 분기를 안 두면 결과는 같다 — 그 계층은 러너
+// 결과와 승인된 생략 둘뿐이 된다. review.yaml이 실제로 그 상태였다 (ADR-0013).
+
+test('result를 조건으로 보는데 manual 분기가 없으면 검출한다', () => {
+  const found = findMissingManualBranches(
+    [
+      {
+        id: 'e2e',
+        expectAnyOf: [
+          { conditions: [{ evidence: 'test.integration.result', status: 'passed' }] },
+          { conditions: [{ evidence: 'test.skip-justification', status: 'recorded' }] },
+        ],
+      },
+    ],
+    결과어휘,
+  )
+  assert.deepEqual(found, [{ step: 'e2e', kind: 'test.integration.manual-result' }])
+})
+
+test('manual 분기가 있으면 통과한다', () => {
+  const found = findMissingManualBranches(
+    [
+      {
+        id: 'e2e-design',
+        expectAnyOf: [
+          { conditions: [{ evidence: 'test.integration.result', status: 'passed' }] },
+          { conditions: [{ evidence: 'test.integration.manual-result', status: 'passed' }] },
+        ],
+      },
+    ],
+    결과어휘,
+  )
+  assert.deepEqual(found, [])
+})
+
+// unit은 어휘에 manual-result가 없다. 분기를 요구하지 않는다.
+test('어휘에 짝이 없는 계층은 대상이 아니다', () => {
+  const found = findMissingManualBranches(
+    [{ id: 'review', expect: [{ evidence: 'test.unit.result', status: 'passed' }] }],
+    결과어휘,
+  )
+  assert.deepEqual(found, [])
+})
+
+// expect는 AND라 대안이 아예 없다. 분기를 두려면 expectAnyOf로 가야 한다.
+test('expect로만 요구하면 대안이 없으므로 검출한다', () => {
+  const found = findMissingManualBranches(
+    [{ id: 'x', expect: [{ evidence: 'test.e2e.result', status: 'passed' }] }],
+    결과어휘,
+  )
+  assert.deepEqual(found, [{ step: 'x', kind: 'test.e2e.manual-result' }])
+})
+
+test('result를 안 보는 단계와 빈 입력은 대상이 아니다', () => {
+  assert.deepEqual(findMissingManualBranches([{ id: 'spec' }], 결과어휘), [])
+  assert.deepEqual(findMissingManualBranches(undefined, 결과어휘), [])
 })

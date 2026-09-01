@@ -93,6 +93,8 @@ E2E는 선행 계층 green 뒤에 red를 확인한다. 스캐폴드가 앞에 �
 | `test.integration.result` | 통합 테스트 실행 결과 | `passed` · `failed` · `errored` |
 | `test.e2e.result` | E2E 실행 결과 | `passed` · `failed` · `errored` |
 | `test.<layer>.red-proof` | 해당 계층 실패가 예상한 단언 때문임을 보이는 근거 | `confirmed` · `rejected` · `moot`(integration·e2e만) |
+| `test.integration.manual-result` | 러너 대신 문서화된 수동 절차로 검증한 결과 | `passed` · `failed` |
+| `test.e2e.manual-result` | 러너 대신 문서화된 수동 절차로 검증한 결과 | `passed` · `failed` |
 | `test.skip-justification` | 어떤 테스트 층을 왜 생략했는지 | `recorded` |
 | `documentation-impact` | 이 변경이 어떤 문서에 영향을 주는지, 없다면 왜 없는지 | `required` · `not-applicable` |
 | `documentation.skip-justification` | 문서를 왜 고치지 않았는지 | `recorded` |
@@ -112,6 +114,15 @@ E2E는 선행 계층 green 뒤에 red를 확인한다. 스캐폴드가 앞에 �
 
 `test.skip-justification`이 있어야 integration·e2e를 생략할 수 있다. 침묵 생략은
 "전부 통과"처럼 읽히므로 워크플로가 생략 사유를 증거로 남기도록 강제한다.
+
+`manual-result`는 생략이 **아니다.** 검증은 했고 러너를 쓰지 않았을 뿐이라 승인이 필요
+없다. 승인은 "검증을 포기한다"에 붙는 것이지 "다른 방법으로 검증했다"에 붙는 것이 아니다.
+성립 조건은 `workflows/gates/require-test-evidence.md`가 정한다 (ADR-0013).
+
+`integration`·`e2e`에만 있는 이유는 그 둘만 러너가 저장소 밖 환경(에뮬레이터·기기·실
+서버)을 요구할 수 있기 때문이다. `unit`·`ui`는 같은 프로세스 안에서 도므로 "러너를 둘 수
+없다"가 성립하지 않는다. 같은 두 계층이 생략 가능한 계층이자 `moot`이 허용되는 계층인
+것도 같은 이유다.
 
 문서도 같은 구조를 쓴다. `documentation-impact`는 **계약 고정 단계가** 남긴다 —
 문서화 레이어가 자기 일의 유무를 스스로 선언하면 그 판정을 검증할 근거가 사라지기

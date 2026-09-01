@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url'
 import Ajv from 'ajv/dist/2020.js' // 스키마가 draft 2020-12를 쓴다
 import addFormats from 'ajv-formats'
 import { parse as parseYaml } from 'yaml'
-import { librarySignature } from './profile-testing.mjs'
+import { librarySignature, findTestLayerConflicts } from './profile-testing.mjs'
 import { createWorkflowGraph } from './workflow-graph.mjs'
 import { resolveRunners, findUnresolvedRunners, findDuplicateInserts } from './profile-roster.mjs'
 import { findDocumentationBypass } from './documentation-gate.mjs'
@@ -19,6 +19,14 @@ import { findReadonlyWriteTools } from './agent-readonly.mjs'
 import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
 import { findMissingMootBranches } from './workflow-red-proof.mjs'
 import { findMissingScaffolds } from './workflow-scaffold.mjs'
+import {
+  findUnofferedManualResults,
+  findMissingManualBranches,
+} from './manual-result.mjs'
+import {
+  normalizeRequiredEvidence,
+  findUndeclaredCompletionEvidence,
+} from './completion-alternatives.mjs'
 import {
   VALIDATOR_REGISTRY,
   findUnknownValidators,
@@ -161,10 +169,11 @@ function checkCapabilityTokens(file, doc) {
     // 루트 completion은 루트 evidence를, variant는 자기 evidence를 본다.
     const completion = label === 'capability' ? doc.completion : node.completion
     if (completion) {
-      for (const kind of completion.requiresEvidence ?? []) {
-        if (!declaredEvidence.has(kind)) {
-          fail(file, `${label}.completion: "${kind}"를 요구하지만 evidence에 선언되지 않았다.`)
-        }
+      // 원소는 kind 하나이거나 대안 묶음이다. 묶음 안의 하나만 빠져도 그 경로는
+      // 실제로는 없는 것이라 completion이 실제보다 느슨해 보인다 (ADR-0013).
+      const groups = normalizeRequiredEvidence(completion.requiresEvidence)
+      for (const { kind } of findUndeclaredCompletionEvidence(groups, declaredEvidence)) {
+        fail(file, `${label}.completion: "${kind}"를 요구하지만 evidence에 선언되지 않았다.`)
       }
       for (const [kind, status] of Object.entries(completion.expectedStatus ?? {})) {
         if (!declaredEvidence.has(kind)) {
@@ -177,6 +186,16 @@ function checkCapabilityTokens(file, doc) {
 
   // 외부기억: 코어 증거는 원본 경로를 요구해야 한다.
   checkEvidenceArtifacts(file, scopes)
+
+  // 어휘가 연 수동 검증 경로를 선언이 실제로 내놓는지 (ADR-0013).
+  const evidenceScopes = scopes.map(({ label, node }) => ({ label, evidence: node.evidence }))
+  for (const { scope, kind } of findUnofferedManualResults(evidenceScopes, vocabulary.evidence)) {
+    fail(
+      file,
+      `${scope}.evidence: 어휘에 "${kind}"가 있는데 내놓지 않는다. ` +
+        `러너를 둘 수 없는 저장소가 승인된 생략 말고는 이 계층을 만족시킬 방법이 없어진다. (ADR-0013)`,
+    )
+  }
 
   // 참조 무결성: manifest가 가리키는 파일이 실재하는지.
   checkReferences(file, doc)
@@ -523,6 +542,15 @@ function checkWorkflowTokens(file, doc) {
     )
   }
 
+  // 어휘가 수동 검증 경로를 연 계층은 워크플로도 그 분기를 둬야 한다 (ADR-0013).
+  for (const { step, kind } of findMissingManualBranches(steps, vocabulary.evidence)) {
+    fail(
+      file,
+      `step:${step}: "${kind}"를 받을 분기가 없다. ` +
+        `러너를 둘 수 없는 저장소가 승인된 생략 말고는 이 계층을 통과할 방법이 없어진다. (ADR-0013)`,
+    )
+  }
+
   // moot을 허용하는 계층은 그 분기를 갖고 있어야 한다 (ADR-0012). 허용되지 않는
   // 계층에 moot을 쓰는 것은 위 checkExpectation이 어휘와 대조해 이미 잡는다.
   for (const { step, evidence } of findMissingMootBranches(steps, vocabulary.evidence)) {
@@ -699,14 +727,26 @@ function checkProfilePermissions(file, doc) {
   }
   const signatures = new Map()
   for (const [layer, config] of Object.entries(testLayers)) {
-    const signature = librarySignature(config)
-    if (signatures.has(signature)) {
-      fail(file, `testing.layers.${layer}: ${signatures.get(signature)}와 같은 라이브러리 집합이다. 계층을 도구로 구분할 수 없다.`)
+    // manual 계층에는 라이브러리가 없다. 서명 대조에서 빼지 않으면 manual 계층 둘이
+    // 서로 "같은 라이브러리 집합"으로 걸린다 — 둘 다 비어 있기 때문이다.
+    if (!config.manual) {
+      const signature = librarySignature(config)
+      if (signatures.has(signature)) {
+        fail(file, `testing.layers.${layer}: ${signatures.get(signature)}와 같은 라이브러리 집합이다. 계층을 도구로 구분할 수 없다.`)
+      }
+      signatures.set(signature, layer)
     }
-    signatures.set(signature, layer)
-    if (doc.kind === 'repository' && !doc.commands?.[`test.${layer}`]) {
-      fail(file, `testing.layers.${layer}: repository override에는 commands.test.${layer}가 필요하다.`)
-    }
+
+  }
+
+  // 러너와 수동 절차는 택일이다 (ADR-0013). 판정은 profile-testing.mjs가 한다.
+  const TEST_LAYER_MESSAGE = {
+    'both-runner-and-manual': (l) => `testing.layers.${l}: libraries와 manual이 함께 있다. 러너가 있으면 그것을 쓴다.`,
+    'manual-with-command': (l) => `testing.layers.${l}: manual인데 commands.test.${l}가 있다. 러너가 있으면 그것을 쓴다.`,
+    'missing-command': (l) => `testing.layers.${l}: repository override에는 commands.test.${l} 또는 manual이 필요하다.`,
+  }
+  for (const { layer, problem } of findTestLayerConflicts(testLayers, doc.commands, doc.kind)) {
+    fail(file, TEST_LAYER_MESSAGE[problem](layer))
   }
 
   checkAgentPermissions(file, doc.agents, doc.permissions ?? { filesystem: 'write', network: 'allowlist' }, 'profile')

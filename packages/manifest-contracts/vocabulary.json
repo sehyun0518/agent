@@ -166,11 +166,23 @@
         "errored"
       ]
     },
+    "test.integration.manual-result": {
+      "statuses": [
+        "passed",
+        "failed"
+      ]
+    },
     "test.e2e.result": {
       "statuses": [
         "passed",
         "failed",
         "errored"
+      ]
+    },
+    "test.e2e.manual-result": {
+      "statuses": [
+        "passed",
+        "failed"
       ]
     },
     "test.unit.red-proof": {
