@@ -26,6 +26,7 @@ import {
 import { findMissingMootBranches } from './workflow-red-proof.mjs'
 import { findMissingScaffolds } from './workflow-scaffold.mjs'
 import { findUnisolatedBackgroundAgents } from './background-isolation.mjs'
+import { writesFilesystem, toolRequirement } from './tools.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -1736,11 +1737,35 @@ test('백그라운드여도 읽기만 하면 대상이 아니다', () => {
     맵(역할({ isolation: 'none', tools: ['Read', 'Grep', 'Glob'] }))), [])
 })
 
-// Bash는 쓰기 표시로 세지 않는다. 세면 규칙이 "백그라운드면 무조건 격리"가 되고,
-// 그것은 선언에서 나온 규칙이 아니다.
+// Bash는 tools.mjs가 read로 분류한다. write로 세면 거의 모든 역할이 쓰기 역할이 되고
+// 규칙이 "백그라운드면 무조건 격리"가 된다.
 test('Bash만 있으면 쓰기로 세지 않는다', () => {
   assert.deepEqual(findUnisolatedBackgroundAgents(
     맵(역할({ isolation: 'none', tools: ['Read', 'Bash'] }))), [])
+})
+
+// 쓰기 도구 목록을 이 검사가 따로 갖고 있었고 NotebookEdit이 빠져 있었다 (#88 리뷰).
+// 이제 tools.mjs가 단일 출처다.
+test('NotebookEdit도 쓰기로 센다', () => {
+  assert.deepEqual(findUnisolatedBackgroundAgents(
+    맵(역할({ isolation: 'none', tools: ['Read', 'NotebookEdit'] }))),
+    [{ capability: 'implementation', agent: 'implementation' }])
+})
+
+// 모르는 도구 하나가 역할 전체를 쓰기로 만들면 안 된다.
+test('모르는 도구는 쓰기로 세지 않는다', () => {
+  assert.deepEqual(findUnisolatedBackgroundAgents(
+    맵(역할({ isolation: 'none', tools: ['Read', 'Unknown'] }))), [])
+})
+
+test('쓰기 도구 표가 권한 대조와 같은 출처다', () => {
+  assert.equal(writesFilesystem('Write'), true)
+  assert.equal(writesFilesystem('Edit'), true)
+  assert.equal(writesFilesystem('NotebookEdit'), true)
+  assert.equal(writesFilesystem('Bash'), false)
+  assert.equal(writesFilesystem('mcp__x__y'), false)
+  assert.equal(toolRequirement('mcp__x__y').filesystem, 'read')
+  assert.equal(toolRequirement('Unknown'), null)
 })
 
 test('포그라운드는 격리 없이 써도 대상이 아니다', () => {

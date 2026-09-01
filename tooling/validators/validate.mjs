@@ -20,6 +20,7 @@ import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
 import { findMissingMootBranches } from './workflow-red-proof.mjs'
 import { findMissingScaffolds } from './workflow-scaffold.mjs'
 import { findUnisolatedBackgroundAgents } from './background-isolation.mjs'
+import { toolRequirement } from './tools.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -248,25 +249,6 @@ const NET_RANK = { none: 0, allowlist: 1, any: 2 }
  * mcp__playwright는 로컬 렌더 확인 용도라 filesystem:read로 본다 — 외부 호스트로
  * 나가는 것은 런타임의 network 정책이 따로 판정한다.
  */
-const TOOL_REQUIREMENTS = {
-  Read: { filesystem: 'read' },
-  Grep: { filesystem: 'read' },
-  Glob: { filesystem: 'read' },
-  Bash: { filesystem: 'read' },
-  Task: {},
-  Write: { filesystem: 'write' },
-  Edit: { filesystem: 'write' },
-  NotebookEdit: { filesystem: 'write' },
-  WebFetch: { network: 'allowlist' },
-  WebSearch: { network: 'allowlist' },
-}
-
-function toolRequirement(tool) {
-  if (TOOL_REQUIREMENTS[tool]) return TOOL_REQUIREMENTS[tool]
-  if (tool.startsWith('mcp__')) return { filesystem: 'read' }
-  return null // 알 수 없는 도구는 아래에서 보고한다
-}
-
 function checkAgentPermissions(file, agents, permissions, label) {
   if (!permissions) return
   for (const agent of agents ?? []) {
