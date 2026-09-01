@@ -476,9 +476,18 @@ git status             # 미러가 손으로 고쳐지지 않았는지
 릴리스는 "무엇을 만들었나"와 다른 판단이다 — 지금까지 쌓인 것이 한 덩어리인지를
 본다. 기능 PR에 얹으면 그 판단이 PR 수만큼 늘고, 각각은 자기 변경만 본다.
 
-1. `package.json`의 버전을 올린다
-2. 그 PR이 머지된 커밋에 주석 태그를 단다 — `v<버전>`
-3. 같은 이름으로 GitHub Release를 만든다
+```bash
+npm version <major|minor|patch> --no-git-tag-version   # PR에서. 태그는 아직 안 단다
+# ── 머지 후 ──
+git tag -a v<버전> -m "v<버전> — <한 덩어리를 한 줄로>"
+git push origin v<버전>
+gh release create v<버전> --title "v<버전> — <같은 한 줄>" --notes "<무엇을 끊었나>"
+```
+
+`--no-git-tag-version`을 빼면 `npm version`이 그 자리에서 태그를 단다. **태그는 머지된
+커밋에 달아야 하므로** PR 안에서 달면 사라질 커밋을 가리킨다.
+
+주석 태그(`-a`)를 쓴다. 단순 태그는 메시지도 날짜도 남기지 않는다.
 
 ## 3. 자주 하는 실수
 
