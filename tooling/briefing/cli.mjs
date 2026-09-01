@@ -5,18 +5,29 @@
 // 회귀 케이스가 거기 붙는다.
 
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
-import { join, dirname, basename } from 'node:path'
+import { join, dirname, basename, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse as parseYaml } from 'yaml'
 import { buildStepBriefing, renderStepBriefing, stepIds } from './step.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
-const readYaml = (path) => parseYaml(readFileSync(path, 'utf8'))
+// 이 도구는 검증 안 된 선언을 읽는다 — 고치는 중에 부르는 것이 정상 사용이다.
+// 그래서 스키마가 보장한다고 가정하지 않고, 깨진 파일에는 스택 대신 어디가 깨졌는지 낸다.
+const readYaml = (path) => {
+  try {
+    return parseYaml(readFileSync(path, 'utf8'))
+  } catch (error) {
+    console.error(`YAML을 읽지 못했다: ${relative(ROOT, path)}`)
+    console.error(`  ${error.message.split('\n')[0]}`)
+    process.exit(1)
+  }
+}
 
 function loadCapabilities() {
   const dir = join(ROOT, 'capabilities')
   const map = new Map()
+  if (!existsSync(dir)) return map
   for (const name of readdirSync(dir)) {
     const path = join(dir, name, 'capability.yaml')
     if (!existsSync(path)) continue

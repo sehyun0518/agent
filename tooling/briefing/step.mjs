@@ -85,7 +85,7 @@ export function buildStepBriefing({ workflow, stepId, capabilities, profiles, ga
     capability: step.capability ?? null,
     variant: step.variant ?? null,
     title: variant?.title ?? capability?.title ?? null,
-    agents: (capability?.entrypoints?.agents ?? []).map((a) => ({
+    agents: (capability?.entrypoints?.agents ?? []).filter(Boolean).map((a) => ({
       id: a.id,
       background: !!a.background,
       isolation: a.isolation ?? 'none',
@@ -147,6 +147,7 @@ export function renderStepBriefing(b) {
       out.push(bullet([`      workflows/gates/${gate.name}.md`]))
     }
     for (const e of b.expects) {
+      if (!e?.evidence) continue
       out.push(bullet([`expect  ${e.evidence} = ${e.status}${e.from ? `  (from: ${e.from})` : ''}`]))
     }
     // 바깥 배열이 OR이고 각 묶음의 conditions가 AND다 (workflow.schema.json).
@@ -154,6 +155,7 @@ export function renderStepBriefing(b) {
       out.push(bullet(['expectAnyOf  아래 묶음 중 하나가 성립하면 된다']))
       for (const group of b.expectAnyOf) {
         const conditions = (group?.conditions ?? [])
+          .filter((e) => e?.evidence)
           .map((e) => `${e.evidence} = ${e.status}${e.from ? ` (from: ${e.from})` : ''}`)
           .join('  그리고  ')
         out.push(bullet([`      · ${conditions}`]))
@@ -169,6 +171,7 @@ export function renderStepBriefing(b) {
   if (b.evidence.length) {
     out.push('', '남겨야 하는 증거')
     for (const e of b.evidence) {
+      if (!e?.kind) continue
       const flags = [e.required ? '필수' : '선택', e.artifactRequired && 'artifact 필수']
         .filter(Boolean)
         .join(' · ')

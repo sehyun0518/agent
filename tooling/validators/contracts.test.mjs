@@ -2149,6 +2149,25 @@ test('긴 증거 이름에도 상태가 떨어져 나온다', () => {
   assert.match(text, /test\.integration\.manual-result {2,}선택/)
 })
 
+// 이 도구는 검증 안 된 선언을 읽는다 — 고치는 중에 부르는 것이 정상 사용이다.
+// 스키마가 보장한다고 가정하면 스택 트레이스가 난다 (#92 리뷰 · ADR-0029와 같은 자리).
+test('망가진 선언에도 터지지 않는다', () => {
+  const wf = {
+    id: 'w',
+    steps: [{
+      id: 's',
+      capability: 'c',
+      expect: [null, { status: 'x' }, { evidence: 'ok', status: 'passed' }],
+      expectAnyOf: [{ conditions: [null, { evidence: 'a', status: 'b' }] }],
+    }],
+  }
+  const caps = new Map([['c', { entrypoints: { agents: [null, { id: 'r' }] }, evidence: [null, { kind: 'k' }] }]])
+  const text = renderStepBriefing(buildStepBriefing({ workflow: wf, stepId: 's', capabilities: caps }))
+  assert.match(text, /agent: r/)
+  assert.match(text, /expect  ok = passed/)
+  assert.doesNotMatch(text, /undefined/)
+})
+
 test('단계 목록을 낸다', () => {
   assert.deepEqual(stepIds(워크플로), ['spec', 'logic'])
   assert.deepEqual(stepIds(undefined), [])
