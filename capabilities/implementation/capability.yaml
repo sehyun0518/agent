@@ -61,6 +61,12 @@ variants:
       - kind: changed-files
         required: true
         artifactRequired: true
+      # 계약이 모호하거나 모순되면 추측하지 않고 되돌리는 것이 원칙이다. 되돌리지
+      # 않기로 했다면 그 선택을 여기 남기고 승인을 받는다 — 기록만으로는 진행할 수
+      # 없다 (ADR-0014).
+      - kind: contract-deviation
+        required: false
+        artifactRequired: true
     completion: &implementation-completion
       requiresEvidence: [changed-files]
   logic:

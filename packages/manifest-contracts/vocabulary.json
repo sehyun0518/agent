@@ -145,6 +145,11 @@
         "violated"
       ]
     },
+    "contract-deviation": {
+      "statuses": [
+        "recorded"
+      ]
+    },
     "test.unit.result": {
       "statuses": [
         "passed",

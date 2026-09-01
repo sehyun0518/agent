@@ -88,6 +88,7 @@ E2E는 선행 계층 green 뒤에 red를 확인한다. 스캐폴드가 앞에 �
 | `completeness-check` | 완결성 게이트 판정 (어느 슬롯이 왜 미달인지 포함) | `passed` · `failed` |
 | `changed-files` | 이 단계가 만든/고친 파일 목록 | `recorded` |
 | `contract-diff` | 계약이 이전 고정본에서 어떻게 달라졌는지 | `recorded` · `violated` |
+| `contract-deviation` | 하류가 계약의 모호·모순을 만나 내린 잠정 선택과 그 근거 | `recorded` |
 | `test.unit.result` | 단위 테스트 실행 결과 | `passed` · `failed` · `errored` |
 | `test.ui.result` | UI 렌더링·상호작용 테스트 결과 | `passed` · `failed` · `errored` |
 | `test.integration.result` | 통합 테스트 실행 결과 | `passed` · `failed` · `errored` |
@@ -123,6 +124,11 @@ E2E는 선행 계층 green 뒤에 red를 확인한다. 스캐폴드가 앞에 �
 서버)을 요구할 수 있기 때문이다. `unit`·`ui`는 같은 프로세스 안에서 도므로 "러너를 둘 수
 없다"가 성립하지 않는다. 같은 두 계층이 생략 가능한 계층이자 `moot`이 허용되는 계층인
 것도 같은 이유다.
+
+`contract-deviation`은 **하류가** 남긴다. 계약을 고정한 쪽이 아니라 그것을 쓰다 막힌
+쪽이 무엇을 어떻게 우회했는지 아는 유일한 자리이기 때문이다. 기록만으로 진행할 수는
+없다 — `approval-record: granted`가 함께 있어야 하고, 없으면 `specification`으로
+되돌린다. 계약을 따르지 않기로 한 선택은 우회이고, 승인은 우회에 붙는다 (ADR-0014).
 
 문서도 같은 구조를 쓴다. `documentation-impact`는 **계약 고정 단계가** 남긴다 —
 문서화 레이어가 자기 일의 유무를 스스로 선언하면 그 판정을 검증할 근거가 사라지기
