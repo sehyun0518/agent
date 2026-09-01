@@ -1,6 +1,6 @@
 # Hook — 자동 출처 문구 금지
 
-- 이벤트: `before-capability`
+- 이벤트: `before-tool`
 - blocking: 예.
 
 ## 검사
@@ -14,6 +14,15 @@
 |---|---|
 | `forbidden` (기본) | 출처 문구가 있으면 차단 |
 | `allowed` | 통과 |
+
+## 왜 도구 시점인가
+
+검사 대상이 **커밋 메시지와 PR 본문**이다. `before-capability`는 Capability가 시작할 때
+한 번 도는데 **그 시점에는 볼 메시지가 없다** — 메시지는 도구를 부를 때 생긴다.
+`before-capability`로 선언돼 있던 것을 고쳤다 (ADR-0036).
+
+상태를 요구하지 않는 유일한 훅이기도 하다. 도구 호출과 프로파일의
+`git.automaticAttribution`만 있으면 판정된다.
 
 ## 왜 기본이 금지인가
 
