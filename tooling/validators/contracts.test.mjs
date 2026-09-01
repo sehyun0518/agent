@@ -29,6 +29,11 @@ import { findUnisolatedBackgroundAgents } from './background-isolation.mjs'
 import { writesFilesystem, toolRequirement } from './tools.mjs'
 import { findEscalationCycles, findDanglingEscalations } from './escalation.mjs'
 import {
+  findMissingAggregationInputs,
+  findAggregationTableDrift,
+  AGGREGATION_INPUTS,
+} from './reliability-inputs.mjs'
+import {
   findUnreachablePreconditions,
   findUnusedAssumes,
 } from './workflow-return-path.mjs'
@@ -1860,5 +1865,87 @@ test('없는 대상을 순환으로 세지 않는다', () => {
 test('capability가 없어도 터지지 않는다', () => {
   assert.deepEqual(findEscalationCycles(undefined), [])
   assert.deepEqual(findDanglingEscalations(undefined), [])
+})
+
+// ── 집계 입력 (ADR-0030 · #83) ────────────────────────────────────────────
+//
+// 집계는 읽는 쪽이 만들지만(ADR-0023 결정 2) 필요한 사실이 기록에 있어야 만든다.
+// 필드를 지우면 그 지표를 영영 못 만든다.
+
+test('필요한 필드가 다 있으면 통과한다', () => {
+  const schema = { properties: { runId: {}, outcome: {} } }
+  assert.deepEqual(
+    findMissingAggregationInputs(schema, [
+      { field: 'runId', metric: 'x' },
+      { field: 'outcome', metric: 'y' },
+    ]),
+    [],
+  )
+})
+
+test('없는 필드를 이유와 함께 낸다', () => {
+  assert.deepEqual(
+    findMissingAggregationInputs({ properties: { runId: {} } }, [
+      { field: 'runId', metric: 'x' },
+      { field: 'workflow', metric: '종류를 못 가른다' },
+    ]),
+    [{ field: 'workflow', metric: '종류를 못 가른다' }],
+  )
+})
+
+test('스키마가 비어도 터지지 않는다', () => {
+  assert.deepEqual(findMissingAggregationInputs(undefined, [{ field: 'a', metric: 'z' }]),
+    [{ field: 'a', metric: 'z' }])
+  assert.deepEqual(findMissingAggregationInputs({ properties: {} }, undefined), [])
+})
+
+// 목록에 이름만 있고 이유가 없으면 실패 메시지가 무엇을 잃는지 말하지 못한다.
+test('AGGREGATION_INPUTS의 모든 항목이 이유를 갖는다', () => {
+  for (const entry of AGGREGATION_INPUTS) {
+    assert.ok(entry.field, '필드 이름이 없다')
+    assert.ok(entry.metric?.length > 0, `${entry.field}에 이유가 없다`)
+  }
+})
+
+// 표와 목록은 두 곳에 적힌 같은 것이다. 실제로 갈렸다 — 표에 event·capability·variant가
+// 있는데 목록에는 없었다 (#90 리뷰).
+
+const 표 = (rows) => `## 조사\n\n| 지표 | 필요한 입력 |\n|---|---|\n${rows}\n\n## 결정 1\n`
+
+test('표와 목록이 같으면 통과한다', () => {
+  const drift = findAggregationTableDrift(표('| a | `runId` · `outcome` |'), [
+    { field: 'runId' },
+    { field: 'outcome' },
+  ])
+  assert.deepEqual(drift, { onlyInTable: [], onlyInList: [] })
+})
+
+test('표에만 있으면 검출한다', () => {
+  const drift = findAggregationTableDrift(표('| a | `runId` · `policy` |'), [{ field: 'runId' }])
+  assert.deepEqual(drift.onlyInTable, ['policy'])
+})
+
+test('목록에만 있으면 검출한다', () => {
+  const drift = findAggregationTableDrift(표('| a | `runId` |'), [
+    { field: 'runId' },
+    { field: 'variant' },
+  ])
+  assert.deepEqual(drift.onlyInList, ['variant'])
+})
+
+// 본문이 표의 누락을 가리면 안 된다. adr-index.mjs가 같은 구멍을 실제로 겪었다.
+test('절 밖의 산문은 표로 세지 않는다', () => {
+  const md = '## 조사\n\n| a | `runId` |\n\n## 결정 1\n\n`variant`를 산문에서 언급한다.\n'
+  const drift = findAggregationTableDrift(md, [{ field: 'runId' }, { field: 'variant' }])
+  assert.deepEqual(drift.onlyInList, ['variant'])
+})
+
+test('실제 ADR-0030과 실제 목록이 일치한다', async () => {
+  const { readFileSync } = await import('node:fs')
+  const md = readFileSync(new URL('../../docs/adr/0030-reliability-inputs.md', import.meta.url), 'utf8')
+  assert.deepEqual(findAggregationTableDrift(md, AGGREGATION_INPUTS), {
+    onlyInTable: [],
+    onlyInList: [],
+  })
 })
 
