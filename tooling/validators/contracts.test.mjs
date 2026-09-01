@@ -2605,6 +2605,13 @@ test('실제 훅 문서가 전부 실재하는 이벤트를 쓴다', async () =>
     }
   }
   assert.ok(docs.length >= 4, `훅 문서를 ${docs.length}개만 찾았다`)
-  assert.deepEqual(findUnknownHookEvents(docs, 이벤트목록), [])
+  // 목록을 여기 적지 않는다. 스키마가 단일 출처이고, 위 픽스처와 달리 이 케이스는
+  // 실제 상태를 본다 — 하드코딩하면 스키마가 늘 때 이 테스트만 낡는다 (#97 리뷰).
+  const schema = JSON.parse(
+    readFileSync(new URL('../../packages/policy-contracts/policy.schema.json', import.meta.url), 'utf8'),
+  )
+  const events = knownHookEvents(schema)
+  assert.ok(events.length > 0, '스키마에서 이벤트를 못 읽었다')
+  assert.deepEqual(findUnknownHookEvents(docs, events), [])
 })
 
