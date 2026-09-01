@@ -6,6 +6,7 @@ import { resolveRunners, findUnresolvedRunners, findDuplicateInserts } from './p
 import { findDocumentationBypass } from './documentation-gate.mjs'
 import { findReadonlyWriteTools } from './agent-readonly.mjs'
 import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
+import { findMissingMootBranches } from './workflow-red-proof.mjs'
 import {
   VALIDATOR_REGISTRY,
   findUnknownValidators,
@@ -607,4 +608,101 @@ test('워크플로 커맨드가 삽입 수를 함께 낸다', () => {
     command.insertions.map((i) => i.id),
     ['design', 'accessibility'],
   )
+})
+
+// ---------------------------------------------------------------- moot 분기
+// ADR-0012가 integration·e2e에 moot을 열었는데, 그 분기를 지워도 아무것도 빨개지지
+// 않았다 (#51). 허용되지 않는 계층에 moot을 쓰는 것은 어휘 검사가 이미 잡는다 —
+// 없는 쪽만 이 검사가 본다.
+
+const 어휘 = {
+  'test.unit.red-proof': { statuses: ['confirmed', 'rejected'] },
+  'test.ui.red-proof': { statuses: ['confirmed', 'rejected'] },
+  'test.integration.red-proof': { statuses: ['confirmed', 'rejected', 'moot'] },
+  'test.e2e.red-proof': { statuses: ['confirmed', 'rejected', 'moot'] },
+}
+
+test('moot이 허용된 계층인데 분기가 없으면 검출한다', () => {
+  const found = findMissingMootBranches(
+    [
+      {
+        id: 'integration-implementation',
+        expectAnyOf: [
+          { conditions: [{ evidence: 'test.integration.red-proof', status: 'confirmed' }] },
+          { conditions: [{ evidence: 'test.skip-justification', status: 'recorded' }] },
+        ],
+      },
+    ],
+    어휘,
+  )
+  assert.deepEqual(found, [
+    { step: 'integration-implementation', evidence: 'test.integration.red-proof' },
+  ])
+})
+
+test('moot 분기가 있으면 통과한다', () => {
+  const found = findMissingMootBranches(
+    [
+      {
+        id: 'e2e-fix',
+        expectAnyOf: [
+          { conditions: [{ evidence: 'test.e2e.red-proof', status: 'confirmed' }] },
+          { conditions: [{ evidence: 'test.e2e.red-proof', status: 'moot' }] },
+        ],
+      },
+    ],
+    어휘,
+  )
+  assert.deepEqual(found, [])
+})
+
+// unit·ui는 앞의 스캐폴드가 동작을 비우므로 red가 반드시 관찰된다. moot이 없는 것이
+// 정상이다 (ADR-0012). 이 케이스가 빨개지면 두 ADR의 대칭이 깨진 것이다.
+test('moot이 허용되지 않는 계층은 분기가 없어도 대상이 아니다', () => {
+  const found = findMissingMootBranches(
+    [
+      { id: 'logic-fix', expect: [{ evidence: 'test.unit.red-proof', status: 'confirmed' }] },
+      {
+        id: 'ui-implementation',
+        expectAnyOf: [{ conditions: [{ evidence: 'test.ui.red-proof', status: 'confirmed' }] }],
+      },
+    ],
+    어휘,
+  )
+  assert.deepEqual(found, [])
+})
+
+// expectAnyOf를 통째로 expect로 바꿔 분기를 없애는 우회도 같은 자리에서 걸린다.
+test('expect로 바꿔 분기를 없애도 검출한다', () => {
+  const found = findMissingMootBranches(
+    [{ id: 'e2e-implementation', expect: [{ evidence: 'test.e2e.red-proof', status: 'confirmed' }] }],
+    어휘,
+  )
+  assert.deepEqual(found, [{ step: 'e2e-implementation', evidence: 'test.e2e.red-proof' }])
+})
+
+// 어휘가 단일 출처다. 계층 목록을 검사기에 박아두지 않는다 — vocabulary.json에서
+// moot을 빼면 그 계층은 자동으로 대상에서 빠진다.
+test('어휘에서 moot을 빼면 그 계층은 요구하지 않는다', () => {
+  const 좁힌어휘 = { 'test.integration.red-proof': { statuses: ['confirmed', 'rejected'] } }
+  const steps = [
+    {
+      id: 'integration-implementation',
+      expectAnyOf: [{ conditions: [{ evidence: 'test.integration.red-proof', status: 'confirmed' }] }],
+    },
+  ]
+  assert.equal(findMissingMootBranches(steps, 어휘).length, 1)
+  assert.deepEqual(findMissingMootBranches(steps, 좁힌어휘), [])
+})
+
+test('red-proof를 안 보는 단계와 빈 입력은 대상이 아니다', () => {
+  const found = findMissingMootBranches(
+    [
+      { id: 'specification' },
+      { id: 'unit-design', expect: [{ evidence: 'contract-diff', status: 'recorded' }] },
+    ],
+    어휘,
+  )
+  assert.deepEqual(found, [])
+  assert.deepEqual(findMissingMootBranches(undefined, 어휘), [])
 })

@@ -17,6 +17,7 @@ import { resolveRunners, findUnresolvedRunners, findDuplicateInserts } from './p
 import { findDocumentationBypass } from './documentation-gate.mjs'
 import { findReadonlyWriteTools } from './agent-readonly.mjs'
 import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
+import { findMissingMootBranches } from './workflow-red-proof.mjs'
 import {
   VALIDATOR_REGISTRY,
   findUnknownValidators,
@@ -510,6 +511,16 @@ function checkWorkflowTokens(file, doc) {
         )
       }
     }
+  }
+
+  // moot을 허용하는 계층은 그 분기를 갖고 있어야 한다 (ADR-0012). 허용되지 않는
+  // 계층에 moot을 쓰는 것은 위 checkExpectation이 어휘와 대조해 이미 잡는다.
+  for (const { step, evidence } of findMissingMootBranches(steps, vocabulary.evidence)) {
+    fail(
+      file,
+      `step:${step}: "${evidence}"가 moot을 허용하는데 그 분기가 없다. ` +
+        `red가 관찰되지 않는 실행이 승인이 필요한 생략으로 몰린다. (ADR-0012)`,
+    )
   }
 
   // 위 검사는 생산 단계가 이미 있을 때만 조상 여부를 본다. 단계를 통째로 뺀 우회는
