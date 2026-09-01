@@ -174,7 +174,7 @@ function collectSources() {
   // 목록을 안 고쳤을 때 조용히 빠진다.
   const capabilityMap = new Map(capabilities.map((c) => [c.id, c]))
   const commands = [
-    ...commandsFromWorkflows(workflows),
+    ...commandsFromWorkflows(workflows, profiles),
     ...commandsFromCapabilities(capabilityMap),
     ...profiles.flatMap((profile) => commandsFromProfile(profile)),
   ]
@@ -231,6 +231,33 @@ function ownerLabel(agent) {
  * 수동 실행 대상의 진입점. 본문은 얇은 래퍼다 — 절차를 여기 요약하면 소스가 바뀔 때
  * 함께 안 바뀌어 조용히 틀린 문서가 된다(ADR-0006).
  */
+/**
+ * 워크플로 파일에 없는 단계가 있다는 사실을 알린다.
+ *
+ * 삽입 지점은 프로파일이 소유하므로 여기에 옮겨 적지 않는다. 무엇이 붙는지와 어디를
+ * 읽어야 하는지까지만 낸다 — 그것이 없으면 워크플로 파일을 충실히 따를수록 도메인
+ * 단계가 조용히 빠진다 (#52).
+ */
+function renderInsertions(insertions) {
+  if (!insertions || insertions.length === 0) return ''
+  const byProfile = new Map()
+  for (const { profile, id } of insertions) {
+    if (!byProfile.has(profile)) byProfile.set(profile, [])
+    byProfile.get(profile).push(id)
+  }
+  const lines = [...byProfile].map(
+    ([profile, ids]) =>
+      `- \`profiles/${profile}/profile.yaml\`의 \`workflowExtensions\` — ` +
+      ids.map((id) => `\`${id}\``).join(' · '),
+  )
+  return (
+    `**워크플로 파일에 없는 단계가 ${insertions.length}개 더 있다.**\n\n` +
+    `${lines.join('\n')}\n\n` +
+    `삽입 지점은 프로파일이 소유하므로 그 파일에서 읽는다. 워크플로 파일만 따르면\n` +
+    `도메인 단계가 통째로 빠지고, 아무것도 그것을 지적하지 않는다.\n\n`
+  )
+}
+
 function renderCommand(command) {
   const front = { description: command.description.replace(/\s+/g, ' ').slice(0, 200) }
   // 워크플로는 흐름 전체를 건네므로 본문이 다르다. 다만 순서를 여기 옮겨 적지
@@ -244,6 +271,7 @@ function renderCommand(command) {
       `\`workflows/gates/*.md\`가 무엇을 봐야 하는지 정한다. \`skippable\`이 있는 단계만\n` +
       `생략할 수 있고, 생략하면 사유를 증거로 남긴다.\n\n` +
       `순서를 여기 옮겨 적지 않는다. 워크플로 파일이 단일 출처다.\n\n` +
+      renderInsertions(command.insertions) +
       `**자동이 아닌 것.** 이 저장소에는 워크플로 실행 엔진도 증거 저장소도 없다\n` +
       `(ADR-0002). 단계 호출과 증거 기록은 사람 또는 메인 에이전트가 한다. 게이트가\n` +
       `증거를 본다고 돼 있으면 그 증거를 실제로 남겼는지 직접 확인해야 한다.\n\n` +

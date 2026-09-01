@@ -16,6 +16,7 @@ import {
   commandsFromProfile,
   commandsFromWorkflows,
   findDuplicateCommands,
+  insertionsForWorkflow,
 } from '../generators/commands.mjs'
 
 test('계층별 red 생산자가 구현의 조상이면 전이를 허용한다', () => {
@@ -452,4 +453,132 @@ test('여러 스코프의 위반을 스코프와 함께 모아서 돌려준다',
 test('evidence가 없어도 터지지 않는다', () => {
   assert.deepEqual(findEvidenceWithoutArtifact([{ label: 'capability' }]), [])
   assert.deepEqual(findEvidenceWithoutArtifact(undefined), [])
+})
+
+// ---------------------------------------------------------------- 프로파일 삽입
+// 순서의 단일 출처는 워크플로이고 삽입 지점은 프로파일이 소유한다. 그 분리 때문에
+// 워크플로 파일만 읽는 실행자에게 도메인 단계의 존재가 전달되지 않았다 (#52).
+
+const 프로파일 = [
+  {
+    id: 'frontend',
+    workflowExtensions: [
+      {
+        workflow: '*',
+        insert: [
+          { id: 'design', runner: 'design', anchorCapability: 'specification' },
+          { id: 'accessibility', runner: 'accessibility', anchorCapability: 'documentation' },
+        ],
+      },
+      {
+        workflow: 'change',
+        insert: [
+          {
+            id: 'state-data',
+            runner: 'state-data',
+            anchorCapability: 'implementation',
+            anchorStep: 'logic',
+          },
+        ],
+      },
+    ],
+  },
+]
+
+test('"*" 삽입과 해당 워크플로 삽입을 함께 모은다', () => {
+  const found = insertionsForWorkflow(
+    {
+      id: 'change',
+      steps: [
+        { id: 'specification', capability: 'specification' },
+        { id: 'logic', capability: 'implementation', variant: 'logic' },
+        { id: 'documentation', capability: 'documentation' },
+      ],
+    },
+    프로파일,
+  )
+  assert.deepEqual(
+    found.map((i) => i.id),
+    ['design', 'accessibility', 'state-data'],
+  )
+  assert.equal(found[0].profile, 'frontend')
+})
+
+// 프로파일이 스스로 적어 둔 것 — "review 전용 흐름에는 계약 고정 단계가 없으므로 이
+// 삽입은 건너뛰어진다". 그 문장이 실제로 성립하는지 여기서 고정한다.
+test('앵커 capability가 없는 흐름에서는 "*" 삽입도 빠진다', () => {
+  const found = insertionsForWorkflow(
+    { id: 'review', steps: [{ id: 'review', capability: 'review' }] },
+    프로파일,
+  )
+  assert.deepEqual(found, [])
+})
+
+test('다른 워크플로 전용 삽입은 넘어오지 않는다', () => {
+  const found = insertionsForWorkflow(
+    {
+      id: 'bugfix',
+      steps: [
+        { id: 'specification', capability: 'specification' },
+        { id: 'logic-fix', capability: 'implementation', variant: 'logic' },
+      ],
+    },
+    프로파일,
+  )
+  assert.deepEqual(
+    found.map((i) => i.id),
+    ['design'],
+  )
+})
+
+// anchorStep이 있으면 capability만 같아서는 안 된다. bugfix의 로직 단계는 id가
+// logic-fix라 change용 state-data 삽입의 앵커가 되지 못한다.
+test('anchorStep이 있으면 step id까지 맞아야 한다', () => {
+  const ext = [
+    {
+      id: 'state-data',
+      runner: 'state-data',
+      anchorCapability: 'implementation',
+      anchorStep: 'logic',
+    },
+  ]
+  const profiles = [{ id: 'p', workflowExtensions: [{ workflow: '*', insert: ext }] }]
+  const 맞음 = insertionsForWorkflow(
+    { id: 'w', steps: [{ id: 'logic', capability: 'implementation' }] },
+    profiles,
+  )
+  const 틀림 = insertionsForWorkflow(
+    { id: 'w', steps: [{ id: 'logic-fix', capability: 'implementation' }] },
+    profiles,
+  )
+  assert.equal(맞음.length, 1)
+  assert.deepEqual(틀림, [])
+})
+
+test('프로파일이 없으면 삽입도 없다', () => {
+  const w = { id: 'change', steps: [{ id: 'specification', capability: 'specification' }] }
+  assert.deepEqual(insertionsForWorkflow(w, []), [])
+  assert.deepEqual(insertionsForWorkflow(w, undefined), [])
+})
+
+// 커맨드 본문이 "단계 N개다"라고 적는 근거가 여기다. 삽입을 세지 않으면 그 문장이
+// 흐름이 N에서 완결됐다고 읽히게 만든다.
+test('워크플로 커맨드가 삽입 수를 함께 낸다', () => {
+  const [command] = commandsFromWorkflows(
+    [
+      {
+        id: 'change',
+        steps: [
+          { id: 'specification', capability: 'specification' },
+          { id: 'documentation', capability: 'documentation' },
+        ],
+      },
+    ],
+    프로파일,
+  )
+  assert.equal(command.stepCount, 2)
+  assert.deepEqual(
+    command.insertions.map((i) => i.id),
+    ['design', 'accessibility'],
+  )
 })

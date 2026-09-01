@@ -62,6 +62,47 @@ export function commandsFromProfile(profile) {
     }))
 }
 
+/**
+ * 프로파일이 이 워크플로에 끼우는 단계.
+ *
+ * 순서의 단일 출처는 워크플로이고 삽입 지점은 프로파일이 소유한다
+ * (`profile.schema.json`). 그 분리는 의도된 설계인데, 대가로 워크플로 파일만 읽는
+ * 실행자에게 도메인 단계의 **존재 자체**가 전달되지 않았다. 실제로 `design`과
+ * `state-data`를 빠뜨린 실행이 있었다 (#52).
+ *
+ * 여기서 순서를 계산하지 않는다. 무엇이 이 흐름에 붙는지만 낸다 — 어디에 붙는지는
+ * 프로파일이 계속 소유한다.
+ *
+ * `workflow: "*"` 삽입이라도 앵커 capability가 그 흐름에 없으면 붙지 않는다.
+ * 프로파일이 note에 적어 둔 동작이다 — "review 전용 흐름에는 계약 고정 단계가
+ * 없으므로 이 삽입은 건너뛰어진다".
+ *
+ * @returns {Array<{profile: string, id: string, runner: string}>}
+ */
+export function insertionsForWorkflow(workflow, profiles) {
+  const steps = workflow?.steps ?? []
+  const out = []
+  for (const profile of profiles ?? []) {
+    for (const extension of profile.workflowExtensions ?? []) {
+      if (extension.workflow !== '*' && extension.workflow !== workflow?.id) continue
+      for (const insert of extension.insert ?? []) {
+        if (!hasAnchor(steps, insert)) continue
+        out.push({ profile: profile.id, id: insert.id, runner: insert.runner })
+      }
+    }
+  }
+  return out
+}
+
+/** anchorStep이 있으면 capability만 같아서는 안 된다. 같은 capability의 다른 단계에 붙는다. */
+function hasAnchor(steps, insert) {
+  return steps.some(
+    (step) =>
+      step.capability === insert.anchorCapability &&
+      (insert.anchorStep === undefined || step.id === insert.anchorStep),
+  )
+}
+
 /** 이름이 겹치면 어느 쪽이 불릴지 알 수 없다. 생성 전에 잡는다. */
 export function findDuplicateCommands(commands) {
   const seen = new Map()
@@ -86,10 +127,15 @@ function sourceOf(c) {
  * 증거 기록은 사람 또는 메인 에이전트가 수행한다"고 정해뒀다(ADR-0004·0005·0010).
  * 커맨드는 그 주체에게 흐름을 건네는 것이지 대신 도는 것이 아니다.
  *
+ * 단계 수는 워크플로가 가진 것만 센다. 프로파일이 끼우는 것은 insertions가 따로
+ * 담는다 — 둘을 더해 하나의 수로 내면 커맨드를 읽는 사람이 워크플로 파일에서 그
+ * 수를 확인할 수 없다.
+ *
  * @param {Array<{id: string, title?: string, description?: string, steps?: Array}>} workflows
- * @returns {Array<{name, kind, workflow, title, description, stepCount}>}
+ * @param {Array<{id: string, workflowExtensions?: Array}>} profiles
+ * @returns {Array<{name, kind, workflow, title, description, stepCount, insertions}>}
  */
-export function commandsFromWorkflows(workflows) {
+export function commandsFromWorkflows(workflows, profiles = []) {
   return (workflows ?? []).map((w) => ({
     name: w.id,
     kind: 'workflow',
@@ -97,5 +143,6 @@ export function commandsFromWorkflows(workflows) {
     title: w.title ?? w.id,
     description: (w.description ?? '').trim(),
     stepCount: (w.steps ?? []).length,
+    insertions: insertionsForWorkflow(w, profiles),
   }))
 }
