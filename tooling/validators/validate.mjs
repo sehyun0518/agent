@@ -16,6 +16,7 @@ import { createWorkflowGraph } from './workflow-graph.mjs'
 import { resolveRunners, findUnresolvedRunners, findDuplicateInserts } from './profile-roster.mjs'
 import { findDocumentationBypass } from './documentation-gate.mjs'
 import { findReadonlyWriteTools } from './agent-readonly.mjs'
+import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
 import {
   VALIDATOR_REGISTRY,
   findUnknownValidators,
@@ -172,6 +173,9 @@ function checkCapabilityTokens(file, doc) {
     }
   }
 
+  // 외부기억: 코어 증거는 원본 경로를 요구해야 한다.
+  checkEvidenceArtifacts(file, scopes)
+
   // 참조 무결성: manifest가 가리키는 파일이 실재하는지.
   checkReferences(file, doc)
 
@@ -263,6 +267,21 @@ function checkReadonlyAgents(file, agents, label) {
     fail(
       file,
       `${label} 에이전트 "${agent}": readonly인데 쓰기 도구 "${tool}"을 들고 있다. (ADR-0007)`,
+    )
+  }
+}
+
+/**
+ * 코어 증거가 원본 경로를 요구하는지 본다.
+ * 판정은 evidence-artifact.mjs의 순수 함수가 하고 여기서는 보고만 한다.
+ */
+function checkEvidenceArtifacts(file, scopes) {
+  const declarations = scopes.map(({ label, node }) => ({ label, evidence: node.evidence }))
+  for (const { scope, kind } of findEvidenceWithoutArtifact(declarations)) {
+    fail(
+      file,
+      `${scope}.evidence "${kind}": artifactRequired가 없다. status와 summary만 남는 증거는 ` +
+        `세션과 함께 사라진다. 경로가 필요 없다면 그것은 증거가 아니라 신호다. (#45)`,
     )
   }
 }

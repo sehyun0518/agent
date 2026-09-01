@@ -5,6 +5,7 @@ import { createWorkflowGraph } from './workflow-graph.mjs'
 import { resolveRunners, findUnresolvedRunners, findDuplicateInserts } from './profile-roster.mjs'
 import { findDocumentationBypass } from './documentation-gate.mjs'
 import { findReadonlyWriteTools } from './agent-readonly.mjs'
+import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
 import {
   VALIDATOR_REGISTRY,
   findUnknownValidators,
@@ -389,4 +390,66 @@ test('레지스트리의 모든 항목에 status가 있다', () => {
     assert.ok(허용.has(entry.status), `${name}: 알 수 없는 status "${entry.status}"`)
     assert.ok(entry.by, `${name}: 어느 검사인지 by에 적어야 한다`)
   }
+})
+
+// ---------------------------------------------------------------- 증거의 원본 경로
+// 컨텍스트는 작업 공간이지 데이터베이스가 아니다. status와 summary만 남는 증거는
+// 세션과 함께 사라진다 (#45).
+
+test('코어 증거가 artifactRequired 없이 선언되면 검출한다', () => {
+  const found = findEvidenceWithoutArtifact([
+    { label: 'variant:push', evidence: [{ kind: 'approval-record', required: true }] },
+  ])
+  assert.deepEqual(found, [{ scope: 'variant:push', kind: 'approval-record' }])
+})
+
+test('artifactRequired가 true면 통과한다', () => {
+  const found = findEvidenceWithoutArtifact([
+    { label: 'capability', evidence: [{ kind: 'changed-files', artifactRequired: true }] },
+  ])
+  assert.deepEqual(found, [])
+})
+
+// required와 artifactRequired는 다른 축이다. 선택 증거라도 남긴다면 재현 가능해야 한다.
+// test.skip-justification이 정확히 이 자리에 있었다 — required:false인데 status가
+// "recorded" 하나뿐이라 경로가 없으면 아무것도 남지 않는다.
+test('required가 false여도 artifactRequired는 면제되지 않는다', () => {
+  const found = findEvidenceWithoutArtifact([
+    { label: 'variant:e2e', evidence: [{ kind: 'test.skip-justification', required: false }] },
+  ])
+  assert.deepEqual(found, [{ scope: 'variant:e2e', kind: 'test.skip-justification' }])
+})
+
+// artifactRequired: false는 기본값과 같지만 "생각해 보고 껐다"는 뜻이 될 수 있다.
+// 그 예외를 허용하면 규칙이 사라지므로 명시적 false도 똑같이 걸린다.
+test('artifactRequired를 명시적으로 false로 적어도 걸린다', () => {
+  const found = findEvidenceWithoutArtifact([
+    { label: 'capability', evidence: [{ kind: 'review-findings', artifactRequired: false }] },
+  ])
+  assert.deepEqual(found, [{ scope: 'capability', kind: 'review-findings' }])
+})
+
+// 코어는 프로파일 증거의 status를 규정하지 않는다. 경로 요구도 같은 경계를 따른다.
+test('프로파일 네임스페이스 증거는 대상이 아니다', () => {
+  const found = findEvidenceWithoutArtifact([
+    { label: 'capability', evidence: [{ kind: 'frontend:a11y.axe-result' }] },
+  ])
+  assert.deepEqual(found, [])
+})
+
+test('여러 스코프의 위반을 스코프와 함께 모아서 돌려준다', () => {
+  const found = findEvidenceWithoutArtifact([
+    { label: 'capability', evidence: [{ kind: 'completeness-check' }] },
+    { label: 'variant:ui', evidence: [{ kind: 'test.ui.result', artifactRequired: true }] },
+    { label: 'variant:e2e', evidence: [{ kind: 'policy-decision' }] },
+  ])
+  assert.deepEqual(found, [
+    { scope: 'capability', kind: 'completeness-check' },
+    { scope: 'variant:e2e', kind: 'policy-decision' },
+  ])
+})
+
+test('evidence가 없어도 터지지 않는다', () => {
+  assert.deepEqual(findEvidenceWithoutArtifact([{ label: 'capability' }]), [])
+  assert.deepEqual(findEvidenceWithoutArtifact(undefined), [])
 })

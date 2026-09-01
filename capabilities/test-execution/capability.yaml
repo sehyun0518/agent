@@ -67,6 +67,7 @@ variants:
         artifactRequired: true
       - kind: test.skip-justification
         required: false
+        artifactRequired: true
     completion:
       requiresEvidence: [test.ui.result]
 
@@ -86,6 +87,7 @@ variants:
         artifactRequired: true
       - kind: test.skip-justification
         required: false
+        artifactRequired: true
     completion:
       requiresEvidence:
         - test.integration.result
@@ -106,6 +108,7 @@ variants:
         artifactRequired: true
       - kind: test.skip-justification
         required: false
+        artifactRequired: true
     completion:
       requiresEvidence:
         - test.e2e.result

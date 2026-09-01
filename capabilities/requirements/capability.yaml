@@ -20,6 +20,7 @@ permissions:
 evidence:
   - kind: completeness-check
     required: true
+    artifactRequired: true
 
 # "완결"은 상태 플래그가 아니라 완결성 게이트 통과 증거로 판정한다.
 completion:

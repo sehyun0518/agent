@@ -89,8 +89,10 @@ variants:
     evidence:
       - kind: approval-record
         required: true
+        artifactRequired: true
       - kind: policy-decision
         required: true
+        artifactRequired: true
     completion:
       requiresEvidence:
         - approval-record
@@ -128,8 +130,10 @@ variants:
     evidence:
       - kind: approval-record
         required: true
+        artifactRequired: true
       - kind: policy-decision
         required: true
+        artifactRequired: true
     completion:
       requiresEvidence:
         - approval-record
@@ -150,8 +154,10 @@ variants:
     evidence:
       - kind: approval-record
         required: true
+        artifactRequired: true
       - kind: policy-decision
         required: true
+        artifactRequired: true
     completion:
       requiresEvidence:
         - approval-record

@@ -124,13 +124,20 @@ evidence:
   - kind: test.unit.result          # §3 등록 토큰
     status: failed                  # 해당 kind의 허용 status 중 하나
     summary: "3 failed, 12 passed"  # 사람이 읽는 한 줄
-    artifact: .harness/runs/{runId}/unit.json   # 원본 경로 (선택)
+    artifact: .harness/runs/{runId}/unit.json   # 원본 경로 (코어 증거는 필수)
     producedBy: test-execution#unit # <capability>[#<variant>]
 ```
 
 - `status`는 워크플로 전이 조건이 대조하는 값이다. 상태 머신이 아니라 이 값이 전이를 결정한다.
-- `artifact`는 선택이지만, `status`만으로 재현할 수 없는 증거(테스트 출력·스크린샷·diff)는
-  반드시 경로를 남긴다.
+- `artifact`는 코어 증거에서 **필수**다. capability manifest가 `artifactRequired: true`로
+  선언하고 `npm run validate`가 대조한다. `status`와 `summary` 한 줄만 남는 증거는 세션과
+  함께 사라지고, 다음 세션은 그것을 봤다고 착각한 채 게이트를 통과시킨다.
+- 경로가 필요 없어 보이는 것은 증거가 아니라 **신호**다. §1과 §3이 둘을 갈라 둔다 — 신호는
+  있음/없음이고, 증거는 사후에 재구성할 수 있어야 한다.
+- 프로파일 네임스페이스 증거는 프로파일이 정한다. 코어가 그쪽 `status`를 규정하지 않는 것과
+  같은 경계다.
+- 검사는 선언이 경로를 *요구하는지*까지만 본다. 그 경로에 실제로 파일이 생겼는지는 증거를
+  기록하는 주체가 없어서 아무도 보지 않는다.
 - `{runId}` 자리표시자는 실행 인스턴스가 채운다. 실행 인스턴스는 소스 디렉터리로 만들지 않는다.
 
 ## 6. 어휘 추가 절차
@@ -138,5 +145,7 @@ evidence:
 1. 코어 토큰이 정말 필요한지 본다. 특정 도메인에서만 의미가 있으면 프로파일 네임스페이스로 간다.
 2. 코어면 이 문서의 해당 표에 행을 추가한다.
 3. `packages/manifest-contracts/vocabulary.json`의 목록을 함께 갱신한다 (검증기가 읽는 기계 판독본).
-4. 어휘를 **제거**할 때는 참조하는 manifest를 모두 고친 뒤에 지운다. 검증기의 참조 무결성
+4. 코어 증거를 더했다면 그것을 선언하는 capability가 `artifactRequired: true`를 켠다. 켤 수
+   없다고 느껴지면 그것은 증거가 아니라 신호다 — §1로 간다.
+5. 어휘를 **제거**할 때는 참조하는 manifest를 모두 고친 뒤에 지운다. 검증기의 참조 무결성
    검사가 미참조를 잡아준다.
