@@ -19,9 +19,9 @@ Implementation 레이어는 같은 계층에서 확인된 red를 최소 구현�
 계층별 red-proof → Implementation#<variant> → changed-files → 계층별 green 실행
 ```
 
-동작을 구현하는 variant는 같은 계층의 red 증거가 있어야 시작합니다. `ui-scaffold`만
-예외이며, UI 테스트가 import 오류가 아닌 단언 실패를 만들 수 있도록 최소 껍데기만
-작성합니다.
+동작을 구현하는 variant는 같은 계층의 red 증거가 있어야 시작합니다. 두 스캐폴드만
+예외이며, 각 계층의 테스트가 import 오류가 아닌 단언 실패를 만들 수 있도록 최소
+껍데기만 작성합니다 — `logic-scaffold`는 unit, `ui-scaffold`는 UI 계층을 받칩니다.
 
 ## 입력과 출력
 
@@ -41,11 +41,15 @@ Implementation 레이어는 같은 계층에서 확인된 red를 최소 구현�
 
 | Variant | 구현 범위 | 시작 조건 |
 |---|---|---|
+| `logic-scaffold` | 계약된 경로, export, 시그니처로 import만 가능하게 만듭니다. | 고정된 계약이 필요합니다. red는 필요하지 않습니다. |
 | `logic` | DOM에 의존하지 않는 순수 함수를 구현합니다. | `test.unit.red-confirmed`가 필요합니다. |
 | `ui-scaffold` | 계약된 경로, export, props와 최소 렌더를 구현합니다. | Unit 테스트 결과가 필요합니다. |
 | `ui` | 실제 렌더링과 상호작용을 구현합니다. | `test.ui.red-confirmed`가 필요합니다. |
 | `integration` | 모듈, 상태, 데이터 경계의 연결을 구현합니다. | `test.integration.red-confirmed`가 필요합니다. |
 | `e2e` | 사용자 여정을 완성하는 마지막 연결을 구현합니다. | `test.e2e.red-confirmed`가 필요합니다. |
+
+`logic-scaffold`에는 반환값 계산을 넣지 않습니다. 계약된 시그니처로 호출만 되면 됩니다 —
+단언은 실패해야 하고, 그 실패가 red의 재료입니다.
 
 `ui-scaffold`에는 수용 기준 동작, 상태 계산, 네트워크 연결, 완성 스타일을 넣지 않습니다.
 실제 UI 구현은 검증된 순수 함수를 소비하고 네트워크 로직을 컴포넌트 안에 다시 만들지

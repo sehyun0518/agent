@@ -2,7 +2,7 @@
 description: 설계가 순수 함수와 UI 책임을 먼저 고정하고, unit → ui → integration → e2e 각 계층에서 red 확인 뒤 구현하고 green을 확인한다. Git 작업은 자동으로 붙지 않는다.
 ---
 
-`workflows/change.yaml`를 읽고 그 순서대로 진행한다. 단계 27개다.
+`workflows/change.yaml`를 읽고 그 순서대로 진행한다. 단계 28개다.
 
 각 step의 `expect`·`expectAnyOf`가 전이 조건이고, `gate`가 가리키는
 `workflows/gates/*.md`가 무엇을 봐야 하는지 정한다. `skippable`이 있는 단계만
