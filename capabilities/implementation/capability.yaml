@@ -1,5 +1,4 @@
 id: implementation
-version: 2
 title: 실제 구현
 description: >-
   고정된 계약과 계층별 테스트 계획을 소비해 logic-scaffold·logic·ui-scaffold·ui·

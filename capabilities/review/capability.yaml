@@ -1,5 +1,4 @@
 id: review
-version: 2
 title: 통합 검토
 description: >-
   병합된 통합 결과를 고정된 계약·스펙에 대조해 판정한다. 테스트를 직접 돌리지 않고

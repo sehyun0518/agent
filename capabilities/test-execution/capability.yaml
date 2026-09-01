@@ -1,5 +1,4 @@
 id: test-execution
-version: 2
 title: 테스트 실행
 description: >-
   작성된 테스트를 실행하고 결과를 증거로 남긴다. unit·ui·integration·e2e는 하나의

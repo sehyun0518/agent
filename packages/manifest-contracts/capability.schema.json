@@ -6,7 +6,6 @@
   "type": "object",
   "required": [
     "id",
-    "version",
     "title",
     "requires",
     "produces",
@@ -38,10 +37,6 @@
       "type": "string",
       "pattern": "^[a-z][a-z0-9-]*$",
       "description": "Capability ID. 디렉터리명과 일치해야 한다."
-    },
-    "version": {
-      "type": "integer",
-      "minimum": 1
     },
     "title": {
       "type": "string",

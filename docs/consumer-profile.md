@@ -41,6 +41,7 @@ namespace: <토큰 접두사>
 
 | 필드 | 담는 것 |
 |---|---|
+| `schemaVersion` | 이 문서가 따르는 profile 스키마 판. 하네스 밖에 놓이는 유일한 선언이라 하네스와 따로 움직일 수 있다. 판이 다르면 검증기가 거부한다 (ADR-0027) |
 | `commands` | 실행 명령. Capability variant의 `commandKey`가 여기를 찾는다. `preflight`는 어느 변형도 가리키지 않는 규약 키다 |
 | `testing.layers` | 계층별 라이브러리·파일 패턴. 같은 계층의 domain 기본값을 전체 대체 |
 | `conventions` | 컨벤션 문서 **경로**. 내용을 인라인하지 않는다 |

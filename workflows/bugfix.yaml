@@ -1,5 +1,4 @@
 id: bugfix
-version: 2
 title: 계층별 TDD 버그 수정
 description: >-
   버그를 가장 낮은 책임 경계에서 먼저 재현하고 unit부터 E2E까지 필요한 계층을

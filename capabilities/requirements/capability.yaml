@@ -1,5 +1,4 @@
 id: requirements
-version: 1
 title: 요구사항 논의
 description: >
   사용자 발화를 요구사항 스키마의 빈칸으로 환원하고, 필수 슬롯이 모두 채워지면

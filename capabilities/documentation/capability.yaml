@@ -1,5 +1,4 @@
 id: documentation
-version: 1
 title: 문서화
 description: >-
   고정된 계약과 병합된 구현 diff를 읽고, 영향을 받은 문서를 갱신한다. 무엇을 고칠지는

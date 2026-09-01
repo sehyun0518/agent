@@ -1,5 +1,4 @@
 id: change
-version: 2
 title: 계층별 TDD 변경 작업
 description: >-
   설계가 순수 함수와 UI 책임을 먼저 고정하고, unit → ui → integration → e2e 각

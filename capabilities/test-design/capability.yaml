@@ -1,5 +1,4 @@
 id: test-design
-version: 2
 title: 테스트 설계
 description: >-
   고정된 계층별 테스트 계획에 따라 unit·ui·integration·e2e 테스트를 서로 다른

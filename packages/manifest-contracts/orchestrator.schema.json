@@ -4,12 +4,11 @@
   "title": "Orchestrator",
   "description": "조정자의 진입점 선언. Capability가 아니므로 requires/produces·증거·실패 분류를 갖지 않는다 — 작업 단계가 아니라 횡단 관심사다. packages/orchestrator/orchestrator.yaml에 둔다.",
   "type": "object",
-  "required": ["id", "version", "title", "agent"],
+  "required": ["id", "title", "agent"],
   "additionalProperties": false,
 
   "properties": {
     "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
-    "version": { "type": "integer", "minimum": 1 },
     "title": { "type": "string", "minLength": 1 },
     "description": { "type": "string" },
 
