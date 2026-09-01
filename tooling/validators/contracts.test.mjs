@@ -1991,9 +1991,27 @@ test('아는 이벤트 목록을 스키마에서 뽑는다', () => {
   assert.deepEqual(knownEventNames(undefined), [])
 })
 
-// 목록이 비면 모든 매핑이 틀린 것이 된다. 스키마를 못 읽었을 때 그렇게 되면
-// 오탐이 쏟아지므로, 그 상태를 케이스로 고정해 둔다.
-test('아는 이벤트가 없으면 전부 검출된다', () => {
+// 목록이 비면 모든 매핑이 틀린 것이 된다. 순수 함수는 그대로 두고 호출부가 막는다 —
+// 목록이 비었다는 것은 프로파일의 문제가 아니라 스키마를 못 읽은 것이므로 한 건으로
+// 끝내야 한다 (#91 리뷰). 고아 검증기 게이트가 같은 이유로 같은 가드를 갖고 있다.
+test('아는 이벤트가 없으면 전부 검출된다 — 호출부가 이 상태를 막는다', () => {
   assert.equal(findUnknownTelemetryEvents(매핑프로파일({ 'run.started': 'x' }), []).length, 1)
+})
+
+// 스키마는 object라고 적었지만 이 검사는 스키마 검증과 독립적으로 돈다 (ADR-0029).
+// 가드가 없으면 Object.keys가 인덱스를 내고 '0'이 없는 이벤트로 보고된다.
+test('telemetry가 배열이면 인덱스를 이벤트로 세지 않는다', () => {
+  assert.deepEqual(
+    findUnknownTelemetryEvents(매핑프로파일(['run.started']), 코어이벤트),
+    [],
+  )
+})
+
+test('telemetry가 문자열이어도 터지지 않는다', () => {
+  assert.deepEqual(findUnknownTelemetryEvents(매핑프로파일('run.started'), 코어이벤트), [])
+})
+
+test('telemetry가 null이어도 터지지 않는다', () => {
+  assert.deepEqual(findUnknownTelemetryEvents(매핑프로파일(null), 코어이벤트), [])
 })
 

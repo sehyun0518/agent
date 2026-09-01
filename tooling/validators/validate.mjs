@@ -1006,15 +1006,21 @@ for (const { field, metric } of findMissingAggregationInputs(readJson(EVENT_SCHE
 const PROFILE_DOCS = new Map(
   PROFILE_PATHS.map((path) => [relative(ROOT, path), readYaml(path)]).filter(([, doc]) => doc),
 )
-for (const { profile, event } of findUnknownTelemetryEvents(
-  PROFILE_DOCS,
-  knownEventNames(readJson(join(ROOT, 'packages', 'telemetry-contracts', 'event.schema.json'))),
-)) {
-  fail(
-    join(ROOT, profile),
-    `telemetry 매핑의 '${event}'은 코어 이벤트가 아니다. ` +
-      `없는 이름은 영영 안 걸리고 Adapter는 오지 않는 이벤트를 기다린다. (ADR-0031)`,
-  )
+//
+// 코어 목록이 비면 모든 매핑이 틀린 것이 되어 오탐이 쏟아진다. 목록이 있을 때만
+// 판정한다 — 아래 고아 검증기 게이트가 같은 이유로 같은 가드를 갖고 있다.
+const EVENT_SCHEMA_PATH = join(ROOT, 'packages', 'telemetry-contracts', 'event.schema.json')
+const CORE_EVENTS = knownEventNames(readJson(EVENT_SCHEMA_PATH))
+if (CORE_EVENTS.length === 0) {
+  fail(EVENT_SCHEMA_PATH, 'event.enum을 읽지 못했다. 매핑 검사가 판정할 근거가 없다. (ADR-0031)')
+} else {
+  for (const { profile, event } of findUnknownTelemetryEvents(PROFILE_DOCS, CORE_EVENTS)) {
+    fail(
+      join(ROOT, profile),
+      `telemetry 매핑의 '${event}'은 코어 이벤트가 아니다. ` +
+        `없는 이름은 영영 안 걸리고 Adapter는 오지 않는 이벤트를 기다린다. (ADR-0031)`,
+    )
+  }
 }
 
 // 목록과 ADR 대조표가 갈리면 왜 그 필드가 있는지가 사라진다.

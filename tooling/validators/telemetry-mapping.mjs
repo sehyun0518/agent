@@ -36,7 +36,11 @@ export function findUnknownTelemetryEvents(profiles, knownEvents) {
   const known = new Set(knownEvents ?? [])
   const found = []
   for (const [id, profile] of profiles ?? []) {
-    for (const event of Object.keys(profile?.telemetry ?? {})) {
+    const telemetry = profile?.telemetry
+    // 스키마는 object라고 적었지만 이 검사는 스키마 검증과 독립적으로 돈다 (ADR-0029).
+    // 배열이나 문자열이 오면 Object.keys가 인덱스를 내고, '0'이 없는 이벤트라고 보고된다.
+    if (!telemetry || typeof telemetry !== 'object' || Array.isArray(telemetry)) continue
+    for (const event of Object.keys(telemetry)) {
       if (known.has(event)) continue
       found.push({ profile: id, event })
     }
