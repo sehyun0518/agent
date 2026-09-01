@@ -22,7 +22,14 @@
  */
 function patternsFor(entry, platform) {
   const value = entry?.[platform]
-  return Array.isArray(value) ? value.filter((p) => typeof p === 'string' && p.length > 0) : []
+  if (!Array.isArray(value)) return []
+  return value.filter(
+    (pattern) =>
+      (typeof pattern === 'string' && pattern.length > 0) ||
+      (Array.isArray(pattern) &&
+        pattern.length > 0 &&
+        pattern.every((token) => typeof token === 'string' && token.length > 0)),
+  )
 }
 
 /** `{ 'git-operations': {variants: {push: {requiresApproval: true}}} }` → `['git-operations#push']` */
@@ -84,7 +91,12 @@ export function findUndeclaredPlatforms(platforms, table) {
  * 그대로 두면 무엇이 왜 있는지 읽기 어렵고 드리프트 비교도 흔들린다.
  */
 export function buildSettings(capabilities, table, platform) {
-  const unique = (entries) => [...new Set(entries)].sort()
+  const unique = (entries) => {
+    const byValue = new Map(entries.map((entry) => [JSON.stringify(entry), entry]))
+    return [...byValue.entries()]
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([, entry]) => entry)
+  }
 
   const ask = unique(
     approvalRequiredVariants(capabilities).flatMap((key) =>
@@ -95,4 +107,52 @@ export function buildSettings(capabilities, table, platform) {
     Object.values(table?.neverAllowed ?? {}).flatMap((group) => patternsFor(group, platform)),
   )
   return { permissions: { ask, deny } }
+}
+
+function renderCodexRule(pattern, decision, justification) {
+  const invalid =
+    !Array.isArray(pattern) ||
+    pattern.length === 0 ||
+    pattern.some((token) => typeof token !== 'string' || token.length === 0)
+  if (invalid) {
+    throw new Error(
+      `codex-rules 패턴은 비어 있지 않은 명령 토큰 배열이어야 한다: ${JSON.stringify(pattern)}`,
+    )
+  }
+  const tokens = pattern.map((token) => JSON.stringify(token)).join(', ')
+  return (
+    `prefix_rule(\n` +
+    `    pattern = [${tokens}],\n` +
+    `    decision = ${JSON.stringify(decision)},\n` +
+    `    justification = ${JSON.stringify(justification)},\n` +
+    `)`
+  )
+}
+
+/** 플랫폼 permission 파일을 canonical 형식으로 렌더링한다. */
+export function renderPermissionFile(format, settings) {
+  if (format === 'claude-settings') return `${JSON.stringify(settings, null, 2)}\n`
+  if (format === 'codex-rules') {
+    const rules = [
+      ...(settings?.permissions?.ask ?? []).map((pattern) =>
+        renderCodexRule(
+          pattern,
+          'prompt',
+          'capability.yaml의 requiresApproval 선언에서 생성됨',
+        ),
+      ),
+      ...(settings?.permissions?.deny ?? []).map((pattern) =>
+        renderCodexRule(
+          pattern,
+          'forbidden',
+          'permissions.json의 neverAllowed 선언에서 생성됨',
+        ),
+      ),
+    ]
+    return (
+      `# 이 파일은 생성물이다. tooling/generators/permissions.json을 고치고 npm run generate를 실행한다.\n` +
+      (rules.length > 0 ? `\n${rules.join('\n\n')}\n` : '')
+    )
+  }
+  throw new Error(`permissionFormat "${format}"에 렌더러가 없다.`)
 }

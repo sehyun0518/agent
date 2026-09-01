@@ -1,24 +1,32 @@
 {
   "$comment": "하네스의 승인 선언을 플랫폼 permission 런타임으로 투영하는 표. 무엇이 승인 대상인지는 capability.yaml의 requiresApproval이 정하고 여기는 플랫폼마다 그것을 어떤 문법으로 쓰는지만 안다. 생성기가 양방향으로 대조한다 — 선언에 있는데 여기 없으면 투영이 빠진 것이고, 여기 있는데 선언에 없으면 고아다. 투영하지 않는 플랫폼은 unprojected에 사유와 함께 적는다. 조용히 빠지지 않게 하려는 것이다.",
   "$notABoundary": "이 목록은 경계가 아니라 가드레일이다. 접두사 패턴이라 같은 일을 하는 다른 표기는 빠져나간다 — `git -C <경로> reset --hard`, `git push origin +main`, `find . -delete`, 명령을 담은 스크립트 실행. 전부 열거하는 것은 불가능하고, 열거하려 들면 목록이 완전하다는 잘못된 인상만 준다. 실수로 파괴적 명령이 나가는 것을 늦추는 것이 목적이고, 작정한 우회를 막는 수단이 아니다. 진짜 경계는 훅 런타임(ADR-0002)이 생겨야 만들 수 있다.",
-  "unprojected": {
-    "codex": "Codex가 승인 정책을 파일로 받는 자리를 아직 정하지 않았다. 그동안 .codex 쪽 실행은 이 강제를 받지 못하고 승인은 선언으로만 남는다. 하네스 전체가 아니라 한 플랫폼의 구멍이라는 것을 여기 적어 둔다."
-  },
+  "unprojected": {},
   "approvalRequired": {
     "git-operations#push": {
       "claude": [
         "Bash(git push:*)"
+      ],
+      "codex": [
+        ["git", "push"]
       ]
     },
     "git-operations#pr-create": {
       "claude": [
         "Bash(gh pr create:*)"
+      ],
+      "codex": [
+        ["gh", "pr", "create"]
       ]
     },
     "git-operations#pr-update": {
       "claude": [
         "Bash(gh pr edit:*)",
         "Bash(gh pr comment:*)"
+      ],
+      "codex": [
+        ["gh", "pr", "comment"],
+        ["gh", "pr", "edit"]
       ]
     }
   },
@@ -31,6 +39,13 @@
         "Bash(git push -f:*)",
         "Bash(git reset --hard:*)",
         "Bash(git filter-branch:*)"
+      ],
+      "codex": [
+        ["git", "filter-branch"],
+        ["git", "push", "--force"],
+        ["git", "push", "--force-with-lease"],
+        ["git", "push", "-f"],
+        ["git", "reset", "--hard"]
       ]
     },
     "file-deletion": {
@@ -39,6 +54,11 @@
         "Bash(/bin/rm:*)",
         "Bash(rm -fr:*)",
         "Bash(rm -rf:*)"
+      ],
+      "codex": [
+        ["/bin/rm"],
+        ["rm", "-fr"],
+        ["rm", "-rf"]
       ]
     }
   }

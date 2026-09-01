@@ -24,6 +24,8 @@
     "skillDir": "skills",
     "skillFile": "SKILL.md",
     "bodyMode": "reference",
-    "$comment": "얇은 래퍼 + SKILL.md 미러 + AGENTS.md 진입점. 슬래시 커맨드 개념이 달라 commandDir를 두지 않는다. 승인 정책을 파일로 받는 자리도 아직 없어 permissionFile을 두지 않는다 — 사유는 permissions.json의 unprojected에 있다."
+    "$comment": "얇은 래퍼 + SKILL.md 미러 + AGENTS.md 진입점. 슬래시 커맨드 개념이 달라 commandDir를 두지 않는다. 신뢰된 프로젝트의 .codex/rules/*.rules는 Codex가 시작할 때 읽는다.",
+    "permissionFile": "rules/permissions.rules",
+    "permissionFormat": "codex-rules"
   }
 }

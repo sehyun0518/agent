@@ -4,6 +4,7 @@
 
 - `agents/` — 역할 래퍼. 본문은 각 `source`가 가리키는 소스가 단일 출처다.
 - `skills/` — `SKILL.md` 미러. 규칙 팩은 `rules/` 하위까지 그대로 옮긴다.
+- `rules/permissions.rules` — 승인·금지 명령을 Codex 런타임에 투영한 생성 규칙이다.
 
 수정은 `capabilities/`·`profiles/`·`packages/orchestrator/`에서 하고
 `npm run generate`를 돌린다. CI가 재생성 결과와 커밋 상태를 대조한다.

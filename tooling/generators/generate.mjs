@@ -15,6 +15,7 @@ import {
   buildSettings,
   findPermissionMismatches,
   findUndeclaredPlatforms,
+  renderPermissionFile,
 } from './permissions.mjs'
 import {
   commandsFromCapabilities,
@@ -430,7 +431,8 @@ for (const [platform, config] of Object.entries(platforms)) {
       `# .codex — 생성된 미러\n\n` +
         `**이 디렉터리는 생성물이다. 직접 편집하지 않는다.** 진입점은 \`.codex/AGENTS.md\`.\n\n` +
         `- \`agents/\` — 역할 래퍼. 본문은 각 \`source\`가 가리키는 소스가 단일 출처다.\n` +
-        `- \`skills/\` — \`SKILL.md\` 미러. 규칙 팩은 \`rules/\` 하위까지 그대로 옮긴다.\n\n` +
+        `- \`skills/\` — \`SKILL.md\` 미러. 규칙 팩은 \`rules/\` 하위까지 그대로 옮긴다.\n` +
+        `- \`rules/permissions.rules\` — 승인·금지 명령을 Codex 런타임에 투영한 생성 규칙이다.\n\n` +
         `수정은 \`capabilities/\`·\`profiles/\`·\`packages/orchestrator/\`에서 하고\n` +
         `\`npm run generate\`를 돌린다. CI가 재생성 결과와 커밋 상태를 대조한다.\n`,
     )
@@ -443,10 +445,6 @@ for (const [platform, config] of Object.entries(platforms)) {
   // 투영 대상이 없는 플랫폼은 건너뛴다. 사유는 permissions.json이 갖고 있고, 사유
   // 없이 비어 있으면 아래 findUndeclaredPlatforms가 잡는다.
   if (!config.permissionFile) continue
-  if (config.permissionFormat !== 'claude-settings') {
-    errors.push(`플랫폼 "${platform}"의 permissionFormat "${config.permissionFormat}"에 렌더러가 없다.`)
-    continue
-  }
   for (const { key, problem } of findPermissionMismatches(CAPABILITY_MAP, permissionTable, platform)) {
     errors.push(
       problem === 'unprojected'
@@ -454,10 +452,17 @@ for (const [platform, config] of Object.entries(platforms)) {
         : `permissions.json의 "${key}": 그런 변형이 없거나 승인을 요구하지 않는다. 표가 오래됐다.`,
     )
   }
-  emit(
-    out(config.permissionFile),
-    `${JSON.stringify(buildSettings(CAPABILITY_MAP, permissionTable, platform), null, 2)}\n`,
-  )
+  try {
+    emit(
+      out(config.permissionFile),
+      renderPermissionFile(
+        config.permissionFormat,
+        buildSettings(CAPABILITY_MAP, permissionTable, platform),
+      ),
+    )
+  } catch (error) {
+    errors.push(`플랫폼 "${platform}"의 ${error.message}`)
+  }
 }
 
 // 켜져 있는데 투영도 안 하고 사유도 없는 플랫폼. 투영하지 않는 것 자체는 정당할 수

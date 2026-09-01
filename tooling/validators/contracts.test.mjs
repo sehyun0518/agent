@@ -33,6 +33,7 @@ import {
   findPermissionMismatches,
   findUndeclaredPlatforms,
   buildSettings,
+  renderPermissionFile,
 } from '../generators/permissions.mjs'
 import {
   commandsFromCapabilities,
@@ -1120,6 +1121,11 @@ const 승인표 = {
   neverAllowed: { 'file-deletion': { why: '파일 삭제', claude: ['Bash(rm -rf:*)'] } },
 }
 
+const Codex승인표 = {
+  approvalRequired: { 'git-operations#push': { codex: [['git', 'push']] } },
+  neverAllowed: { 'file-deletion': { why: '파일 삭제', codex: [['rm', '-rf']] } },
+}
+
 const 선언 = new Map([
   ['git-operations', { variants: { push: { requiresApproval: true }, commit: {} } }],
   ['review', {}],
@@ -1149,6 +1155,18 @@ test('플랫폼마다 따로 본다', () => {
   ])
 })
 
+test('Codex 패턴을 지우면 그 플랫폼의 미투영으로 판정한다', () => {
+  assert.deepEqual(findPermissionMismatches(선언, Codex승인표, 'codex'), [])
+  assert.deepEqual(
+    findPermissionMismatches(
+      선언,
+      { approvalRequired: { 'git-operations#push': { codex: [] } } },
+      'codex',
+    ),
+    [{ key: 'git-operations#push', problem: 'unprojected' }],
+  )
+})
+
 // 표가 오래된 경우. 변형을 지웠는데 패턴이 남으면 없는 것을 막고 있는 셈이다.
 test('선언에 없는 표 항목을 검출한다', () => {
   const found = findPermissionMismatches(
@@ -1163,6 +1181,31 @@ test('ask는 승인 선언에서, deny는 표에서 온다', () => {
   assert.deepEqual(buildSettings(선언, 승인표, 'claude'), {
     permissions: { ask: ['Bash(git push:*)'], deny: ['Bash(rm -rf:*)'] },
   })
+})
+
+test('Codex 명령 토큰을 Starlark prefix_rule로 렌더링한다', () => {
+  const settings = buildSettings(선언, Codex승인표, 'codex')
+  assert.equal(
+    renderPermissionFile('codex-rules', settings),
+    `# 이 파일은 생성물이다. tooling/generators/permissions.json을 고치고 npm run generate를 실행한다.\n\n` +
+      `prefix_rule(\n` +
+      `    pattern = ["git", "push"],\n` +
+      `    decision = "prompt",\n` +
+      `    justification = "capability.yaml의 requiresApproval 선언에서 생성됨",\n` +
+      `)\n\n` +
+      `prefix_rule(\n` +
+      `    pattern = ["rm", "-rf"],\n` +
+      `    decision = "forbidden",\n` +
+      `    justification = "permissions.json의 neverAllowed 선언에서 생성됨",\n` +
+      `)\n`,
+  )
+})
+
+test('모르는 permission 형식은 생성하지 않는다', () => {
+  assert.throws(
+    () => renderPermissionFile('없는-형식', { permissions: { ask: [], deny: [] } }),
+    /permissionFormat "없는-형식"에 렌더러가 없다/,
+  )
 })
 
 // 투영하지 않는 플랫폼은 빈 설정이 아니라 아무것도 내지 않는다. 빈 permissions를

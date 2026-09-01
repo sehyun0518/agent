@@ -1,0 +1,73 @@
+# 이 파일은 생성물이다. tooling/generators/permissions.json을 고치고 npm run generate를 실행한다.
+
+prefix_rule(
+    pattern = ["gh", "pr", "comment"],
+    decision = "prompt",
+    justification = "capability.yaml의 requiresApproval 선언에서 생성됨",
+)
+
+prefix_rule(
+    pattern = ["gh", "pr", "create"],
+    decision = "prompt",
+    justification = "capability.yaml의 requiresApproval 선언에서 생성됨",
+)
+
+prefix_rule(
+    pattern = ["gh", "pr", "edit"],
+    decision = "prompt",
+    justification = "capability.yaml의 requiresApproval 선언에서 생성됨",
+)
+
+prefix_rule(
+    pattern = ["git", "push"],
+    decision = "prompt",
+    justification = "capability.yaml의 requiresApproval 선언에서 생성됨",
+)
+
+prefix_rule(
+    pattern = ["/bin/rm"],
+    decision = "forbidden",
+    justification = "permissions.json의 neverAllowed 선언에서 생성됨",
+)
+
+prefix_rule(
+    pattern = ["git", "filter-branch"],
+    decision = "forbidden",
+    justification = "permissions.json의 neverAllowed 선언에서 생성됨",
+)
+
+prefix_rule(
+    pattern = ["git", "push", "--force"],
+    decision = "forbidden",
+    justification = "permissions.json의 neverAllowed 선언에서 생성됨",
+)
+
+prefix_rule(
+    pattern = ["git", "push", "--force-with-lease"],
+    decision = "forbidden",
+    justification = "permissions.json의 neverAllowed 선언에서 생성됨",
+)
+
+prefix_rule(
+    pattern = ["git", "push", "-f"],
+    decision = "forbidden",
+    justification = "permissions.json의 neverAllowed 선언에서 생성됨",
+)
+
+prefix_rule(
+    pattern = ["git", "reset", "--hard"],
+    decision = "forbidden",
+    justification = "permissions.json의 neverAllowed 선언에서 생성됨",
+)
+
+prefix_rule(
+    pattern = ["rm", "-fr"],
+    decision = "forbidden",
+    justification = "permissions.json의 neverAllowed 선언에서 생성됨",
+)
+
+prefix_rule(
+    pattern = ["rm", "-rf"],
+    decision = "forbidden",
+    justification = "permissions.json의 neverAllowed 선언에서 생성됨",
+)
