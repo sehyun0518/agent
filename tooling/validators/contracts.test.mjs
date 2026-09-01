@@ -38,6 +38,7 @@ import { TOOL_COMMANDS, findMissingToolScripts, extensionApplies, anchoredAt } f
 import { buildStepBriefing, renderStepBriefing, parseGateHeader, stepIds } from '../briefing/step.mjs'
 import { walk } from '../walk.mjs'
 import { matchExpectations, readEvidenceRecords } from '../briefing/evidence.mjs'
+import { findUnansweredReviews, findPendingChecks } from '../briefing/reviews.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -2328,5 +2329,59 @@ test('증거 파일이 비어도 터지지 않는다', () => {
   assert.deepEqual(readEvidenceRecords(undefined), { records: [], malformed: 0 })
   assert.deepEqual(matchExpectations(undefined, [기대])[0].found, null)
   assert.deepEqual(matchExpectations([], undefined), [])
+})
+
+// ── 리뷰 미응답 (ADR-0034) ────────────────────────────────────────────────
+//
+// 이 세션이 리뷰 세 건을 놓쳤다. 늦게 온 것이 아니라 머지 28분 전에 도착해 있었고
+// 안 돌아봤다. 사람이 기억하는 것으로 고치면 같은 실패가 또 난다.
+
+const 봇글 = (id, bot = 'coderabbitai[bot]', over = {}) =>
+  ({ id, in_reply_to_id: null, user: { login: bot }, path: 'a.mjs', line: 1, ...over })
+const 답글 = (id, root, login) => ({ id, in_reply_to_id: root, user: { login } })
+
+test('답한 지적은 세지 않는다', () => {
+  assert.deepEqual(
+    findUnansweredReviews([봇글(1), 답글(2, 1, 'sehyun0518')]),
+    [],
+  )
+})
+
+test('답 없는 봇 지적을 낸다', () => {
+  const found = findUnansweredReviews([봇글(1), 봇글(2)])
+  assert.deepEqual(found.map((f) => f.id), [1, 2])
+})
+
+// CodeRabbit이 내 답글에 다시 답한다. 그것은 내가 답한 증거가 아니다.
+test('봇이 봇에게 단 답글은 응답으로 세지 않는다', () => {
+  assert.deepEqual(
+    findUnansweredReviews([봇글(1), 답글(2, 1, 'coderabbitai[bot]')]).map((f) => f.id),
+    [1],
+  )
+})
+
+test('사람이 연 스레드는 대상이 아니다', () => {
+  assert.deepEqual(findUnansweredReviews([봇글(1, 'sehyun0518')]), [])
+})
+
+test('코멘트가 없어도 터지지 않는다', () => {
+  assert.deepEqual(findUnansweredReviews(undefined), [])
+  assert.deepEqual(findUnansweredReviews([null, undefined]), [])
+})
+
+test('진행 중인 체크를 낸다', () => {
+  assert.deepEqual(
+    findPendingChecks([
+      { name: 'check', bucket: 'pass' },
+      { name: 'CodeRabbit', bucket: 'pending' },
+      { name: 'x', state: 'IN_PROGRESS' },
+      { name: 'y' },
+    ]),
+    ['CodeRabbit', 'x', 'y'],
+  )
+})
+
+test('체크가 없어도 터지지 않는다', () => {
+  assert.deepEqual(findPendingChecks(undefined), [])
 })
 

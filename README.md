@@ -250,5 +250,6 @@ Capability와 프로파일 소스에서 생성합니다.
 | [ADR-0031](docs/adr/0031-aggregation-placement.md) | 집계는 하네스 밖 관측 시스템이 만듭니다. 하네스는 차원까지 책임집니다. |
 | [ADR-0032](docs/adr/0032-step-briefing.md) | 단계 하나에 필요한 것을 한 화면으로 모읍니다. 읽어서 인쇄할 뿐 실행하지 않습니다. |
 | [ADR-0033](docs/adr/0033-evidence-record-file.md) | 증거는 흐름마다 `evidence.yaml` 하나에 쌓고 `step`으로 단계를 가립니다. |
+| [ADR-0034](docs/adr/0034-review-arrival.md) | 머지 전에 답하지 않은 리뷰를 셉니다. CI로 막지 않습니다. |
 
 구조 이관 내역은 [docs/migration/inventory.md](docs/migration/inventory.md)에서 확인할 수 있습니다.

@@ -160,15 +160,29 @@ function sourceOf(c) {
  *
  * Capability도 워크플로도 아니라 선언에서 유도되지 않는다. 그래서 여기 적는다 —
  * 대신 **본문에 절차를 옮겨 적지 않고 스크립트를 가리키기만 한다.** 스크립트가
- * 호출 시점에 선언을 읽으므로 드리프트가 생길 자리가 없다 (ADR-0032).
+ * 호출 시점에 원본을 읽으므로 드리프트가 생길 자리가 없다 (ADR-0032).
+ *
+ * `note`는 도구마다 다르다. 하나로 묶으면 읽는 원본도 하는 일도 다른 도구가 같은
+ * 설명을 달게 된다 — 실제로 `reviews`가 `step`의 문구를 그대로 받았다.
  */
 export const TOOL_COMMANDS = [
   {
     name: 'step',
     kind: 'tool',
-    script: 'npm run step -- <workflow> <step>',
+    script: 'npm run step -- <workflow> <step> [--run <runId>]',
     description:
       '워크플로 단계 하나에 필요한 것을 한 화면으로 모은다 — 게이트·선행 증거·남길 증거·내는 토큰·프로파일 삽입.',
+    note:
+      '출력은 선언에서 그때그때 조립된다. **실행하지 않는다** — 단계를 부르는 것도 증거를 남기는 것도 사람이 한다 (ADR-0002 · ADR-0032).',
+  },
+  {
+    name: 'reviews',
+    kind: 'tool',
+    script: 'npm run reviews -- <pr번호>',
+    description:
+      '머지 전에 답하지 않은 리뷰 지적과 진행 중인 체크를 센다. 남아 있으면 0이 아닌 코드로 끝난다.',
+    note:
+      'GitHub에서 그때그때 읽는다. **막지 않는다** — 머지 여부는 사람이 정하고, 이 명령은 아직 볼 것이 남았는지만 말한다 (ADR-0034).',
   },
 ]
 
