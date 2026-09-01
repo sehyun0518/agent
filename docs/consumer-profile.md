@@ -41,7 +41,7 @@ namespace: <토큰 접두사>
 
 | 필드 | 담는 것 |
 |---|---|
-| `commands` | 실행 명령. Capability variant의 `commandKey`가 여기를 찾는다 |
+| `commands` | 실행 명령. Capability variant의 `commandKey`가 여기를 찾는다. `preflight`는 어느 변형도 가리키지 않는 규약 키다 |
 | `testing.layers` | 계층별 라이브러리·파일 패턴. 같은 계층의 domain 기본값을 전체 대체 |
 | `conventions` | 컨벤션 문서 **경로**. 내용을 인라인하지 않는다 |
 | `knowledge` | 저장소 상수 문서 참조 |
@@ -147,5 +147,24 @@ command 객체는 `command`·`cwd`·`description`뿐이라 Node 버전 같은 �
 자리가 없다. 그래서 명령 문자열에 버전 관리자 활성화가 섞여 들어간다.
 
 **그 접두사는 완화이지 보장이 아니다.** 버전 관리자가 없는 기계에서는 조용히 통과하고
-호출자의 런타임이 그대로 쓰인다. 자리를 만드는 것은 배포 방식이 정해진 뒤에 함께
-본다(ADR-0020 결정 3).
+호출자의 런타임이 그대로 쓰인다.
+
+### `preflight`로 선언한다
+
+`commands`는 임의 키를 받으므로 스키마를 건드리지 않는다.
+
+```yaml
+commands:
+  preflight:
+    command: node -e "process.exit(process.version.startsWith('v22')?0:1)"
+    description: 이 저장소가 요구하는 런타임인지 본다
+```
+
+흐름을 시작하기 전에 돌린다. 0이 아니면 `precondition-unmet`이고, 흐름 밖의 결함이므로
+사람이 고치고 다시 시작한다.
+
+**무엇을 검사할지는 저장소가 정한다.** 하네스는 Node도 pnpm도 모른다 — 명령을 담지
+않는 것과 같은 이유다. **버전을 여기 옮겨 적지 않는다.** `engines`와 `.nvmrc`가 이미
+그것을 선언하고 있고, 두 곳에 적으면 한 곳이 낡는다 (ADR-0026).
+
+`preflight`가 있으면 명령 문자열의 버전 관리자 접두사는 필요 없어진다.

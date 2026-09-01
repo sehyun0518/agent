@@ -42,6 +42,7 @@ import { findChecksMissingFromCi } from './pipeline.mjs'
 import { findForeignNamespaceTokens, insertTokens } from './profile-namespace.mjs'
 import { findUndeclaredNestedRepos, submodulePathsFrom } from './nested-repo.mjs'
 import { findWidenedHosts, findUnfilledAllowlist } from './network-scope.mjs'
+import { declaredCommandKeys, findUnusedCommandKeys } from './command-keys.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const SCHEMA_DIR = join(ROOT, 'packages', 'manifest-contracts')
@@ -848,6 +849,15 @@ function checkProfilePermissions(file, doc) {
       signatures.set(signature, layer)
     }
 
+  }
+
+  // 선언했는데 아무도 부르지 않는 명령 키. 오타가 나면 양쪽이 조용하다 (ADR-0026).
+  for (const key of findUnusedCommandKeys(doc.commands, declaredCommandKeys(CAPABILITIES))) {
+    fail(
+      file,
+      `commands "${key}": 어느 변형의 commandKey도 아니고 규약 키도 아니다. ` +
+        `오타이거나 아무도 부르지 않는 명령이다. (ADR-0026)`,
+    )
   }
 
   // 네트워크 범위 선언이 실제로 범위인지 (ADR-0024). 정책이 두 문장을 적어 뒀는데
