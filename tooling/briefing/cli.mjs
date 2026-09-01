@@ -47,7 +47,8 @@ function loadCapabilities() {
 // (`docs/consumer-profile.md`) 명령은 저장소가 소유한다 — 도메인을 먼저 보면 그 규칙이
 // 뒤집힌다. 순서를 반대로 뒀다가 예시 저장소의 파일 패턴이 도메인 것에 가려졌다.
 function loadProfiles(extra) {
-  return [...extra, ...walk(join(ROOT, 'profiles'), (p) => basename(p) === 'profile.yaml')]
+  // 같은 파일을 두 번 주면 앞의 것이 이기지만 두 번 읽는다.
+  return [...new Set([...extra, ...walk(join(ROOT, 'profiles'), (p) => basename(p) === 'profile.yaml')])]
     .map(readYaml)
     .filter(Boolean)
 }
@@ -109,6 +110,7 @@ for (let i = 0; i < args.length; i += 1) {
     process.exit(2)
   }
   profilePaths.push(value)
+  i += 1
 }
 
 const runFlag = args.indexOf('--run')

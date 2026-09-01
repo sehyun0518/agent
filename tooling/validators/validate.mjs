@@ -146,7 +146,9 @@ function collectProfilePaths() {
     }
     paths.push(path)
   }
-  return paths
+  // 같은 파일을 두 번 주면 같은 지적이 두 번 난다. 실제로 예시 저장소를 --profile로
+  // 다시 주니 두 줄이 났다 (#96 리뷰).
+  return [...new Set(paths)]
 }
 
 const PROFILE_PATHS = collectProfilePaths()
