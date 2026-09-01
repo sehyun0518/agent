@@ -6,6 +6,7 @@ import { resolveRunners, findUnresolvedRunners, findDuplicateInserts } from './p
 import { findDocumentationBypass } from './documentation-gate.mjs'
 import { findReadonlyWriteTools } from './agent-readonly.mjs'
 import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
+import { commandsInScript, findChecksMissingFromCi } from './pipeline.mjs'
 import {
   normalize,
   classifyPack,
@@ -1417,4 +1418,25 @@ test('파일이 사라진 것도 기록에 없는 것도 검출한다', () => {
     { path: 'a.md', problem: 'missing' },
     { path: 'b.md', problem: 'unrecorded' },
   ])
+})
+
+// ---------------------------------------------------------------- check와 CI
+// 둘은 서로 다른 파일에 있는 같은 목록이다. 벤더링 검사를 만들면서 check에는 넣고
+// CI에는 안 넣었다 — 손으로 찾았고, 못 찾았으면 그 검사는 병합을 막지 못했을 것이다.
+
+test('&& 사슬을 명령 목록으로 가른다', () => {
+  assert.deepEqual(commandsInScript('npm run a && npm run b'), ['npm run a', 'npm run b'])
+  assert.deepEqual(commandsInScript(undefined), [])
+})
+
+test('check에 있는데 CI에 없는 명령을 검출한다', () => {
+  const found = findChecksMissingFromCi('npm run a && npm run b', ['npm run a'])
+  assert.deepEqual(found, ['npm run b'])
+})
+
+// CI에 더 있는 것은 정상이다. npm ci 같은 준비 단계도, 로컬에서 돌릴 일이 없는
+// 전체 재생성 대조도 CI에만 있어야 한다. 위험한 쪽은 반대다.
+test('CI에만 있는 명령은 대상이 아니다', () => {
+  const found = findChecksMissingFromCi('npm run a', ['npm ci', 'npm run a', 'rm -rf .claude'])
+  assert.deepEqual(found, [])
 })

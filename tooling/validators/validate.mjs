@@ -38,6 +38,7 @@ import {
   findUnknownProjections,
   findEnforcementTableDrift,
 } from './policy-enforcement.mjs'
+import { findChecksMissingFromCi } from './pipeline.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const SCHEMA_DIR = join(ROOT, 'packages', 'manifest-contracts')
@@ -887,6 +888,15 @@ for (const [path, kind, extra] of targets) validateFile(path, kind, extra)
 // "problems가 하나라도 있으면 건너뛴다"로 하지 않는 이유는, 무관한 파일의 문제 하나로
 // 이 검사가 조용히 꺼지기 때문이다. 꺼질 때는 꺼졌다고 출력한다.
 if (declaredEnforcement.length === POLICY_PATHS.length) {
+  // check에 넣고 CI에 안 넣으면 그 검사는 로컬에서만 돌고 병합을 막지 못한다.
+  const WORKFLOW = join(ROOT, '.github', 'workflows', 'harness.yml')
+  const ciSteps = parseYaml(readFileSync(WORKFLOW, 'utf8'))?.jobs?.check?.steps ?? []
+  const ciCommands = ciSteps.filter((step) => step?.run).map((step) => step.run.trim())
+  const checkScript = readJson(join(ROOT, 'package.json')).scripts?.check
+  for (const command of findChecksMissingFromCi(checkScript, ciCommands)) {
+    fail(WORKFLOW, `"${command}"이 npm run check에는 있는데 CI에 없다. 로컬에서만 돌고 병합을 막지 못한다.`)
+  }
+
   // 표를 손으로 옮겨 적는 한 레지스트리와 갈라진다. 세 번 났다.
   const README = join(ROOT, 'policies', 'README.md')
   const TABLE_MESSAGE = {

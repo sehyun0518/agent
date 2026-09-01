@@ -30,6 +30,10 @@ jobs:
       - name: 계약 테스트
         run: npm run test:contracts
 
+      # 벤더링한 파일이 기록된 해시와 같은지. 네트워크를 쓰지 않는다 (ADR-0016).
+      - name: 벤더링 드리프트
+        run: npm run vendor:check
+
       # 에이전트가 구조를 잘못 읽을 여지만 검사한다. 렌더링 품질은 보지 않는다.
       # 켜는 규칙과 그 이유는 .markdownlint-cli2.jsonc가 소유한다.
       - name: 문서 형식
