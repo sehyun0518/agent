@@ -6,6 +6,8 @@ import { resolveRunners, findUnresolvedRunners, findDuplicateInserts } from './p
 import { findDocumentationBypass } from './documentation-gate.mjs'
 import { findReadonlyWriteTools } from './agent-readonly.mjs'
 import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
+import { findMissingMootBranches } from './workflow-red-proof.mjs'
+import { findMissingScaffolds } from './workflow-scaffold.mjs'
 import {
   VALIDATOR_REGISTRY,
   findUnknownValidators,
@@ -607,4 +609,186 @@ test('워크플로 커맨드가 삽입 수를 함께 낸다', () => {
     command.insertions.map((i) => i.id),
     ['design', 'accessibility'],
   )
+})
+
+// ---------------------------------------------------------------- moot 분기
+// ADR-0012가 integration·e2e에 moot을 열었는데, 그 분기를 지워도 아무것도 빨개지지
+// 않았다 (#51). 허용되지 않는 계층에 moot을 쓰는 것은 어휘 검사가 이미 잡는다 —
+// 없는 쪽만 이 검사가 본다.
+
+const 어휘 = {
+  'test.unit.red-proof': { statuses: ['confirmed', 'rejected'] },
+  'test.ui.red-proof': { statuses: ['confirmed', 'rejected'] },
+  'test.integration.red-proof': { statuses: ['confirmed', 'rejected', 'moot'] },
+  'test.e2e.red-proof': { statuses: ['confirmed', 'rejected', 'moot'] },
+}
+
+test('moot이 허용된 계층인데 분기가 없으면 검출한다', () => {
+  const found = findMissingMootBranches(
+    [
+      {
+        id: 'integration-implementation',
+        expectAnyOf: [
+          { conditions: [{ evidence: 'test.integration.red-proof', status: 'confirmed' }] },
+          { conditions: [{ evidence: 'test.skip-justification', status: 'recorded' }] },
+        ],
+      },
+    ],
+    어휘,
+  )
+  assert.deepEqual(found, [
+    { step: 'integration-implementation', evidence: 'test.integration.red-proof' },
+  ])
+})
+
+test('moot 분기가 있으면 통과한다', () => {
+  const found = findMissingMootBranches(
+    [
+      {
+        id: 'e2e-fix',
+        expectAnyOf: [
+          { conditions: [{ evidence: 'test.e2e.red-proof', status: 'confirmed' }] },
+          { conditions: [{ evidence: 'test.e2e.red-proof', status: 'moot' }] },
+        ],
+      },
+    ],
+    어휘,
+  )
+  assert.deepEqual(found, [])
+})
+
+// unit·ui는 앞의 스캐폴드가 동작을 비우므로 red가 반드시 관찰된다. moot이 없는 것이
+// 정상이다 (ADR-0012). 이 케이스가 빨개지면 두 ADR의 대칭이 깨진 것이다.
+test('moot이 허용되지 않는 계층은 분기가 없어도 대상이 아니다', () => {
+  const found = findMissingMootBranches(
+    [
+      { id: 'logic-fix', expect: [{ evidence: 'test.unit.red-proof', status: 'confirmed' }] },
+      {
+        id: 'ui-implementation',
+        expectAnyOf: [{ conditions: [{ evidence: 'test.ui.red-proof', status: 'confirmed' }] }],
+      },
+    ],
+    어휘,
+  )
+  assert.deepEqual(found, [])
+})
+
+// expectAnyOf를 통째로 expect로 바꿔 분기를 없애는 우회도 같은 자리에서 걸린다.
+test('expect로 바꿔 분기를 없애도 검출한다', () => {
+  const found = findMissingMootBranches(
+    [{ id: 'e2e-implementation', expect: [{ evidence: 'test.e2e.red-proof', status: 'confirmed' }] }],
+    어휘,
+  )
+  assert.deepEqual(found, [{ step: 'e2e-implementation', evidence: 'test.e2e.red-proof' }])
+})
+
+// 어휘가 단일 출처다. 계층 목록을 검사기에 박아두지 않는다 — vocabulary.json에서
+// moot을 빼면 그 계층은 자동으로 대상에서 빠진다.
+test('어휘에서 moot을 빼면 그 계층은 요구하지 않는다', () => {
+  const 좁힌어휘 = { 'test.integration.red-proof': { statuses: ['confirmed', 'rejected'] } }
+  const steps = [
+    {
+      id: 'integration-implementation',
+      expectAnyOf: [{ conditions: [{ evidence: 'test.integration.red-proof', status: 'confirmed' }] }],
+    },
+  ]
+  assert.equal(findMissingMootBranches(steps, 어휘).length, 1)
+  assert.deepEqual(findMissingMootBranches(steps, 좁힌어휘), [])
+})
+
+test('red-proof를 안 보는 단계와 빈 입력은 대상이 아니다', () => {
+  const found = findMissingMootBranches(
+    [
+      { id: 'specification' },
+      { id: 'unit-design', expect: [{ evidence: 'contract-diff', status: 'recorded' }] },
+    ],
+    어휘,
+  )
+  assert.deepEqual(found, [])
+  assert.deepEqual(findMissingMootBranches(undefined, 어휘), [])
+})
+
+// ---------------------------------------------------------------- 스캐폴드 단계
+// ADR-0011이 만든 단계를 지워도 아무것도 빨개지지 않았다 (#51 통제 1). 규칙은
+// 변형 이름에서 나온다 — logic ↔ logic-scaffold, ui ↔ ui-scaffold.
+
+const 구현 = {
+  implementation: {
+    variants: {
+      'logic-scaffold': { produces: ['implementation.logic-scaffold.completed'] },
+      logic: { produces: ['implementation.logic.completed'] },
+      'ui-scaffold': { produces: ['implementation.ui-scaffold.completed'] },
+      ui: { produces: ['implementation.ui.completed'] },
+      integration: { produces: ['implementation.integration.completed'] },
+    },
+  },
+}
+
+function 그래프(steps) {
+  return createWorkflowGraph(steps)
+}
+
+test('스캐폴드 변형이 선언됐는데 워크플로가 안 쓰면 검출한다', () => {
+  const steps = [
+    { id: 'specification' },
+    { id: 'unit-design', dependsOn: ['specification'] },
+    { id: 'logic-fix', capability: 'implementation', variant: 'logic', dependsOn: ['unit-design'] },
+  ]
+  const found = findMissingScaffolds(steps, 그래프(steps), new Map(Object.entries(구현)))
+  assert.deepEqual(found, [{ step: 'logic-fix', scaffold: 'logic-scaffold' }])
+})
+
+test('스캐폴드 단계가 조상에 있으면 통과한다', () => {
+  const steps = [
+    {
+      id: 'logic-scaffold',
+      capability: 'implementation',
+      variant: 'logic-scaffold',
+      produces: ['implementation.logic-scaffold.completed'],
+    },
+    { id: 'unit-design', dependsOn: ['logic-scaffold'] },
+    { id: 'logic', capability: 'implementation', variant: 'logic', dependsOn: ['unit-design'] },
+  ]
+  const found = findMissingScaffolds(steps, 그래프(steps), new Map(Object.entries(구현)))
+  assert.deepEqual(found, [])
+})
+
+// 존재하는 것으로는 부족하다. 조상이 아니면 red 앞에 온다는 보장이 없다.
+test('스캐폴드 단계가 있어도 조상이 아니면 검출한다', () => {
+  const steps = [
+    {
+      id: 'ui-scaffold',
+      capability: 'implementation',
+      variant: 'ui-scaffold',
+      produces: ['implementation.ui-scaffold.completed'],
+    },
+    { id: 'ui-design' },
+    { id: 'ui-implementation', capability: 'implementation', variant: 'ui', dependsOn: ['ui-design'] },
+  ]
+  const found = findMissingScaffolds(steps, 그래프(steps), new Map(Object.entries(구현)))
+  assert.deepEqual(found, [{ step: 'ui-implementation', scaffold: 'ui-scaffold' }])
+})
+
+// integration·e2e에는 비울 스캐폴드가 없다. moot이 그 자리를 대신한다 (ADR-0012).
+test('스캐폴드 변형이 선언되지 않은 계층은 대상이 아니다', () => {
+  const steps = [
+    { id: 'integration-implementation', capability: 'implementation', variant: 'integration' },
+  ]
+  const found = findMissingScaffolds(steps, 그래프(steps), new Map(Object.entries(구현)))
+  assert.deepEqual(found, [])
+})
+
+// 스캐폴드 단계 자신은 자기를 요구하지 않는다. logic-scaffold-scaffold는 없다.
+test('스캐폴드 단계 자신은 대상이 아니다', () => {
+  const steps = [
+    { id: 'logic-scaffold', capability: 'implementation', variant: 'logic-scaffold' },
+  ]
+  const found = findMissingScaffolds(steps, 그래프(steps), new Map(Object.entries(구현)))
+  assert.deepEqual(found, [])
+})
+
+test('다른 capability의 단계와 빈 입력은 대상이 아니다', () => {
+  const steps = [{ id: 'review', capability: 'review' }, { id: 'x' }]
+  assert.deepEqual(findMissingScaffolds(steps, 그래프(steps), new Map(Object.entries(구현))), [])
+  assert.deepEqual(findMissingScaffolds(undefined, 그래프([]), new Map()), [])
 })

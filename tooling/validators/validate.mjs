@@ -17,6 +17,8 @@ import { resolveRunners, findUnresolvedRunners, findDuplicateInserts } from './p
 import { findDocumentationBypass } from './documentation-gate.mjs'
 import { findReadonlyWriteTools } from './agent-readonly.mjs'
 import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
+import { findMissingMootBranches } from './workflow-red-proof.mjs'
+import { findMissingScaffolds } from './workflow-scaffold.mjs'
 import {
   VALIDATOR_REGISTRY,
   findUnknownValidators,
@@ -512,6 +514,25 @@ function checkWorkflowTokens(file, doc) {
     }
   }
 
+  // 스캐폴드 변형이 선언된 계층은 그 단계를 red 앞에 두고 있어야 한다 (ADR-0011).
+  for (const { step, scaffold } of findMissingScaffolds(steps, graph, CAPABILITIES)) {
+    fail(
+      file,
+      `step:${step}: 변형 "${scaffold}"가 선언돼 있는데 그것을 쓰는 조상 단계가 없다. ` +
+        `계약이 신규 모듈을 도입하면 red를 만들 수 없는 순환에 갇힌다. (ADR-0011)`,
+    )
+  }
+
+  // moot을 허용하는 계층은 그 분기를 갖고 있어야 한다 (ADR-0012). 허용되지 않는
+  // 계층에 moot을 쓰는 것은 위 checkExpectation이 어휘와 대조해 이미 잡는다.
+  for (const { step, evidence } of findMissingMootBranches(steps, vocabulary.evidence)) {
+    fail(
+      file,
+      `step:${step}: "${evidence}"가 moot을 허용하는데 그 분기가 없다. ` +
+        `red가 관찰되지 않는 실행이 승인이 필요한 생략으로 몰린다. (ADR-0012)`,
+    )
+  }
+
   // 위 검사는 생산 단계가 이미 있을 때만 조상 여부를 본다. 단계를 통째로 뺀 우회는
   // 그 검사에 걸리지 않으므로 따로 본다.
   for (const { stepId, reason } of findDocumentationBypass(steps, graph)) {
@@ -574,11 +595,25 @@ function checkOrchestratorPurity(file, doc) {
 }
 
 /** workflows/*.yaml 전체. 프로파일의 워크플로 확장 검증에 쓴다. */
+/**
+ * 워크플로를 id로 찾을 수 있게 미리 읽어 둔다.
+ *
+ * 이 맵은 **스키마 검증 전**에 만들어진다. 프로파일 검사가 워크플로를 가로질러 봐야
+ * 하는데, 그 시점에 워크플로 파일은 아직 자기 차례를 받지 못했기 때문이다. 그래서
+ * 여기 들어오는 step은 object라는 보장이 없다 — 빈 원소 하나가 profile.yaml 검사를
+ * TypeError로 죽였다.
+ *
+ * 깨진 step을 걸러내고 나머지로 진행한다. 원인은 그 워크플로 파일 차례에 "스키마 위반
+ * /steps/N: must be object"로 정확히 보고되므로 여기서 다시 말하지 않는다. 다른 파일의
+ * 검사가 남의 파일 문법 오류로 멈추지 않게 하는 것이 목적이다.
+ */
 function loadWorkflows() {
   const map = new Map()
   for (const path of walk(join(ROOT, 'workflows'), (p) => p.endsWith('.yaml'))) {
     const doc = readYaml(path)
-    if (doc?.id) map.set(doc.id, doc)
+    if (!doc?.id) continue
+    const steps = (doc.steps ?? []).filter((step) => step !== null && typeof step === 'object')
+    map.set(doc.id, { ...doc, steps })
   }
   return map
 }

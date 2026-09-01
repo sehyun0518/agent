@@ -18,12 +18,25 @@ steps:
     expect: [{ evidence: completeness-check, status: passed, from: requirements }]
     produces: [specification.contract, specification.testids, specification.test-plan, specification.completed]
 
+  # 스캐폴드가 재현 테스트보다 앞에 온다. change와 같은 자리, 같은 이유다 (ADR-0011).
+  # 버그 수정이 신규 모듈을 도입하는 경우 — 날짜 정규화 함수를 뽑아내는 식 — 그 파일이
+  # 없는 동안 재현 테스트가 import를 해석하지 못하고, 모듈 해석 실패는 red가 아니다.
+  # ui-scaffold가 이미 이 흐름에 있는 것과도 맞춘다.
+  - id: logic-scaffold
+    capability: implementation
+    variant: logic-scaffold
+    trigger: automatic
+    dependsOn: [specification]
+    expect:
+      - { evidence: contract-diff, status: recorded, from: specification }
+    produces: [implementation.patch, implementation.summary, implementation.completed, implementation.logic-scaffold.completed]
+
   - id: unit-reproduction
     capability: test-design
     variant: unit
     trigger: automatic
-    dependsOn: [specification]
-    expect: [{ evidence: contract-diff, status: recorded, from: specification }]
+    dependsOn: [logic-scaffold]
+    expect: [{ evidence: changed-files, status: recorded, from: logic-scaffold }]
     produces: [test-design.unit.suite, test-design.unit.completed]
 
   - id: unit-red
