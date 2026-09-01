@@ -37,13 +37,13 @@ prefix_rule(
 )
 
 prefix_rule(
-    pattern = ["git", "push", "--force-with-lease"],
+    pattern = ["git", "push", "--force"],
     decision = "forbidden",
     justification = "permissions.json의 neverAllowed 선언에서 생성됨",
 )
 
 prefix_rule(
-    pattern = ["git", "push", "--force"],
+    pattern = ["git", "push", "--force-with-lease"],
     decision = "forbidden",
     justification = "permissions.json의 neverAllowed 선언에서 생성됨",
 )

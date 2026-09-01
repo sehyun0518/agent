@@ -93,7 +93,9 @@ export function findUndeclaredPlatforms(platforms, table) {
 export function buildSettings(capabilities, table, platform) {
   const unique = (entries) => {
     const byValue = new Map(entries.map((entry) => [JSON.stringify(entry), entry]))
-    return [...byValue.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([, entry]) => entry)
+    return [...byValue.entries()]
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([, entry]) => entry)
   }
 
   const ask = unique(
