@@ -5,7 +5,7 @@
 // Phase 2 이후 확장 예정: 참조 무결성, 권한 대 도구 대조, 정책 우선순위 위반,
 // 워크플로 선행조건 도달 가능성, 미러 드리프트.
 
-import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs'
+import { readFileSync, readdirSync, existsSync, statSync, lstatSync } from 'node:fs'
 import { join, relative, dirname, basename } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import Ajv from 'ajv/dist/2020.js' // 스키마가 draft 2020-12를 쓴다
@@ -673,7 +673,8 @@ function nestedRepos() {
     for (const name of readdirSync(dir)) {
       if (skip.has(name)) continue
       const path = join(dir, name)
-      if (!statSync(path).isDirectory()) continue
+      // lstat이라 심볼릭 링크로 들어가지 않는다. 링크가 조상을 가리키면 무한히 돈다.
+      if (!lstatSync(path).isDirectory()) continue
       const relative = rel ? `${rel}/${name}` : name
       if (existsSync(join(path, '.git'))) found.push(relative)
       else walkDirs(path, relative)
@@ -948,8 +949,47 @@ const targets = [
 
 for (const [path, kind, extra] of targets) validateFile(path, kind, extra)
 
-// 레지스트리에만 있고 어떤 정책도 가리키지 않는 검증기. 강제 수단만 남고 근거가
-// 사라진 상태다. 파일이 아니라 레지스트리의 문제라 개별 정책이 아닌 여기서 본다.
+// 아래 셋은 정책 수집에 기대지 않는다. 파일시스템·package.json·레지스트리 상수만
+// 보므로 고아 검증기 게이트 밖에 둔다.
+//
+// 전에는 그 게이트 안에 있었다. 무관한 정책 하나가 스키마에서 걸리면 이 셋이 조용히
+// 꺼졌고, skip 메시지는 고아 검증기만 말해서 나머지가 사라진 것을 아무도 몰랐다 —
+// 그 게이트의 주석이 경계하던 상태를 그 게이트 안에서 만든 셈이었다.
+
+// 소비 저장소를 하네스 안에 중첩하면 isolation: worktree가 아무것도 격리하지 못한다
+// (ADR-0020). submodule은 선언된 중첩이라 대상이 아니다.
+const gitmodules = existsSync(join(ROOT, '.gitmodules'))
+  ? readFileSync(join(ROOT, '.gitmodules'), 'utf8')
+  : ''
+for (const path of findUndeclaredNestedRepos(nestedRepos(), submodulePathsFrom(gitmodules))) {
+  fail(
+    join(ROOT, path),
+    `중첩된 git 저장소다. 소비 저장소는 하네스 안에 두지 않는다 — ` +
+      `worktree에 존재하지 않아 isolation이 아무것도 격리하지 못한다. (ADR-0020)`,
+  )
+}
+
+// check에 넣고 CI에 안 넣으면 그 검사는 로컬에서만 돌고 병합을 막지 못한다.
+const WORKFLOW = join(ROOT, '.github', 'workflows', 'harness.yml')
+const ciSteps = parseYaml(readFileSync(WORKFLOW, 'utf8'))?.jobs?.check?.steps ?? []
+const ciCommands = ciSteps.filter((step) => step?.run).map((step) => step.run.trim())
+const checkScript = readJson(join(ROOT, 'package.json')).scripts?.check
+for (const command of findChecksMissingFromCi(checkScript, ciCommands)) {
+  fail(WORKFLOW, `"${command}"이 npm run check에는 있는데 CI에 없다. 로컬에서만 돌고 병합을 막지 못한다.`)
+}
+
+// 표를 손으로 옮겨 적는 한 레지스트리와 갈라진다. 세 번 났다.
+const README = join(ROOT, 'policies', 'README.md')
+const TABLE_MESSAGE = {
+  'not-in-registry': (n) => `표가 검증기 "${n}"을 이름으로 적었는데 레지스트리에 없다.`,
+  'not-in-table': (n) => `레지스트리의 "${n}"이 표에 안 적혀 있다. 강제되는데 안 보인다.`,
+}
+for (const { name, problem } of findEnforcementTableDrift(readFileSync(README, 'utf8'))) {
+  fail(README, TABLE_MESSAGE[problem](name))
+}
+
+// 아래 둘은 수집된 정책과 레지스트리를 대조한다. 강제 수단만 남고 근거가 사라진
+// 상태를 보는 것이라 개별 정책이 아닌 여기서 본다.
 //
 // 정책이 하나라도 스키마에서 걸리면 checkPolicyEnforcement가 그 파일에 닿지 못해
 // 수집이 비고, 멀쩡한 검증기가 고아로 보인다. 수집이 완전할 때만 판정한다.
@@ -957,38 +997,6 @@ for (const [path, kind, extra] of targets) validateFile(path, kind, extra)
 // "problems가 하나라도 있으면 건너뛴다"로 하지 않는 이유는, 무관한 파일의 문제 하나로
 // 이 검사가 조용히 꺼지기 때문이다. 꺼질 때는 꺼졌다고 출력한다.
 if (declaredEnforcement.length === POLICY_PATHS.length) {
-  // 소비 저장소를 하네스 안에 중첩하면 isolation: worktree가 아무것도 격리하지 못한다
-  // (ADR-0020). submodule은 선언된 중첩이라 대상이 아니다.
-  const gitmodules = existsSync(join(ROOT, '.gitmodules'))
-    ? readFileSync(join(ROOT, '.gitmodules'), 'utf8')
-    : ''
-  for (const path of findUndeclaredNestedRepos(nestedRepos(), submodulePathsFrom(gitmodules))) {
-    fail(
-      join(ROOT, path),
-      `중첩된 git 저장소다. 소비 저장소는 하네스 안에 두지 않는다 — ` +
-        `worktree에 존재하지 않아 isolation이 아무것도 격리하지 못한다. (ADR-0020)`,
-    )
-  }
-
-  // check에 넣고 CI에 안 넣으면 그 검사는 로컬에서만 돌고 병합을 막지 못한다.
-  const WORKFLOW = join(ROOT, '.github', 'workflows', 'harness.yml')
-  const ciSteps = parseYaml(readFileSync(WORKFLOW, 'utf8'))?.jobs?.check?.steps ?? []
-  const ciCommands = ciSteps.filter((step) => step?.run).map((step) => step.run.trim())
-  const checkScript = readJson(join(ROOT, 'package.json')).scripts?.check
-  for (const command of findChecksMissingFromCi(checkScript, ciCommands)) {
-    fail(WORKFLOW, `"${command}"이 npm run check에는 있는데 CI에 없다. 로컬에서만 돌고 병합을 막지 못한다.`)
-  }
-
-  // 표를 손으로 옮겨 적는 한 레지스트리와 갈라진다. 세 번 났다.
-  const README = join(ROOT, 'policies', 'README.md')
-  const TABLE_MESSAGE = {
-    'not-in-registry': (n) => `표가 검증기 "${n}"을 이름으로 적었는데 레지스트리에 없다.`,
-    'not-in-table': (n) => `레지스트리의 "${n}"이 표에 안 적혀 있다. 강제되는데 안 보인다.`,
-  }
-  for (const { name, problem } of findEnforcementTableDrift(readFileSync(README, 'utf8'))) {
-    fail(README, TABLE_MESSAGE[problem](name))
-  }
-
   for (const id of findUnknownProjections(declaredEnforcement)) {
     fail(
       join(ROOT, 'tooling', 'validators', 'policy-enforcement.mjs'),
@@ -1003,7 +1011,7 @@ if (declaredEnforcement.length === POLICY_PATHS.length) {
   }
 } else {
   checked.push(
-    `skip 고아 검증기 검사: 정책 ${POLICY_PATHS.length}개 중 ` +
+    `skip 레지스트리 고아 검사: 정책 ${POLICY_PATHS.length}개 중 ` +
       `${declaredEnforcement.length}개만 읽혔다 (위 오류를 먼저 고쳐라)`,
   )
 }
