@@ -43,8 +43,11 @@ function loadCapabilities() {
 // 검증기와 달리 `examples/consumer-repo`를 읽지 않는다. 검증기는 스키마가 실제 소비
 // 설정을 표현할 수 있는지 보려고 읽지만, 브리핑은 **지금 이 저장소에서 무엇을 할지**를
 // 낸다 — 예시의 명령을 보여주면 돌리면 안 되는 명령을 돌리라고 말하게 된다.
+// 소비 저장소가 먼저다. `testing.layers`는 "같은 계층의 domain 기본값을 전체 대체"하고
+// (`docs/consumer-profile.md`) 명령은 저장소가 소유한다 — 도메인을 먼저 보면 그 규칙이
+// 뒤집힌다. 순서를 반대로 뒀다가 예시 저장소의 파일 패턴이 도메인 것에 가려졌다.
 function loadProfiles(extra) {
-  return [...walk(join(ROOT, 'profiles'), (p) => basename(p) === 'profile.yaml'), ...extra]
+  return [...extra, ...walk(join(ROOT, 'profiles'), (p) => basename(p) === 'profile.yaml')]
     .map(readYaml)
     .filter(Boolean)
 }

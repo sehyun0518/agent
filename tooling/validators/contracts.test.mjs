@@ -2250,6 +2250,32 @@ test('그 계층의 라이브러리·파일 규약을 낸다', () => {
   assert.match(text, /\*\*\/\*\.unit\.test\.ts/)
 })
 
+// 소비 저장소가 도메인을 덮는다 — consumer-profile.md가 "같은 계층의 domain 기본값을
+// 전체 대체"라고 적었다. 순서를 반대로 뒀다가 예시 저장소의 파일 패턴이 가려졌다.
+test('소비 저장소 계층이 도메인을 덮는다', () => {
+  const wf = { id: 'w', steps: [{ id: 's', capability: 'td', variant: 'unit' }] }
+  const caps = new Map([['td', { variants: { unit: { commandKey: 'test.unit' } } }]])
+  const profiles = [
+    { id: 'blog', testing: { layers: { unit: { filePatterns: ['a'] } } }, commands: { 'test.unit': { command: '저장소' } } },
+    { id: 'frontend', testing: { layers: { unit: { filePatterns: ['a', 'b'] } } }, commands: { 'test.unit': { command: '도메인' } } },
+  ]
+  const b = buildStepBriefing({ workflow: wf, stepId: 's', capabilities: caps, profiles })
+  assert.deepEqual(b.testLayer.filePatterns, ['a'])
+  assert.equal(b.testLayer.from, 'blog')
+  assert.equal(b.command.command, '저장소')
+})
+
+test('소비 저장소에 그 계층이 없으면 도메인이 남는다', () => {
+  const wf = { id: 'w', steps: [{ id: 's', capability: 'td', variant: 'unit' }] }
+  const caps = new Map([['td', { variants: { unit: {} } }]])
+  const profiles = [
+    { id: 'blog', testing: { layers: {} } },
+    { id: 'frontend', testing: { layers: { unit: { libraries: ['vitest'] } } } },
+  ]
+  const b = buildStepBriefing({ workflow: wf, stepId: 's', capabilities: caps, profiles })
+  assert.equal(b.testLayer.from, 'frontend')
+})
+
 test('수동 계층은 러너가 없다고 낸다', () => {
   const wf = { id: 'w', steps: [{ id: 's', capability: 'td', variant: 'integration' }] }
   const caps = new Map([['td', { variants: { integration: {} } }]])
