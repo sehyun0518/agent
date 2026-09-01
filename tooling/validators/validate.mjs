@@ -20,6 +20,10 @@ import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
 import { findMissingMootBranches } from './workflow-red-proof.mjs'
 import { findMissingScaffolds } from './workflow-scaffold.mjs'
 import {
+  findUnreachablePreconditions,
+  findUnusedAssumes,
+} from './workflow-return-path.mjs'
+import {
   findUnofferedManualResults,
   findMissingManualBranches,
 } from './manual-result.mjs'
@@ -531,6 +535,24 @@ function checkWorkflowTokens(file, doc) {
         )
       }
     }
+  }
+
+  // 되돌림이 갈 곳: requires 토큰의 생산자가 흐름 안에 있는지 (ADR-0014).
+  for (const { step, token } of findUnreachablePreconditions(steps, CAPABILITIES, doc.assumes)) {
+    fail(
+      file,
+      `step:${step}: 선행 토큰 "${token}"을 이 흐름의 어느 단계도 생산하지 않는다. ` +
+        `되돌려도 갈 곳이 없다. 흐름 밖에서 충족되는 것이면 assumes에 선언해라. (ADR-0014)`,
+    )
+  }
+
+  const ASSUMES_MESSAGE = {
+    unrequired: (t) => `assumes "${t}": 이 흐름의 어느 단계도 요구하지 않는다. 지워라.`,
+    'produced-in-flow': (t) =>
+      `assumes "${t}": 이 흐름이 스스로 생산한다. 되돌림이 흐름 안으로 갈 수 있는데 밖으로 나간다고 적혀 있다.`,
+  }
+  for (const { token, reason } of findUnusedAssumes(steps, CAPABILITIES, doc.assumes)) {
+    fail(file, ASSUMES_MESSAGE[reason](token))
   }
 
   // 스캐폴드 변형이 선언된 계층은 그 단계를 red 앞에 두고 있어야 한다 (ADR-0011).

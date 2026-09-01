@@ -43,6 +43,10 @@ variants:
       - kind: changed-files
         required: true
         artifactRequired: true
+      # 테스트를 쓰다 계약의 모호함을 만나는 것도 같은 사건이다 (ADR-0014).
+      - kind: contract-deviation
+        required: false
+        artifactRequired: true
     completion: &test-design-completion
       requiresEvidence: [changed-files]
   ui:

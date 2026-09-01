@@ -5,6 +5,24 @@ description: >-
   이미 만들어진 변경을 판정만 한다. 구현하지 않으므로 red 게이트가 없다. 대신
   **테스트 증거가 없으면 판정하지 않는다** — 없는 증거를 review가 대신 만들지 않는다.
 
+# 이 흐름은 앞선 실행이 남긴 산출 위에서 시작한다. 흐름 안에 생산자가 없는 것이
+# 결함이 아니라 이 워크플로의 정의다. 다만 충족되지 않으면 되돌릴 곳이 없으므로,
+# 사람이 흐름 밖에서 채운 뒤 다시 시작해야 한다 (ADR-0014).
+assumes:
+  - specification.completed
+  - specification.contract
+  - specification.test-plan
+  - test-design.unit.completed
+  - test-design.unit.suite
+  - test-design.ui.completed
+  - test-design.ui.suite
+  - test-design.integration.completed
+  - test-design.integration.suite
+  - test-design.e2e.completed
+  - test-design.e2e.suite
+  - implementation.completed
+  - implementation.patch
+
 steps:
   - id: unit
     capability: test-execution

@@ -9,6 +9,10 @@ import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
 import { findMissingMootBranches } from './workflow-red-proof.mjs'
 import { findMissingScaffolds } from './workflow-scaffold.mjs'
 import {
+  findUnreachablePreconditions,
+  findUnusedAssumes,
+} from './workflow-return-path.mjs'
+import {
   normalizeRequiredEvidence,
   findUndeclaredCompletionEvidence,
 } from './completion-alternatives.mjs'
@@ -1004,4 +1008,95 @@ test('expect로만 요구하면 대안이 없으므로 검출한다', () => {
 test('result를 안 보는 단계와 빈 입력은 대상이 아니다', () => {
   assert.deepEqual(findMissingManualBranches([{ id: 'spec' }], 결과어휘), [])
   assert.deepEqual(findMissingManualBranches(undefined, 결과어휘), [])
+})
+
+// ---------------------------------------------------------------- 되돌림 목적지
+// return-to-producer가 발동해도 그 producer가 흐름 안에 없으면 갈 곳이 없다 (#51 통제 3).
+// FE 실행에서 실제로 났다 — producer가 선행 step이 아니라 "저장소 온보딩"이었다.
+
+const 계약 = new Map([
+  ['test-execution', {
+    requires: [],
+    variants: { unit: { requires: ['test-design.unit.suite'] } },
+  }],
+  ['specification', { requires: ['requirements.spec'] }],
+])
+
+test('요구 토큰을 아무도 생산하지 않으면 검출한다', () => {
+  const steps = [
+    { id: 'unit-design', capability: 'test-design', produces: ['test-design.unit.completed'] },
+    { id: 'unit-red', capability: 'test-execution', variant: 'unit', dependsOn: ['unit-design'] },
+  ]
+  const found = findUnreachablePreconditions(steps, 계약)
+  assert.deepEqual(found, [{ step: 'unit-red', token: 'test-design.unit.suite' }])
+})
+
+test('생산자가 있으면 통과한다', () => {
+  const steps = [
+    { id: 'unit-design', capability: 'test-design', produces: ['test-design.unit.suite'] },
+    { id: 'unit-red', capability: 'test-execution', variant: 'unit', dependsOn: ['unit-design'] },
+  ]
+  assert.deepEqual(findUnreachablePreconditions(steps, 계약), [])
+})
+
+// 루트 requires도 함께 본다. 변형이 자기 것만 적어도 루트는 상속된다.
+test('루트 requires의 생산자가 없어도 검출한다', () => {
+  const steps = [{ id: 'spec', capability: 'specification' }]
+  const found = findUnreachablePreconditions(steps, 계약)
+  assert.deepEqual(found, [{ step: 'spec', token: 'requirements.spec' }])
+})
+
+// 조상인지 여부는 기존 검사가 본다. 여기는 "아예 없다"만 본다 — 있는데 순서가
+// 틀린 것과 애초에 없는 것은 되돌림 관점에서 다른 사건이다.
+test('생산자가 조상이 아니어도 존재하면 대상이 아니다', () => {
+  const steps = [
+    { id: 'unit-red', capability: 'test-execution', variant: 'unit' },
+    { id: 'unit-design', capability: 'test-design', produces: ['test-design.unit.suite'] },
+  ]
+  assert.deepEqual(findUnreachablePreconditions(steps, 계약), [])
+})
+
+// review는 앞선 실행이 남긴 산출을 판정만 한다. 흐름 안에 생산자가 없는 것이 결함이
+// 아니라 그 워크플로의 정의다. 선언은 면제가 아니라 되돌림이 흐름 밖으로 나간다는 표시다.
+test('assumes에 선언된 토큰은 대상이 아니다', () => {
+  const steps = [{ id: 'unit-red', capability: 'test-execution', variant: 'unit' }]
+  assert.equal(findUnreachablePreconditions(steps, 계약).length, 1)
+  assert.deepEqual(findUnreachablePreconditions(steps, 계약, ['test-design.unit.suite']), [])
+})
+
+test('assumes에 없는 토큰은 여전히 검출한다', () => {
+  const steps = [{ id: 'spec', capability: 'specification' }]
+  const found = findUnreachablePreconditions(steps, 계약, ['다른.토큰'])
+  assert.deepEqual(found, [{ step: 'spec', token: 'requirements.spec' }])
+})
+
+test('모르는 capability와 빈 입력은 대상이 아니다', () => {
+  assert.deepEqual(findUnreachablePreconditions([{ id: 'x', capability: '없음' }], 계약), [])
+  assert.deepEqual(findUnreachablePreconditions(undefined, 계약), [])
+})
+
+// assumes는 흐름 밖 의존을 적어 두는 목록이다. 필요 없어진 항목이 남으면 그 흐름이
+// 실제보다 많은 것을 가정하는 것처럼 읽힌다 (ADR-0014).
+
+test('아무 step도 요구하지 않는 assumes를 검출한다', () => {
+  const steps = [{ id: 'spec', capability: 'specification' }]
+  const found = findUnusedAssumes(steps, 계약, ['requirements.spec', '아무도.안쓰는것'])
+  assert.deepEqual(found, [{ token: '아무도.안쓰는것', reason: 'unrequired' }])
+})
+
+// 나중에 흐름 안에 생산자가 생겼는데 목록이 남은 경우가 더 나쁘다 — 되돌림이 흐름
+// 안으로 갈 수 있는데도 밖으로 나간다고 적혀 있게 된다.
+test('흐름이 스스로 생산하는 assumes를 검출한다', () => {
+  const steps = [
+    { id: 'req', capability: 'x', produces: ['requirements.spec'] },
+    { id: 'spec', capability: 'specification' },
+  ]
+  const found = findUnusedAssumes(steps, 계약, ['requirements.spec'])
+  assert.deepEqual(found, [{ token: 'requirements.spec', reason: 'produced-in-flow' }])
+})
+
+test('필요하고 흐름 밖인 assumes는 통과한다', () => {
+  const steps = [{ id: 'spec', capability: 'specification' }]
+  assert.deepEqual(findUnusedAssumes(steps, 계약, ['requirements.spec']), [])
+  assert.deepEqual(findUnusedAssumes(steps, 계약), [])
 })
