@@ -413,7 +413,8 @@ mkdir -p capabilities/<id>/{agents,hooks,tests}
 
 두 가지가 아직 이 표 뒤에 있다.
 
-- **러너가 없다.** 대조는 사람이 한다 (`ADR-0002` 승격 순서 6번 `test-kit`).
+- **러너가 없다.** 대조는 사람이 한다 (`test-kit`). 승격 순서에서 마지막이었는데
+  ADR-0023이 3번으로 올렸다 — 래칫이 도는지 확인하는 수단이 마지막에 있을 이유가 없다.
 - **이 파일들은 어떤 manifest에도 선언돼 있지 않다.** `capability.yaml`의 `entrypoints`는
   `agents`·`skills`·`tools`·`hooks`만 받는다. 지워도 검증기가 잡지 못한다.
 
