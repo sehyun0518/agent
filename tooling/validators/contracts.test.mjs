@@ -33,6 +33,7 @@ import {
   findAggregationTableDrift,
   AGGREGATION_INPUTS,
 } from './reliability-inputs.mjs'
+import { findUnknownTelemetryEvents, knownEventNames } from './telemetry-mapping.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -1947,5 +1948,70 @@ test('실제 ADR-0030과 실제 목록이 일치한다', async () => {
     onlyInTable: [],
     onlyInList: [],
   })
+})
+
+// ── 텔레메트리 매핑 (ADR-0031 · #83) ──────────────────────────────────────
+//
+// profile.telemetry가 additionalProperties로 아무 키나 받는다. 없는 이름을 적으면
+// 매핑은 영영 안 걸리고 Adapter는 오지 않는 이벤트를 기다린다 — 둘 다 조용하다.
+
+const 코어이벤트 = ['run.started', 'run.completed', 'tool.invoked']
+const 매핑프로파일 = (telemetry) => new Map([['profiles/x/profile.yaml', { telemetry }]])
+
+test('아는 이벤트만 매핑하면 통과한다', () => {
+  assert.deepEqual(
+    findUnknownTelemetryEvents(매핑프로파일({ 'run.completed': 'fe.done' }), 코어이벤트),
+    [],
+  )
+})
+
+test('없는 이벤트를 매핑하면 검출한다', () => {
+  assert.deepEqual(
+    findUnknownTelemetryEvents(매핑프로파일({ 'run.startd': 'fe.begin' }), 코어이벤트),
+    [{ profile: 'profiles/x/profile.yaml', event: 'run.startd' }],
+  )
+})
+
+// 값은 저장소가 정하는 이름이라 하네스가 모른다. 키만 본다.
+test('값이 무엇이든 보지 않는다', () => {
+  assert.deepEqual(
+    findUnknownTelemetryEvents(매핑프로파일({ 'run.started': '' }), 코어이벤트),
+    [],
+  )
+})
+
+test('telemetry가 없어도 터지지 않는다', () => {
+  assert.deepEqual(findUnknownTelemetryEvents(new Map([['p', {}]]), 코어이벤트), [])
+  assert.deepEqual(findUnknownTelemetryEvents(undefined, 코어이벤트), [])
+})
+
+test('아는 이벤트 목록을 스키마에서 뽑는다', () => {
+  assert.deepEqual(knownEventNames({ properties: { event: { enum: 코어이벤트 } } }), 코어이벤트)
+  assert.deepEqual(knownEventNames({}), [])
+  assert.deepEqual(knownEventNames(undefined), [])
+})
+
+// 목록이 비면 모든 매핑이 틀린 것이 된다. 순수 함수는 그대로 두고 호출부가 막는다 —
+// 목록이 비었다는 것은 프로파일의 문제가 아니라 스키마를 못 읽은 것이므로 한 건으로
+// 끝내야 한다 (#91 리뷰). 고아 검증기 게이트가 같은 이유로 같은 가드를 갖고 있다.
+test('아는 이벤트가 없으면 전부 검출된다 — 호출부가 이 상태를 막는다', () => {
+  assert.equal(findUnknownTelemetryEvents(매핑프로파일({ 'run.started': 'x' }), []).length, 1)
+})
+
+// 스키마는 object라고 적었지만 이 검사는 스키마 검증과 독립적으로 돈다 (ADR-0029).
+// 가드가 없으면 Object.keys가 인덱스를 내고 '0'이 없는 이벤트로 보고된다.
+test('telemetry가 배열이면 인덱스를 이벤트로 세지 않는다', () => {
+  assert.deepEqual(
+    findUnknownTelemetryEvents(매핑프로파일(['run.started']), 코어이벤트),
+    [],
+  )
+})
+
+test('telemetry가 문자열이어도 터지지 않는다', () => {
+  assert.deepEqual(findUnknownTelemetryEvents(매핑프로파일('run.started'), 코어이벤트), [])
+})
+
+test('telemetry가 null이어도 터지지 않는다', () => {
+  assert.deepEqual(findUnknownTelemetryEvents(매핑프로파일(null), 코어이벤트), [])
 })
 
