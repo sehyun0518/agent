@@ -34,10 +34,12 @@ Capability 기본 설정
 낮추는 것은 검증기가 막는다. 훅 제거와 재시도 우회는 아직 막지 못한다.
 
 🛡️ 는 이 저장소가 만든 강제가 아니다. `requiresApproval` 선언을 플랫폼 설정으로 내고
-플랫폼이 그것을 집행한다(ADR-0015). **플랫폼마다 다르다** — 지금은 Claude 쪽만 투영되고
-Codex 쪽은 선언으로만 남는다. 어느 플랫폼이 투영되고 무엇이 왜 빠졌는지는
-`tooling/generators/permissions.json`이 소유한다. 여기 옮겨 적지 않는 이유는 두 곳이
-갈라지기 때문이다.
+플랫폼이 그것을 집행한다(ADR-0015). **강제 수준은 플랫폼마다 다를 수 있다.** 어느
+플랫폼이 투영되고 무엇이 왜 빠졌는지는 `tooling/generators/permissions.json`이 소유한다 —
+투영하지 않는 플랫폼은 거기 사유와 함께 적히고, 사유 없이 비어 있으면 생성이 실패한다.
+
+**여기 옮겨 적지 않는다.** 현황을 두 곳에 적으면 한 곳은 반드시 낡는다 — 이 문단이
+실제로 그렇게 낡아서 지웠다.
 
 **이 표의 단일 출처는 `tooling/validators/policy-enforcement.mjs`의 레지스트리다.**
 검증기 축은 `VALIDATOR_REGISTRY`가, 그 밖의 강제 수단은 `PROJECTION_REGISTRY`가 갖는다.
