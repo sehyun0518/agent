@@ -28,6 +28,7 @@ import { findMissingScaffolds } from './workflow-scaffold.mjs'
 import { findUnisolatedBackgroundAgents } from './background-isolation.mjs'
 import { writesFilesystem, toolRequirement } from './tools.mjs'
 import { findEscalationCycles, findDanglingEscalations } from './escalation.mjs'
+import { findMissingAggregationInputs, AGGREGATION_INPUTS } from './reliability-inputs.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -1860,5 +1861,45 @@ test('없는 대상을 순환으로 세지 않는다', () => {
 test('capability가 없어도 터지지 않는다', () => {
   assert.deepEqual(findEscalationCycles(undefined), [])
   assert.deepEqual(findDanglingEscalations(undefined), [])
+})
+
+// ── 집계 입력 (ADR-0030 · #83) ────────────────────────────────────────────
+//
+// 집계는 읽는 쪽이 만들지만(ADR-0023 결정 2) 필요한 사실이 기록에 있어야 만든다.
+// 필드를 지우면 그 지표를 영영 못 만든다.
+
+test('필요한 필드가 다 있으면 통과한다', () => {
+  const schema = { properties: { runId: {}, outcome: {} } }
+  assert.deepEqual(
+    findMissingAggregationInputs(schema, [
+      { field: 'runId', metric: 'x' },
+      { field: 'outcome', metric: 'y' },
+    ]),
+    [],
+  )
+})
+
+test('없는 필드를 이유와 함께 낸다', () => {
+  assert.deepEqual(
+    findMissingAggregationInputs({ properties: { runId: {} } }, [
+      { field: 'runId', metric: 'x' },
+      { field: 'workflow', metric: '종류를 못 가른다' },
+    ]),
+    [{ field: 'workflow', metric: '종류를 못 가른다' }],
+  )
+})
+
+test('스키마가 비어도 터지지 않는다', () => {
+  assert.deepEqual(findMissingAggregationInputs(undefined, [{ field: 'a', metric: 'z' }]),
+    [{ field: 'a', metric: 'z' }])
+  assert.deepEqual(findMissingAggregationInputs({ properties: {} }, undefined), [])
+})
+
+// 목록에 이름만 있고 이유가 없으면 실패 메시지가 무엇을 잃는지 말하지 못한다.
+test('AGGREGATION_INPUTS의 모든 항목이 이유를 갖는다', () => {
+  for (const entry of AGGREGATION_INPUTS) {
+    assert.ok(entry.field, '필드 이름이 없다')
+    assert.ok(entry.metric?.length > 0, `${entry.field}에 이유가 없다`)
+  }
 })
 

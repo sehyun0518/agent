@@ -22,6 +22,7 @@ import { findMissingScaffolds } from './workflow-scaffold.mjs'
 import { findUnisolatedBackgroundAgents } from './background-isolation.mjs'
 import { toolRequirement } from './tools.mjs'
 import { findEscalationCycles, findDanglingEscalations } from './escalation.mjs'
+import { findMissingAggregationInputs, AGGREGATION_INPUTS } from './reliability-inputs.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -990,6 +991,12 @@ for (const [path, kind, extra] of targets) validateFile(path, kind, extra)
 const gitmodules = existsSync(join(ROOT, '.gitmodules'))
   ? readFileSync(join(ROOT, '.gitmodules'), 'utf8')
   : ''
+// 신뢰성을 집계할 입력이 계약에 있어야 한다. 지우면 그 지표를 영영 못 만든다.
+const EVENT_SCHEMA = join(ROOT, 'packages', 'telemetry-contracts', 'event.schema.json')
+for (const { field, metric } of findMissingAggregationInputs(readJson(EVENT_SCHEMA), AGGREGATION_INPUTS)) {
+  fail(EVENT_SCHEMA, `집계 입력 '${field}'이 없다 — ${metric}. (ADR-0030)`)
+}
+
 // 에스컬레이션은 끝나야 한다. 재시도와 달리 상한이 없어 사슬이 돌면 무한하다.
 for (const { capability, escalateTo } of findDanglingEscalations(CAPABILITIES)) {
   fail(
