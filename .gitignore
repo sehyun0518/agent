@@ -2,3 +2,8 @@ node_modules/
 .harness/
 *.log
 .DS_Store
+
+# 에이전트 실행 산물. `.claude/{agents,commands,skills}`는 생성물이라 추적하지만
+# 아래 둘은 실행 시점에 만들어지고 실행마다 달라진다.
+.claude/worktrees/
+.claude/agent-memory/
