@@ -21,8 +21,10 @@
 export function isHookDoc(path) {
   const text = String(path ?? '')
   if (!/\.md$/i.test(text) || /(^|[/\\])readme\.md$/i.test(text)) return false
-  // 맨 앞에 오는 상대 경로(`hooks/x.md`)도 받는다. 구분자를 요구했더니 그것이 빠졌다.
-  return /(^|[/\\])hooks[/\\]/.test(text)
+  // `hooks`가 **바로 위 디렉터리**여야 한다. 어디든 있으면 매치하게 뒀더니 작업
+  // 공간 경로에 hooks가 끼는 순간 그 아래 모든 .md가 훅으로 걸렸다 (#98 리뷰).
+  // 맨 앞에 오는 상대 경로(`hooks/x.md`)도 받는다.
+  return /(^|[/\\])hooks[/\\][^/\\]+$/.test(text)
 }
 
 const EVENT_LINE = /^- 이벤트:\s*`([^`]+)`/m
