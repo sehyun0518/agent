@@ -13,7 +13,8 @@
     "check": "npm run validate && npm run test:contracts && npm run vendor:check && npm run lint:md && node tooling/generators/generate.mjs --check",
     "lint:md": "markdownlint-cli2",
     "step": "node tooling/briefing/cli.mjs",
-    "reviews": "node tooling/briefing/reviews-cli.mjs"
+    "reviews": "node tooling/briefing/reviews-cli.mjs",
+    "init": "node tooling/setup/init-cli.mjs"
   },
   "devDependencies": {
     "ajv": "^8.17.1",

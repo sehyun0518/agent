@@ -176,6 +176,15 @@ export const TOOL_COMMANDS = [
       '출력은 선언에서 그때그때 조립된다. **실행하지 않는다** — 단계를 부르는 것도 증거를 남기는 것도 사람이 한다 (ADR-0002 · ADR-0032).',
   },
   {
+    name: 'init',
+    kind: 'tool',
+    script: 'npm run init -- <소비저장소 경로>',
+    description:
+      '소비 저장소에 프로파일 뼈대를 놓고 코어가 찾는 명령 키를 알려준다. 이미 있으면 손대지 않는다.',
+    note:
+      '**탐지하지 않는다** — package.json을 읽어 라이브러리를 알아내면 하네스가 생태계를 아는 것이 된다 (ADR-0026). 채울 것을 선언에서 유도해 보여줄 뿐이고 무엇을 쓸지는 저장소가 정한다 (ADR-0039).',
+  },
+  {
     name: 'reviews',
     kind: 'tool',
     script: 'npm run reviews -- <pr번호>',

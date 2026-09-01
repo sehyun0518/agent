@@ -49,6 +49,7 @@ import { findBrokenSectionRefs, sectionNumbers } from './doc-refs.mjs'
 import { findUnknownHookEvents, hookEventOf, knownHookEvents, isHookDoc } from './hook-events.mjs'
 import { findLayerAdvice, renderLayerAdvice, testLayersInCommands } from './layer-advice.mjs'
 import { findLayerStepsWithoutEscape, findUnproducedVerdicts, layerOfStep } from './layer-applicability.mjs'
+import { skeleton, submoduleProblem, whatIsLeft } from '../setup/init.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -2800,5 +2801,60 @@ test('실제 review 흐름의 계층 단계가 전부 탈출구를 갖는다', a
 test('입력이 없어도 터지지 않는다', () => {
   assert.deepEqual(findLayerStepsWithoutEscape(undefined), [])
   assert.deepEqual(findUnproducedVerdicts(undefined, undefined), [])
+})
+
+// ── 설정 뼈대 (ADR-0039) ─────────────────────────────────────────────────
+//
+// 탐지하지 않는다. package.json을 읽어 라이브러리를 알아내면 하네스가 생태계를 아는
+// 것이 되고, ADR-0026이 그은 선을 넘는다. 채울 것을 선언에서 유도해 보여줄 뿐이다.
+
+test('뼈대가 최소 유효 프로파일이다', () => {
+  const text = skeleton({ id: 'my-repo', namespace: 'myrepo', commandKeys: ['test.unit'], conventionKeys: ['preflight'] })
+  for (const required of ['schemaVersion: 1', 'id: my-repo', 'kind: repository', 'namespace: myrepo']) {
+    assert.ok(text.includes(required), `뼈대에 ${required}가 없다`)
+  }
+})
+
+// 코어가 찾는 키를 여기 적지 않는다. 선언에서 받아 옮길 뿐이다.
+test('뼈대가 받은 키를 그대로 보여준다', () => {
+  const text = skeleton({ id: 'r', namespace: 'r', commandKeys: ['test.unit', 'test.ui'], conventionKeys: ['preflight'] })
+  assert.match(text, /#   test\.unit/)
+  assert.match(text, /#   test\.ui/)
+  assert.match(text, /#   preflight/)
+})
+
+// 실제 저장소가 파일 복사본이었다 — 인덱스는 gitlink인데 .git이 없었다.
+test('서브모듈이 파일 복사본이면 짚는다', () => {
+  assert.match(submoduleProblem({ gitlink: true, dotGit: false }), /파일 복사본/)
+})
+
+test('인덱스에 없는 git 저장소는 중첩이다', () => {
+  assert.match(submoduleProblem({ gitlink: false, dotGit: true }), /중첩/)
+})
+
+// 제대로 붙은 것은 둘 다 참일 때뿐이다. 처음에 둘 다 거짓인 것을 정상으로 뒀는데,
+// 그것도 파일 복사본이다 — 인덱스에도 없고 저장소도 아닌 디렉터리가 거기 있다는
+// 뜻이다. 케이스가 그 버그를 고정하고 있었다 (#101 리뷰).
+test('제대로 붙었으면 아무 말 안 한다', () => {
+  assert.equal(submoduleProblem({ gitlink: true, dotGit: true }), null)
+})
+
+test('인덱스에도 없고 .git도 없으면 파일 복사본이다', () => {
+  assert.match(submoduleProblem({ gitlink: false, dotGit: false }), /파일 복사본/)
+})
+
+test('아직 안 채운 키를 낸다', () => {
+  const left = whatIsLeft(
+    { commands: { 'test.unit': { command: 'x' } } },
+    ['test.unit', 'test.ui'],
+    ['preflight'],
+  )
+  assert.deepEqual(left.missing, ['test.ui'])
+  assert.deepEqual(left.conventionsMissing, ['preflight'])
+})
+
+test('프로파일이 비어도 터지지 않는다', () => {
+  assert.deepEqual(whatIsLeft(undefined, ['test.unit'], []).missing, ['test.unit'])
+  assert.deepEqual(whatIsLeft({}, undefined, undefined), { missing: [], conventionsMissing: [] })
 })
 
