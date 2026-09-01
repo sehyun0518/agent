@@ -35,6 +35,7 @@ import {
   VALIDATOR_REGISTRY,
   findUnknownValidators,
   findUnreferencedValidators,
+  findUnknownProjections,
 } from './policy-enforcement.mjs'
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -885,6 +886,12 @@ for (const [path, kind, extra] of targets) validateFile(path, kind, extra)
 // "problems가 하나라도 있으면 건너뛴다"로 하지 않는 이유는, 무관한 파일의 문제 하나로
 // 이 검사가 조용히 꺼지기 때문이다. 꺼질 때는 꺼졌다고 출력한다.
 if (declaredEnforcement.length === POLICY_PATHS.length) {
+  for (const id of findUnknownProjections(declaredEnforcement)) {
+    fail(
+      join(ROOT, 'tooling', 'validators', 'policy-enforcement.mjs'),
+      `투영 레지스트리의 "${id}": 그런 정책이 없다. 정책을 지웠으면 여기서도 지워라.`,
+    )
+  }
   for (const name of findUnreferencedValidators(declaredEnforcement)) {
     fail(
       join(ROOT, 'tooling', 'validators', 'policy-enforcement.mjs'),

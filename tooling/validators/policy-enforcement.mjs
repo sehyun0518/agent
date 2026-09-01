@@ -41,7 +41,25 @@ export const VALIDATOR_REGISTRY = {
   },
 }
 
-// 아래 두 함수의 전제도 같다 — 스키마를 통과한 정책만 수집되고, 호출부가 넘기는 것은
+/**
+ * 검증기가 아닌 방식으로 정책을 강제하는 것.
+ *
+ * ADR-0015가 승인 선언을 플랫폼 permission 설정으로 투영하면서 강제 수단이 하나 늘었다.
+ * 검증기도 훅도 아니라 위 레지스트리에 들어가지 않는데, 그대로 두면 `policies/README.md`가
+ * 이 정책을 "검증기 ✅ + 훅 ⏳"로만 적게 된다 — 실제로 도는 강제가 표에 안 보이는 상태다.
+ * #50이 고친 것과 같은 종류의 드리프트라 같은 방식으로 막는다.
+ *
+ * **플랫폼별 현황은 여기 적지 않는다.** `permissions.json`의 `unprojected`가 그것을
+ * 소유하고, 여기 옮겨 적으면 두 곳이 갈라진다.
+ */
+export const PROJECTION_REGISTRY = {
+  'destructive-approval': {
+    by: 'requiresApproval 선언을 플랫폼 permission 설정으로 낸다 (ADR-0015)',
+    source: 'tooling/generators/permissions.json',
+  },
+}
+
+// 아래 함수들의 전제도 같다 — 스키마를 통과한 정책만 수집되고, 호출부가 넘기는 것은
 // {id, validator} 꼴로 직접 만든 객체다. 원소가 null인 경로가 없다.
 
 /** 정책이 지정했는데 레지스트리에 없는 이름. 오타이거나 구현이 없다는 뜻이다. */
@@ -60,4 +78,15 @@ export function findUnknownValidators(policies, registry = VALIDATOR_REGISTRY) {
 export function findUnreferencedValidators(policies, registry = VALIDATOR_REGISTRY) {
   const used = new Set((policies ?? []).map((p) => p.validator).filter(Boolean))
   return Object.keys(registry).filter((name) => !used.has(name))
+}
+
+/**
+ * 레지스트리에 있는데 그런 정책이 없는 이름.
+ *
+ * 반대 방향은 보지 않는다 — 대부분의 정책은 투영 대상이 아니고, 투영이 없는 것이
+ * 정상이기 때문이다. 썩는 쪽은 이쪽뿐이다.
+ */
+export function findUnknownProjections(policies, registry = PROJECTION_REGISTRY) {
+  const ids = new Set((policies ?? []).map((p) => p.id))
+  return Object.keys(registry).filter((id) => !ids.has(id))
 }

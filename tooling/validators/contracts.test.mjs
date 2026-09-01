@@ -24,6 +24,8 @@ import {
   VALIDATOR_REGISTRY,
   findUnknownValidators,
   findUnreferencedValidators,
+  PROJECTION_REGISTRY,
+  findUnknownProjections,
 } from './policy-enforcement.mjs'
 import {
   approvalRequiredVariants,
@@ -1226,4 +1228,32 @@ test('빈 배열이나 배열 아닌 값은 투영으로 보지 않는다', () =
 test('빈 입력은 대상이 아니다', () => {
   assert.deepEqual(findUndeclaredPlatforms(undefined, undefined), [])
   assert.deepEqual(approvalRequiredVariants(undefined), [])
+})
+
+// ---------------------------------------------------------------- 투영 레지스트리
+// ADR-0015가 검증기도 훅도 아닌 강제 수단을 하나 만들었다. 그대로 두면 강제 현황표가
+// 실제로 도는 강제를 빠뜨린다 — #50이 고친 것과 같은 종류의 드리프트다.
+
+test('레지스트리가 없는 정책을 가리키면 검출한다', () => {
+  const found = findUnknownProjections([{ id: 'destructive-approval' }], {
+    'destructive-approval': {},
+    '없어진-정책': {},
+  })
+  assert.deepEqual(found, ['없어진-정책'])
+})
+
+// 반대 방향은 보지 않는다. 대부분의 정책은 투영 대상이 아니고 투영이 없는 것이 정상이다.
+test('투영이 없는 정책은 대상이 아니다', () => {
+  const found = findUnknownProjections(
+    [{ id: 'destructive-approval' }, { id: 'secrets-redaction' }],
+    { 'destructive-approval': {} },
+  )
+  assert.deepEqual(found, [])
+})
+
+test('실제 레지스트리의 모든 항목에 근거와 출처가 있다', () => {
+  for (const [id, entry] of Object.entries(PROJECTION_REGISTRY)) {
+    assert.ok(entry.by, `${id}: 무엇이 강제하는지 by에 적어야 한다`)
+    assert.ok(entry.source, `${id}: 어느 파일이 소유하는지 source에 적어야 한다`)
+  }
 })
