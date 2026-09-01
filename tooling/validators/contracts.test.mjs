@@ -46,6 +46,7 @@ import { walk } from '../walk.mjs'
 import { matchExpectations, readEvidenceRecords } from '../briefing/evidence.mjs'
 import { findUnansweredReviews, findPendingChecks, reviewers } from '../briefing/reviews.mjs'
 import { findBrokenSectionRefs, sectionNumbers } from './doc-refs.mjs'
+import { findUnknownHookEvents, hookEventOf, knownHookEvents } from './hook-events.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -2550,5 +2551,67 @@ test('없는 문서를 가리키는 것은 보지 않는다', () => {
 test('입력이 없어도 터지지 않는다', () => {
   assert.deepEqual(findBrokenSectionRefs(undefined, undefined), [])
   assert.deepEqual([...sectionNumbers(undefined)], [])
+})
+
+// ── 훅 이벤트 (ADR-0036) ──────────────────────────────────────────────────
+//
+// 훅은 마크다운이고 이벤트를 산문으로 적는다. `before-없는것`이라고 바꿔도 검증이
+// 통과했다. 이름이 틀리면 실행 주체가 생겨도 영영 안 불리는데, 문서는 blocking이라
+// 적혀 있어 읽는 사람은 막힌다고 믿는다.
+
+const 이벤트목록 = ['before-capability', 'after-capability', 'before-tool', 'after-tool', 'on-evidence', 'on-failure']
+
+test('훅 문서에서 이벤트를 뽑는다', () => {
+  assert.equal(hookEventOf('# Hook\n\n- 이벤트: `before-tool`\n- blocking: 예.\n'), 'before-tool')
+  assert.equal(hookEventOf('# Hook\n\n- blocking: 예.\n'), null)
+  assert.equal(hookEventOf(undefined), null)
+})
+
+test('없는 이벤트를 선언하면 검출한다', () => {
+  assert.deepEqual(
+    findUnknownHookEvents([{ path: 'a.md', text: '- 이벤트: `before-없는것`' }], 이벤트목록),
+    [{ hook: 'a.md', event: 'before-없는것' }],
+  )
+})
+
+// 언제 도는지 안 적힌 훅은 실행 주체가 생겨도 붙일 자리가 없다.
+test('이벤트를 아예 안 적어도 검출한다', () => {
+  assert.deepEqual(
+    findUnknownHookEvents([{ path: 'a.md', text: '# Hook\n\n- blocking: 예.' }], 이벤트목록),
+    [{ hook: 'a.md', event: null }],
+  )
+})
+
+test('있는 이벤트는 통과한다', () => {
+  assert.deepEqual(findUnknownHookEvents([{ path: 'a.md', text: '- 이벤트: `on-evidence`' }], 이벤트목록), [])
+})
+
+// 목록은 policy.schema.json이 갖는다. 여기 옮겨 적지 않는다.
+test('이벤트 목록을 정책 스키마에서 뽑는다', () => {
+  const schema = { x: { properties: { event: { enum: 이벤트목록 } } } }
+  assert.deepEqual(knownHookEvents(schema), 이벤트목록)
+  assert.deepEqual(knownHookEvents(undefined), [])
+})
+
+test('실제 훅 문서가 전부 실재하는 이벤트를 쓴다', async () => {
+  const { readFileSync, readdirSync } = await import('node:fs')
+  const base = new URL('../../capabilities/', import.meta.url)
+  const docs = []
+  for (const dir of readdirSync(base)) {
+    let files = []
+    try { files = readdirSync(new URL(`${dir}/hooks/`, base)) } catch { continue }
+    for (const f of files.filter((n) => n.endsWith('.md'))) {
+      docs.push({ path: `${dir}/hooks/${f}`, text: readFileSync(new URL(`${dir}/hooks/${f}`, base), 'utf8') })
+    }
+  }
+  assert.ok(docs.length >= 4, `훅 문서를 ${docs.length}개만 찾았다`)
+  // 목록을 여기 적지 않는다. 스키마가 단일 출처이고, 위 픽스처와 달리 이 케이스는
+  // 실제 상태를 본다 — 하드코딩하면 스키마가 늘 때 이 테스트만 낡는다 (#97 리뷰).
+  const schema = JSON.parse(
+    readFileSync(new URL('../../packages/policy-contracts/policy.schema.json', import.meta.url), 'utf8'),
+  )
+  const events = knownHookEvents(schema)
+  assert.ok(events.length > 0, '스키마에서 이벤트를 못 읽었다')
+  assert.deepEqual(findUnknownHookEvents(docs, events), [])
 })
 

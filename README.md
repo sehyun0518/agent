@@ -252,5 +252,6 @@ Capability와 프로파일 소스에서 생성합니다.
 | [ADR-0033](docs/adr/0033-evidence-record-file.md) | 증거는 흐름마다 `evidence.yaml` 하나에 쌓고 `step`으로 단계를 가립니다. |
 | [ADR-0034](docs/adr/0034-review-arrival.md) | 머지 전에 답하지 않은 리뷰를 셉니다. CI로 막지 않습니다. |
 | [ADR-0035](docs/adr/0035-consumer-profile-reach.md) | 도구가 `--profile`로 소비 저장소 프로파일을 읽습니다. |
+| [ADR-0036](docs/adr/0036-hook-execution-points.md) | 훅 여섯 중 넷은 대응점이 있고 둘은 런타임이 만듭니다 (C4). |
 
 구조 이관 내역은 [docs/migration/inventory.md](docs/migration/inventory.md)에서 확인할 수 있습니다.

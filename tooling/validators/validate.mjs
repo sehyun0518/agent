@@ -20,6 +20,7 @@ import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
 import { findMissingMootBranches } from './workflow-red-proof.mjs'
 import { walk } from '../walk.mjs'
 import { findBrokenSectionRefs } from './doc-refs.mjs'
+import { findUnknownHookEvents, knownHookEvents } from './hook-events.mjs'
 import { findMissingScaffolds } from './workflow-scaffold.mjs'
 import { findUnisolatedBackgroundAgents } from './background-isolation.mjs'
 import { toolRequirement } from './tools.mjs'
@@ -1035,6 +1036,30 @@ const gitmodules = existsSync(join(ROOT, '.gitmodules'))
 const EVENT_SCHEMA = join(ROOT, 'packages', 'telemetry-contracts', 'event.schema.json')
 for (const { field, metric } of findMissingAggregationInputs(readJson(EVENT_SCHEMA), AGGREGATION_INPUTS)) {
   fail(EVENT_SCHEMA, `집계 입력 '${field}'이 없다 — ${metric}. (ADR-0030)`)
+}
+
+// 훅이 실재하지 않는 이벤트를 선언하면 실행 주체가 생겨도 영영 안 불린다. 그런데
+// 문서는 blocking이라고 적혀 있어 읽는 사람은 막힌다고 믿는다 (ADR-0036).
+//
+// 목록이 비면 모든 훅이 틀린 것이 되어 오탐이 쏟아진다. 텔레메트리 매핑이 같은
+// 이유로 같은 가드를 갖고 있다 (ADR-0031) — 바로 옆인데 안 쓰고 있었다 (#97 리뷰).
+const POLICY_SCHEMA = join(POLICY_SCHEMA_DIR, 'policy.schema.json')
+const HOOK_EVENTS = knownHookEvents(readJson(POLICY_SCHEMA))
+if (HOOK_EVENTS.length === 0) {
+  fail(POLICY_SCHEMA, '훅 이벤트 목록을 읽지 못했다. 검사가 판정할 근거가 없다. (ADR-0036)')
+} else {
+  const HOOK_DOCS = walk(join(ROOT, 'capabilities'), (p) => p.includes('/hooks/') && p.endsWith('.md'))
+  for (const { hook, event } of findUnknownHookEvents(
+    HOOK_DOCS.map((p) => ({ path: relative(ROOT, p), text: readFileSync(p, 'utf8') })),
+    HOOK_EVENTS,
+  )) {
+    fail(
+      join(ROOT, hook),
+      event
+        ? `훅 이벤트 '${event}'은 실재하지 않는다. 있는 것: ${HOOK_EVENTS.join(' · ')}. (ADR-0036)`
+        : `훅이 이벤트를 선언하지 않았다. 언제 도는지 없으면 붙일 자리가 없다. (ADR-0036)`,
+    )
+  }
 }
 
 // 없는 절을 가리키는 참조. 읽는 사람은 문서가 낡은 것인지 참조가 틀린 것인지 모른다.
