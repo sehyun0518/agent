@@ -28,7 +28,11 @@ import { findMissingScaffolds } from './workflow-scaffold.mjs'
 import { findUnisolatedBackgroundAgents } from './background-isolation.mjs'
 import { writesFilesystem, toolRequirement } from './tools.mjs'
 import { findEscalationCycles, findDanglingEscalations } from './escalation.mjs'
-import { findMissingAggregationInputs, AGGREGATION_INPUTS } from './reliability-inputs.mjs'
+import {
+  findMissingAggregationInputs,
+  findAggregationTableDrift,
+  AGGREGATION_INPUTS,
+} from './reliability-inputs.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -1901,5 +1905,47 @@ test('AGGREGATION_INPUTS의 모든 항목이 이유를 갖는다', () => {
     assert.ok(entry.field, '필드 이름이 없다')
     assert.ok(entry.metric?.length > 0, `${entry.field}에 이유가 없다`)
   }
+})
+
+// 표와 목록은 두 곳에 적힌 같은 것이다. 실제로 갈렸다 — 표에 event·capability·variant가
+// 있는데 목록에는 없었다 (#90 리뷰).
+
+const 표 = (rows) => `## 조사\n\n| 지표 | 필요한 입력 |\n|---|---|\n${rows}\n\n## 결정 1\n`
+
+test('표와 목록이 같으면 통과한다', () => {
+  const drift = findAggregationTableDrift(표('| a | `runId` · `outcome` |'), [
+    { field: 'runId' },
+    { field: 'outcome' },
+  ])
+  assert.deepEqual(drift, { onlyInTable: [], onlyInList: [] })
+})
+
+test('표에만 있으면 검출한다', () => {
+  const drift = findAggregationTableDrift(표('| a | `runId` · `policy` |'), [{ field: 'runId' }])
+  assert.deepEqual(drift.onlyInTable, ['policy'])
+})
+
+test('목록에만 있으면 검출한다', () => {
+  const drift = findAggregationTableDrift(표('| a | `runId` |'), [
+    { field: 'runId' },
+    { field: 'variant' },
+  ])
+  assert.deepEqual(drift.onlyInList, ['variant'])
+})
+
+// 본문이 표의 누락을 가리면 안 된다. adr-index.mjs가 같은 구멍을 실제로 겪었다.
+test('절 밖의 산문은 표로 세지 않는다', () => {
+  const md = '## 조사\n\n| a | `runId` |\n\n## 결정 1\n\n`variant`를 산문에서 언급한다.\n'
+  const drift = findAggregationTableDrift(md, [{ field: 'runId' }, { field: 'variant' }])
+  assert.deepEqual(drift.onlyInList, ['variant'])
+})
+
+test('실제 ADR-0030과 실제 목록이 일치한다', async () => {
+  const { readFileSync } = await import('node:fs')
+  const md = readFileSync(new URL('../../docs/adr/0030-reliability-inputs.md', import.meta.url), 'utf8')
+  assert.deepEqual(findAggregationTableDrift(md, AGGREGATION_INPUTS), {
+    onlyInTable: [],
+    onlyInList: [],
+  })
 })
 

@@ -22,7 +22,11 @@ import { findMissingScaffolds } from './workflow-scaffold.mjs'
 import { findUnisolatedBackgroundAgents } from './background-isolation.mjs'
 import { toolRequirement } from './tools.mjs'
 import { findEscalationCycles, findDanglingEscalations } from './escalation.mjs'
-import { findMissingAggregationInputs, AGGREGATION_INPUTS } from './reliability-inputs.mjs'
+import {
+  findMissingAggregationInputs,
+  findAggregationTableDrift,
+  AGGREGATION_INPUTS,
+} from './reliability-inputs.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -995,6 +999,16 @@ const gitmodules = existsSync(join(ROOT, '.gitmodules'))
 const EVENT_SCHEMA = join(ROOT, 'packages', 'telemetry-contracts', 'event.schema.json')
 for (const { field, metric } of findMissingAggregationInputs(readJson(EVENT_SCHEMA), AGGREGATION_INPUTS)) {
   fail(EVENT_SCHEMA, `집계 입력 '${field}'이 없다 — ${metric}. (ADR-0030)`)
+}
+
+// 목록과 ADR 대조표가 갈리면 왜 그 필드가 있는지가 사라진다.
+const ADR_0030 = join(ROOT, 'docs', 'adr', '0030-reliability-inputs.md')
+const inputDrift = findAggregationTableDrift(readFileSync(ADR_0030, 'utf8'))
+for (const field of inputDrift.onlyInTable) {
+  fail(ADR_0030, `대조표의 '${field}'이 AGGREGATION_INPUTS에 없다. 표에만 적으면 아무도 안 지킨다. (ADR-0030)`)
+}
+for (const field of inputDrift.onlyInList) {
+  fail(ADR_0030, `AGGREGATION_INPUTS의 '${field}'이 대조표에 없다. 목록에만 있으면 왜 있는지가 사라진다. (ADR-0030)`)
 }
 
 // 에스컬레이션은 끝나야 한다. 재시도와 달리 상한이 없어 사슬이 돌면 무한하다.
