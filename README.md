@@ -248,5 +248,6 @@ Capability와 프로파일 소스에서 생성합니다.
 | [ADR-0029](docs/adr/0029-escalation-bound.md) | 재시도는 스키마가 묶습니다. 안 묶인 것은 에스컬레이션이고 순환을 검사합니다. |
 | [ADR-0030](docs/adr/0030-reliability-inputs.md) | 신뢰성 집계에 필요한 입력을 계약에 고정합니다. |
 | [ADR-0031](docs/adr/0031-aggregation-placement.md) | 집계는 하네스 밖 관측 시스템이 만듭니다. 하네스는 차원까지 책임집니다. |
+| [ADR-0032](docs/adr/0032-step-briefing.md) | 단계 하나에 필요한 것을 한 화면으로 모읍니다. 읽어서 인쇄할 뿐 실행하지 않습니다. |
 
 구조 이관 내역은 [docs/migration/inventory.md](docs/migration/inventory.md)에서 확인할 수 있습니다.

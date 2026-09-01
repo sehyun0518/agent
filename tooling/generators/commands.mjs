@@ -84,7 +84,7 @@ export function insertionsForWorkflow(workflow, profiles) {
   const out = []
   for (const profile of profiles ?? []) {
     for (const extension of profile.workflowExtensions ?? []) {
-      if (extension.workflow !== '*' && extension.workflow !== workflow?.id) continue
+      if (!extensionApplies(extension, workflow?.id)) continue
       for (const insert of extension.insert ?? []) {
         if (!hasAnchor(steps, insert)) continue
         out.push({ profile: profile.id, id: insert.id, runner: insert.runner })
@@ -95,20 +95,32 @@ export function insertionsForWorkflow(workflow, profiles) {
 }
 
 /**
- * anchorStep이 있으면 capability만 같아서는 안 된다. 같은 capability의 다른 단계에 붙는다.
+ * 이 삽입이 이 흐름의 것인가. `*`는 모든 흐름이다.
+ *
+ * 흐름을 안 가리면 `bugfix`용 삽입이 `change`에 섞인다 — 브리핑을 만들다 실제로 그랬다
+ * (ADR-0032).
+ */
+export function extensionApplies(extension, workflowId) {
+  return extension?.workflow === '*' || extension?.workflow === workflowId
+}
+
+/**
+ * 이 삽입이 이 단계에 붙는가.
  *
  * `== null`인 것은 YAML이 값 없는 키(`anchorStep:`)를 `null`로 파싱하기 때문이다.
- * `=== undefined`로 보면 그 선언이 어떤 step과도 안 맞아 **삽입이 커맨드에서 통째로
- * 사라진다** — 이 파일이 고치려는 바로 그 실패다. 값 없는 키는 스키마 위반이라
- * `npm run validate`가 거부하지만, 거부당하는 입력에 대고 조용히 단계를 지우는 것과
- * 없는 제약으로 보는 것 중에서는 후자가 낫다.
+ * `=== undefined`로 보면 그 선언이 어떤 step과도 안 맞아 **삽입이 통째로 사라진다.**
+ * 값 없는 키는 스키마 위반이라 `npm run validate`가 거부하지만, 거부당하는 입력에
+ * 대고 조용히 단계를 지우는 것과 없는 제약으로 보는 것 중에서는 후자가 낫다.
  */
-function hasAnchor(steps, insert) {
-  return steps.some(
-    (step) =>
-      step.capability === insert.anchorCapability &&
-      (insert.anchorStep == null || step.id === insert.anchorStep),
+export function anchoredAt(step, insert) {
+  return (
+    step?.capability === insert?.anchorCapability &&
+    (insert?.anchorStep == null || step?.id === insert.anchorStep)
   )
+}
+
+function hasAnchor(steps, insert) {
+  return steps.some((step) => anchoredAt(step, insert))
 }
 
 /** 이름이 겹치면 어느 쪽이 불릴지 알 수 없다. 생성 전에 잡는다. */
@@ -143,6 +155,49 @@ function sourceOf(c) {
  * @param {Array<{id: string, workflowExtensions?: Array}>} profiles
  * @returns {Array<{name, kind, workflow, title, description, stepCount, insertions}>}
  */
+/**
+ * 흐름을 돌리는 사람을 돕는 도구 커맨드.
+ *
+ * Capability도 워크플로도 아니라 선언에서 유도되지 않는다. 그래서 여기 적는다 —
+ * 대신 **본문에 절차를 옮겨 적지 않고 스크립트를 가리키기만 한다.** 스크립트가
+ * 호출 시점에 선언을 읽으므로 드리프트가 생길 자리가 없다 (ADR-0032).
+ */
+export const TOOL_COMMANDS = [
+  {
+    name: 'step',
+    kind: 'tool',
+    script: 'npm run step -- <workflow> <step>',
+    description:
+      '워크플로 단계 하나에 필요한 것을 한 화면으로 모은다 — 게이트·선행 증거·남길 증거·내는 토큰·프로파일 삽입.',
+  },
+]
+
+/**
+ * 있지도 않은 npm 스크립트를 가리키는 도구 커맨드.
+ *
+ * 커맨드 본문이 `npm run step`이라고 적는데 그 스크립트가 없으면, 부른 사람은
+ * 커맨드가 깨졌는지 자기가 틀렸는지 모른다. 이름이 두 곳에 있으므로 대조한다 —
+ * `commandKey` 오타(ADR-0026)와 같은 자리다.
+ *
+ * @param {Array<{name: string, script?: string}>} tools
+ * @param {Record<string, string>} packageScripts
+ * @returns {Array<{command: string, script: string}>}
+ */
+export function findMissingToolScripts(tools, packageScripts) {
+  const known = new Set(Object.keys(packageScripts ?? {}))
+  const missing = []
+  for (const tool of tools ?? []) {
+    const script = /^npm run ([a-z][a-z0-9:-]*)/.exec(tool?.script ?? '')?.[1]
+    if (!script || known.has(script)) continue
+    missing.push({ command: tool.name, script })
+  }
+  return missing
+}
+
+export function commandsFromTools() {
+  return TOOL_COMMANDS.map((c) => ({ ...c }))
+}
+
 export function commandsFromWorkflows(workflows, profiles = []) {
   return (workflows ?? []).map((w) => ({
     name: w.id,
