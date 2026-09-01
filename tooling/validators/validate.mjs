@@ -21,6 +21,7 @@ import { findMissingMootBranches } from './workflow-red-proof.mjs'
 import { findMissingScaffolds } from './workflow-scaffold.mjs'
 import { findUnisolatedBackgroundAgents } from './background-isolation.mjs'
 import { toolRequirement } from './tools.mjs'
+import { findEscalationCycles, findDanglingEscalations } from './escalation.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -989,6 +990,23 @@ for (const [path, kind, extra] of targets) validateFile(path, kind, extra)
 const gitmodules = existsSync(join(ROOT, '.gitmodules'))
   ? readFileSync(join(ROOT, '.gitmodules'), 'utf8')
   : ''
+// 에스컬레이션은 끝나야 한다. 재시도와 달리 상한이 없어 사슬이 돌면 무한하다.
+for (const { capability, escalateTo } of findDanglingEscalations(CAPABILITIES)) {
+  fail(
+    join(ROOT, 'capabilities', capability, 'capability.yaml'),
+    `escalateTo가 '${escalateTo}'를 가리키는데 그런 Capability가 없다. ` +
+      `Capability id 또는 'orchestrator'여야 한다. (ADR-0029)`,
+  )
+}
+
+for (const { cycle } of findEscalationCycles(CAPABILITIES)) {
+  fail(
+    join(ROOT, 'capabilities', cycle[0], 'capability.yaml'),
+    `에스컬레이션이 돈다 — ${cycle.join(' → ')} → ${cycle[0]}. ` +
+      `재시도와 달리 에스컬레이션에는 상한이 없어 사슬이 끝나지 않는다. (ADR-0029)`,
+  )
+}
+
 // 백그라운드로 도는 쓰기 역할은 격리를 선언해야 한다. 부른 쪽과 같은 트리를 고친다.
 for (const { capability, agent } of findUnisolatedBackgroundAgents(CAPABILITIES)) {
   fail(

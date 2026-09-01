@@ -245,5 +245,6 @@ Capability와 프로파일 소스에서 생성합니다.
 | [ADR-0026](docs/adr/0026-toolchain-precondition.md) | 툴체인 선행조건을 `preflight` 규약으로 받습니다. |
 | [ADR-0027](docs/adr/0027-version-axis.md) | 버전 축은 릴리스 하나와 `schemaVersion` 하나입니다. 선언마다 두지 않습니다. |
 | [ADR-0028](docs/adr/0028-concurrency-axis.md) | 한 체크아웃에서 활성 흐름은 하나입니다. 흐름 안의 병렬만 허용합니다. |
+| [ADR-0029](docs/adr/0029-escalation-bound.md) | 재시도는 스키마가 묶습니다. 안 묶인 것은 에스컬레이션이고 순환을 검사합니다. |
 
 구조 이관 내역은 [docs/migration/inventory.md](docs/migration/inventory.md)에서 확인할 수 있습니다.
