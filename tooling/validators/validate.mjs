@@ -5,7 +5,7 @@
 // Phase 2 이후 확장 예정: 참조 무결성, 권한 대 도구 대조, 정책 우선순위 위반,
 // 워크플로 선행조건 도달 가능성, 미러 드리프트.
 
-import { readFileSync, readdirSync, existsSync, statSync, lstatSync } from 'node:fs'
+import { readFileSync, readdirSync, existsSync, lstatSync } from 'node:fs'
 import { join, relative, dirname, basename } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import Ajv from 'ajv/dist/2020.js' // 스키마가 draft 2020-12를 쓴다
@@ -72,7 +72,9 @@ function walk(dir, match, found = []) {
   for (const entry of readdirSync(dir)) {
     if (entry === 'node_modules' || entry.startsWith('.')) continue
     const path = join(dir, entry)
-    if (statSync(path).isDirectory()) walk(path, match, found)
+    // lstat이라 심볼릭 링크로 들어가지 않는다. 링크가 조상을 가리키면 무한히 돈다 —
+    // profiles/ 아래에 그런 링크를 두니 ELOOP로 죽었다.
+    if (lstatSync(path).isDirectory()) walk(path, match, found)
     else if (match(path)) found.push(path)
   }
   return found
