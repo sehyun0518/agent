@@ -4,10 +4,6 @@ description: React and Next.js performance optimization guidelines from Vercel E
 license: MIT
 metadata:
   author: vercel
-  version: "1.0.0"
-license: MIT
-metadata:
-  author: vercel
   source: https://github.com/vercel-labs/agent-skills/tree/main/skills/react-best-practices
   version: "1.0.0"
 ---

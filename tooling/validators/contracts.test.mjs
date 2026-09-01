@@ -6,6 +6,14 @@ import { resolveRunners, findUnresolvedRunners, findDuplicateInserts } from './p
 import { findDocumentationBypass } from './documentation-gate.mjs'
 import { findReadonlyWriteTools } from './agent-readonly.mjs'
 import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
+import { commandsInScript, findChecksMissingFromCi } from './pipeline.mjs'
+import {
+  normalize,
+  classifyPack,
+  extractVendoredBody,
+  findDrift,
+  parseFrontmatter,
+} from '../vendoring/vendored-files.mjs'
 import { findMissingMootBranches } from './workflow-red-proof.mjs'
 import { findMissingScaffolds } from './workflow-scaffold.mjs'
 import {
@@ -1351,4 +1359,123 @@ test('빈 입력은 레지스트리 전체를 미기재로 본다', () => {
     findEnforcementTableDrift(undefined, 레지스트리).map((d) => d.problem),
     ['not-in-table', 'not-in-table'],
   )
+})
+
+// ---------------------------------------------------------------- 벤더링 드리프트
+// ADR-0008이 바이트 일치를 요구하는데 대조 도구가 없었다. 두 번 어겼고 둘 다 사람이
+// 우연히 잡았다 (#33 · ADR-0016).
+
+test('CRLF와 파일 끝 개행만 고른다', () => {
+  assert.equal(normalize('a\r\nb\n\n\n'), 'a\nb\n')
+  assert.equal(normalize('a'), 'a\n')
+  assert.equal(normalize(undefined), '\n')
+})
+
+// 그 밖에는 아무것도 하지 않는다. 공백을 다듬으면 상류의 공백 변경을 못 본다.
+test('그 밖의 공백은 건드리지 않는다', () => {
+  assert.equal(normalize('a  \n\n  b'), 'a  \n\n  b\n')
+})
+
+test('source가 없으면 우리 것으로 본다', () => {
+  assert.equal(classifyPack(undefined), 'own')
+  assert.equal(classifyPack({ author: 'x' }), 'own')
+})
+
+// 마커 유무가 아니라 선언으로 가른다. 마커로 가르면 마커를 지우는 것만으로
+// "우리가 새로 쓴 파일"이 되어 검사를 빠져나간다.
+test('본문을 다시 썼다는 선언이 있어야 대조를 면한다', () => {
+  assert.equal(classifyPack({ source: 'u' }), 'vendored')
+  assert.equal(classifyPack({ source: 'u', vendored: 'body-rewritten' }), 'body-rewritten')
+})
+
+test('마커 사이 본문을 앞뒤 개행 없이 떼어낸다', () => {
+  const md = ['머리말', '<!-- vendored:begin -->', '', '# 상류', '본문', '', '<!-- vendored:end -->', '꼬리말'].join('\n')
+  assert.equal(extractVendoredBody(md).body, '# 상류\n본문')
+})
+
+test('마커가 없거나 순서가 뒤집히거나 여러 번이면 사유를 낸다', () => {
+  assert.equal(extractVendoredBody('마커 없음').problem, 'missing-marker')
+  assert.equal(
+    extractVendoredBody('<!-- vendored:end -->\nx\n<!-- vendored:begin -->').problem,
+    'marker-out-of-order',
+  )
+  assert.equal(
+    extractVendoredBody(
+      ['<!-- vendored:begin -->', 'a', '<!-- vendored:end -->', '<!-- vendored:begin -->', 'b', '<!-- vendored:end -->'].join('\n'),
+    ).problem,
+    'marker-repeated',
+  )
+})
+
+test('내용이 기록과 다르면 검출한다', () => {
+  assert.deepEqual(findDrift({ 'a.md': 'x' }, { 'a.md': 'y' }), [{ path: 'a.md', problem: 'changed' }])
+  assert.deepEqual(findDrift({ 'a.md': 'x' }, { 'a.md': 'x' }), [])
+})
+
+// 한쪽만 보면 지우거나 더해서 빠져나갈 수 있다.
+test('파일이 사라진 것도 기록에 없는 것도 검출한다', () => {
+  const found = findDrift({ 'b.md': 'x' }, { 'a.md': 'x' })
+  assert.deepEqual(found, [
+    { path: 'a.md', problem: 'missing' },
+    { path: 'b.md', problem: 'unrecorded' },
+  ])
+})
+
+// ---------------------------------------------------------------- check와 CI
+// 둘은 서로 다른 파일에 있는 같은 목록이다. 벤더링 검사를 만들면서 check에는 넣고
+// CI에는 안 넣었다 — 손으로 찾았고, 못 찾았으면 그 검사는 병합을 막지 못했을 것이다.
+
+test('&& 사슬을 명령 목록으로 가른다', () => {
+  assert.deepEqual(commandsInScript('npm run a && npm run b'), ['npm run a', 'npm run b'])
+  assert.deepEqual(commandsInScript(undefined), [])
+})
+
+test('check에 있는데 CI에 없는 명령을 검출한다', () => {
+  const found = findChecksMissingFromCi('npm run a && npm run b', ['npm run a'])
+  assert.deepEqual(found, ['npm run b'])
+})
+
+// CI에 더 있는 것은 정상이다. npm ci 같은 준비 단계도, 로컬에서 돌릴 일이 없는
+// 전체 재생성 대조도 CI에만 있어야 한다. 위험한 쪽은 반대다.
+test('CI에만 있는 명령은 대상이 아니다', () => {
+  const found = findChecksMissingFromCi('npm run a', ['npm ci', 'npm run a', 'rm -rf .claude'])
+  assert.deepEqual(found, [])
+})
+
+// CRLF frontmatter를 못 읽으면 그 팩이 "우리 것"으로 분류돼 대조에서 통째로 빠진다.
+// 기존 팩은 기록에 남아 "파일이 없다"로 걸리지만, 새 팩을 CRLF로 넣으면 기록에
+// 들어가지도 않는다 — 조용한 우회다.
+
+test('CRLF frontmatter도 읽는다', () => {
+  const lf = '---\nname: x\nmetadata:\n  source: https://u\n---\n\n본문\n'
+  assert.equal(classifyPack(parseFrontmatter(lf).data?.metadata), 'vendored')
+  assert.equal(classifyPack(parseFrontmatter(lf.replace(/\n/g, '\r\n')).data?.metadata), 'vendored')
+})
+
+// 읽을 수 없는 것을 "없는 것"으로 흘려보내면 CRLF 말고 다른 이유로 못 읽는 경우도
+// 같은 자리로 새어 나간다. 사유를 내고 호출부가 실패로 다룬다.
+test('frontmatter가 없거나 깨지면 사유를 낸다', () => {
+  assert.ok(parseFrontmatter('frontmatter 없음').problem)
+  assert.ok(parseFrontmatter('---\na: 1\na: 2\n---\n').problem)
+  assert.ok(parseFrontmatter(undefined).problem)
+})
+
+test('빈 frontmatter는 빈 객체로 읽는다', () => {
+  const parsed = parseFrontmatter('---\n\n---\n본문')
+  assert.deepEqual(parsed.data, {})
+  assert.equal(classifyPack(parsed.data?.metadata), 'own')
+})
+
+// CI step 하나가 여러 줄이거나 &&로 이어질 수 있다. 통째로 대조하면 오탐이 난다.
+test('CI의 멀티라인·체인 step도 명령 단위로 가른다', () => {
+  const found = findChecksMissingFromCi('npm run a && npm run b', [
+    'npm ci',
+    'npm run a && npm run b',
+  ])
+  assert.deepEqual(found, [])
+})
+
+test('여러 줄 run에 섞여 있어도 찾는다', () => {
+  const found = findChecksMissingFromCi('npm run a', ['echo x\nnpm run a\necho y'])
+  assert.deepEqual(found, [])
 })

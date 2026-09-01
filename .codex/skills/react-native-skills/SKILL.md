@@ -8,10 +8,6 @@ description:
 license: MIT
 metadata:
   author: vercel
-  version: '1.0.0'
-license: MIT
-metadata:
-  author: vercel
   source: https://github.com/vercel-labs/agent-skills/tree/main/skills/react-native-skills
   version: "1.0.0"
 ---

@@ -8,7 +8,9 @@
     "validate": "node tooling/validators/validate.mjs",
     "test:contracts": "node --test tooling/validators/*.test.mjs",
     "generate": "node tooling/generators/generate.mjs",
-    "check": "npm run validate && npm run test:contracts && npm run lint:md && node tooling/generators/generate.mjs --check",
+    "vendor:check": "node tooling/vendoring/check.mjs",
+    "vendor:record": "node tooling/vendoring/check.mjs --record",
+    "check": "npm run validate && npm run test:contracts && npm run vendor:check && npm run lint:md && node tooling/generators/generate.mjs --check",
     "lint:md": "markdownlint-cli2"
   },
   "devDependencies": {
