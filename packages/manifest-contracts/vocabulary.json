@@ -55,6 +55,9 @@
     "test.e2e.red-confirmed": {
       "producedBy": "test-execution#e2e"
     },
+    "implementation.logic-scaffold.completed": {
+      "producedBy": "implementation#logic-scaffold"
+    },
     "implementation.logic.completed": {
       "producedBy": "implementation#logic"
     },
@@ -185,13 +188,15 @@
     "test.integration.red-proof": {
       "statuses": [
         "confirmed",
-        "rejected"
+        "rejected",
+        "moot"
       ]
     },
     "test.e2e.red-proof": {
       "statuses": [
         "confirmed",
-        "rejected"
+        "rejected",
+        "moot"
       ]
     },
     "test.skip-justification": {

@@ -42,7 +42,7 @@ Capability manifest의 `requires`·`produces`·`evidence[].kind`에 쓰이는 �
 | `test.integration.completed` | 통합 테스트가 실행됨 | `test-execution#integration` |
 | `test.e2e.completed` | E2E가 실행됨 | `test-execution#e2e` |
 | `implementation.completed` | 구현이 끝나고 변경 파일이 확정됨 | `implementation` |
-| `implementation.<phase>.completed` | 계층 구현 단계가 완료됨 (`logic`·`ui-scaffold`·`ui`·`integration`·`e2e`) | `implementation#<phase>` |
+| `implementation.<phase>.completed` | 계층 구현 단계가 완료됨 (`logic-scaffold`·`logic`·`ui-scaffold`·`ui`·`integration`·`e2e`) | `implementation#<phase>` |
 | `documentation.completed` | 문서 갱신이 끝나고 변경 파일이 확정됨 | `documentation` |
 | `review.completed` | 최종 판정이 내려짐 (통과 여부는 verdict가 담음) | `review` |
 
@@ -54,8 +54,10 @@ Capability manifest의 `requires`·`produces`·`evidence[].kind`에 쓰이는 �
 "테스트가 올바른 이유로 실패한다"를 분리한 이유는, 컴파일 에러나
 import 실패로 빨간 것을 구현 착수 근거로 삼지 않기 위해서다.
 
-unit은 순수 함수 구현 전에, UI는 import 가능한 무동작 스캐폴드 뒤에, integration과
-E2E는 선행 계층 green 뒤에 red를 확인한다. 모든 계층에서 러너 수집·컴파일 오류는
+unit과 UI는 각각 import 가능한 무동작 스캐폴드 뒤에, integration과
+E2E는 선행 계층 green 뒤에 red를 확인한다. 스캐폴드가 앞에 오는 이유는 모듈 해석
+실패가 red가 아니기 때문이다 — 신규 모듈은 파일이 존재해야 비로소 단언에 도달한다
+(ADR-0011). 모든 계층에서 러너 수집·컴파일 오류는
 `rejected`이며 단언 실패만 `confirmed`다.
 
 ## 2. 아티팩트 (artifact) — 다음 단계가 소비하는 산출물
@@ -90,13 +92,23 @@ E2E는 선행 계층 green 뒤에 red를 확인한다. 모든 계층에서 러�
 | `test.ui.result` | UI 렌더링·상호작용 테스트 결과 | `passed` · `failed` · `errored` |
 | `test.integration.result` | 통합 테스트 실행 결과 | `passed` · `failed` · `errored` |
 | `test.e2e.result` | E2E 실행 결과 | `passed` · `failed` · `errored` |
-| `test.<layer>.red-proof` | 해당 계층 실패가 예상한 단언 때문임을 보이는 근거 | `confirmed` · `rejected` |
+| `test.<layer>.red-proof` | 해당 계층 실패가 예상한 단언 때문임을 보이는 근거 | `confirmed` · `rejected` · `moot`(integration·e2e만) |
 | `test.skip-justification` | 어떤 테스트 층을 왜 생략했는지 | `recorded` |
 | `documentation-impact` | 이 변경이 어떤 문서에 영향을 주는지, 없다면 왜 없는지 | `required` · `not-applicable` |
 | `documentation.skip-justification` | 문서를 왜 고치지 않았는지 | `recorded` |
 | `review-findings` | 지적 목록 + 우선순위 + 소유자 | `recorded` |
 | `policy-decision` | 정책 판정 기록 (허용/거부 + 근거 정책 id) | `allowed` · `denied` |
 | `approval-record` | 파괴적 작업에 대한 사람의 승인 기록 | `granted` · `refused` |
+
+`moot`는 **red가 애초에 존재하지 않았던** 경우다 — 그 계층이 검증하려는 것을 선행 계층이
+이미 만들어놔서 첫 실행부터 전부 통과한다. 실패가 0건이므로 `confirmed`도 `rejected`도
+사실과 어긋난다. 생략과도 다르다 — 테스트는 작성됐고 실행됐고 통과했다.
+
+**`unit`·`ui`에는 `moot`가 없다.** 두 계층에는 앞에 스캐폴드 단계가 있고, 스캐폴드가 동작을
+의도적으로 비우므로 red가 반드시 관찰된다. `integration`·`e2e`는 비울 스캐폴드가 없고 선행
+계층이 만든 협력을 관찰할 뿐이라 red가 사라질 수 있다. 이 비대칭이 ADR-0012의 근거다.
+
+`moot`는 우회 통로가 아니다. 성립 조건은 `workflows/gates/require-red-evidence.md`가 정한다.
 
 `test.skip-justification`이 있어야 integration·e2e를 생략할 수 있다. 침묵 생략은
 "전부 통과"처럼 읽히므로 워크플로가 생략 사유를 증거로 남기도록 강제한다.

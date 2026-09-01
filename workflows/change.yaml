@@ -20,13 +20,29 @@ steps:
     produces: [specification.contract, specification.testids, specification.test-plan, specification.completed]
 
   # unit — 동작 변경 작업에서 생략할 수 없다.
-  - id: unit-design
-    capability: test-design
-    variant: unit
+  #
+  # 스캐폴드가 테스트보다 앞에 온다. 계약이 신규 모듈을 도입하면 그 파일이 없는 동안
+  # 테스트는 import를 해석하지 못하고, 모듈 해석 실패는 red가 아니다(test-runner 2절).
+  # 그러면 red 없이 파일을 못 만들고 파일 없이 red를 못 만드는 순환에 갇힌다.
+  # UI 계층의 ui-scaffold와 같은 자리, 같은 이유다 (ADR-0011).
+  # 생략할 수 없다 — 신규 모듈이 없으면 changed-files를 빈 목록으로 기록하면 된다.
+  # "만들 것이 없었다"와 "확인하지 않았다"를 구분하기 위해서다.
+  - id: logic-scaffold
+    capability: implementation
+    variant: logic-scaffold
     trigger: automatic
     dependsOn: [specification]
     expect:
       - { evidence: contract-diff, status: recorded, from: specification }
+    produces: [implementation.patch, implementation.summary, implementation.completed, implementation.logic-scaffold.completed]
+
+  - id: unit-design
+    capability: test-design
+    variant: unit
+    trigger: automatic
+    dependsOn: [logic-scaffold]
+    expect:
+      - { evidence: changed-files, status: recorded, from: logic-scaffold }
     produces: [test-design.unit.suite, test-design.unit.completed]
 
   - id: unit-red
@@ -150,6 +166,9 @@ steps:
     dependsOn: [integration-red]
     expectAnyOf:
       - conditions: [{ evidence: test.integration.red-proof, status: confirmed, from: integration-red }]
+      # red가 관찰되지 않은 경우. 선행 계층이 이 협력을 이미 만들어 첫 실행부터 통과한다.
+      # 생략이 아니다 — 테스트를 썼고 돌렸고 통과했다. 성립 조건은 게이트가 정한다 (ADR-0012).
+      - conditions: [{ evidence: test.integration.red-proof, status: moot, from: integration-red }]
       - conditions: [{ evidence: test.skip-justification, status: recorded, from: integration-red }]
     produces: [implementation.patch, implementation.summary, implementation.completed, implementation.integration.completed]
     skippable: *integration-skip
@@ -199,6 +218,9 @@ steps:
     dependsOn: [e2e-red]
     expectAnyOf:
       - conditions: [{ evidence: test.e2e.red-proof, status: confirmed, from: e2e-red }]
+      # red가 관찰되지 않은 경우. 선행 계층이 이 협력을 이미 만들어 첫 실행부터 통과한다.
+      # 생략이 아니다 — 테스트를 썼고 돌렸고 통과했다. 성립 조건은 게이트가 정한다 (ADR-0012).
+      - conditions: [{ evidence: test.e2e.red-proof, status: moot, from: e2e-red }]
       - conditions: [{ evidence: test.skip-justification, status: recorded, from: e2e-red }]
     produces: [implementation.patch, implementation.summary, implementation.completed, implementation.e2e.completed]
     skippable: *e2e-skip
