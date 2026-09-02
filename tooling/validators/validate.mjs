@@ -74,12 +74,23 @@ const checked = []
 // 조언은 실패가 아니다. 저장소가 자기 도구를 고르는 자리라 막지 않는다 (ADR-0037).
 // 이 채널이 없어서 "말은 해야 하는데 막으면 안 되는 것"을 담을 자리가 없었다.
 const advisories = []
+/**
+ * 보고에 쓸 경로.
+ *
+ * `--profile`이 가리키는 소비 저장소는 하네스 **밖**이라 ROOT 기준 상대 경로가
+ * `../../../../../..`로 시작한다. 어느 파일인지 못 읽는다. 밖이면 절대 경로를 쓴다.
+ */
+function display(path) {
+  const rel = relative(ROOT, path)
+  return rel.startsWith('..') ? path : rel
+}
+
 function advise(file, message) {
-  advisories.push({ file: relative(ROOT, file), message })
+  advisories.push({ file: display(file), message })
 }
 
 function fail(file, message) {
-  problems.push({ file: relative(ROOT, file), message })
+  problems.push({ file: display(file), message })
 }
 
 function readJson(path) {
@@ -1008,7 +1019,7 @@ function validateFile(path, kind, extraChecks) {
   }
 
   const mark = problems.length === before ? 'ok  ' : 'FAIL'
-  checked.push(`${mark} ${kind}: ${relative(ROOT, path)}`)
+  checked.push(`${mark} ${kind}: ${display(path)}`)
 }
 
 // ---------------------------------------------------------------- 정책 강제 수단 대조

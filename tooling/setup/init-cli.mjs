@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url'
 import { parse as parseYaml } from 'yaml'
 import { walk } from '../walk.mjs'
 import { declaredCommandKeys, CONVENTION_KEYS } from '../validators/command-keys.mjs'
-import { skeleton, submoduleProblem, whatIsLeft } from './init.mjs'
+import { skeleton, slug, submoduleProblem, whatIsLeft } from './init.mjs'
 
 const HARNESS = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 
@@ -40,8 +40,8 @@ const commandKeys = declaredCommandKeys(capabilities)
 
 const dir = join(repo, '.agent-harness')
 const profilePath = join(dir, 'profile.yaml')
-const name = basename(repo)
-const namespace = name.replace(/[^a-z0-9-]/gi, '-').toLowerCase().replace(/^-+|-+$/g, '') || 'repo'
+// id 와 namespace 가 같은 패턴을 요구한다. 한쪽만 정리하면 나머지가 검증에서 걸린다.
+const name = slug(basename(repo))
 
 console.log(`저장소  ${repo}`)
 
@@ -50,7 +50,7 @@ if (existsSync(profilePath)) {
   console.log(`프로파일  이미 있다 — 손대지 않는다`)
 } else {
   mkdirSync(dir, { recursive: true })
-  writeFileSync(profilePath, skeleton({ id: name, namespace, commandKeys, conventionKeys: CONVENTION_KEYS }))
+  writeFileSync(profilePath, skeleton({ id: name, namespace: name, commandKeys, conventionKeys: CONVENTION_KEYS }))
   console.log(`프로파일  ${join('.agent-harness', 'profile.yaml')} 을 만들었다`)
 }
 

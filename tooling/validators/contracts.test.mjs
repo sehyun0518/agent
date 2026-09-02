@@ -57,7 +57,7 @@ import { findBrokenSectionRefs, sectionNumbers } from './doc-refs.mjs'
 import { findUnknownHookEvents, hookEventOf, knownHookEvents, isHookDoc } from './hook-events.mjs'
 import { findLayerAdvice, renderLayerAdvice, testLayersInCommands } from './layer-advice.mjs'
 import { findLayerStepsWithoutEscape, findUnproducedVerdicts, layerOfStep } from './layer-applicability.mjs'
-import { skeleton, submoduleProblem, whatIsLeft } from '../setup/init.mjs'
+import { skeleton, slug, submoduleProblem, whatIsLeft } from '../setup/init.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -2956,4 +2956,29 @@ test('담김 판정은 이름이 겹치는 형제 디렉터리에 속지 않는�
   assert.equal(escapesBase('/repo', '../victim.txt'), true)
   assert.equal(escapesBase('/repo', '/etc/passwd'), true)
   assert.equal(escapesBase('/repo', 'a/../../b.md'), true)
+})
+
+test('디렉터리 이름을 스키마가 받는 식별자로 바꾼다', () => {
+  // id와 namespace가 같은 패턴을 요구한다 — ^[a-z][a-z0-9-]*$
+  assert.equal(slug('myapp'), 'myapp')
+  assert.equal(slug('MyApp'), 'myapp')
+  assert.equal(slug('my_app'), 'my-app')
+  assert.equal(slug('my.app.v2'), 'my-app-v2')
+  assert.equal(slug('블로그'), 'repo')
+})
+
+test('숫자나 기호로 시작해도 패턴을 지킨다', () => {
+  // ^[a-z] 다. 소문자화만으로는 부족하다 — 실제로 첫 검증에서 걸렸다.
+  assert.equal(slug('2048'), 'repo-2048')
+  assert.equal(slug('-app-'), 'app')
+  assert.equal(slug('_hidden'), 'hidden')
+  assert.equal(slug(''), 'repo')
+  assert.equal(slug(undefined), 'repo')
+})
+
+test('슬러그는 스키마 패턴을 실제로 통과한다', () => {
+  const pattern = /^[a-z][a-z0-9-]*$/
+  for (const name of ['MyApp', 'my_app', '2048', '블로그', '--x--', 'a.b.c', '']) {
+    assert.match(slug(name), pattern, `${name} 를 바꾼 값이 패턴을 어긴다`)
+  }
 })

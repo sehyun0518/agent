@@ -13,6 +13,31 @@
 // 검증은 하지 않는다. `validate --profile`이 그 일을 하고, 여기서 다시 하면 같은
 // 판정이 두 곳에 생긴다 (ADR-0039).
 
+/**
+ * 디렉터리 이름을 스키마가 받는 식별자로 바꾼다.
+ *
+ * `id`와 `namespace`가 **같은 패턴**을 요구한다 — `^[a-z][a-z0-9-]*$`. 전에는
+ * `namespace`만 정리하고 `id`는 디렉터리 이름을 그대로 썼다. 그래서 `MyApp`이나
+ * `my_app` 같은 흔한 이름에서 **첫 검증이 바로 실패했다.**
+ *
+ * ADR-0039 결정 3이 막으려던 것이 정확히 그 상황이다 — 통과에서 시작해야
+ * "설정이 잘못됐나"와 "아직 안 채웠나"가 구분된다.
+ *
+ * 숫자로 시작하는 이름도 패턴을 어긴다(`2048`). 앞에 글자를 붙인다.
+ *
+ * @param {string} name 디렉터리 이름
+ * @returns {string}
+ */
+export function slug(name) {
+  const cleaned = String(name ?? '')
+    .replace(/[^a-z0-9-]/gi, '-')
+    .toLowerCase()
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  if (!cleaned) return 'repo'
+  return /^[a-z]/.test(cleaned) ? cleaned : `repo-${cleaned}`
+}
+
 /** 최소 유효 프로파일. 스키마의 required 넷만 채우고 나머지는 주석으로 남긴다. */
 export function skeleton({ id, namespace, commandKeys, conventionKeys }) {
   const keys = (commandKeys ?? []).map((k) => `  #   ${k}`).join('\n')
