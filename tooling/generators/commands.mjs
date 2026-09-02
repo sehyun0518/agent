@@ -1,4 +1,5 @@
 import { shellArg } from '../shell.mjs'
+import { toPosix } from './consumer-mirror.mjs'
 
 /**
  * 수동 실행 대상을 계약에서 유도한다.
@@ -266,7 +267,9 @@ export function commandsFromWorkflows(workflows, profiles = []) {
  */
 export function harnessPathFrom(into, root, relative) {
   if (!into) return null
-  const rel = relative(into, root)
+  // 문서로 나가는 줄이다. Windows의 백슬래시를 그대로 적으면 셸에서 안 먹는다 —
+  // 매니페스트에서 같은 실수를 이미 했다 (ADR-0040).
+  const rel = toPosix(relative(into, root))
   return rel === '' ? '.' : rel
 }
 
@@ -282,6 +285,30 @@ export function harnessPathFrom(into, root, relative) {
  */
 export function toolScript(command, harnessPath) {
   if (!harnessPath || harnessPath === '.') return command.script
-  const lines = [`cd ${shellArg(harnessPath)}   # npm 스크립트는 하네스에 있다`, command.script]
-  return lines.join('\n')
+  // `cd` 뒤에는 소비 저장소 기준 경로가 안 맞는다. 도구가 인자를 현재 위치에서
+  // 푸므로, 읽는 사람이 알던 경로를 그대로 쓰면 **하네스 안을 가리킨다** (#106 리뷰).
+  // 그래서 자리표시자를 하네스에서 본 경로로 바꿔 준다.
+  const back = backTo(harnessPath)
+  const script = command.script
+    .replace('[--profile <경로>]', `--profile ${shellArg(`${back}/.agent-harness/profile.yaml`)}`)
+    .replace('<소비저장소 경로>', shellArg(back))
+  return [`cd ${shellArg(harnessPath)}   # npm 스크립트는 하네스에 있다`, script].join('\n')
+}
+
+/**
+ * 하네스에서 소비 저장소로 돌아가는 경로.
+ *
+ * `harnessPath`가 소비 저장소에서 하네스로 가는 길이므로, 되돌아가는 길은 그
+ * 구성 요소 수만큼 올라가는 것이다. `.agent-harness/harness` → `../..`.
+ *
+ * **하네스가 밖에 있으면 못 만든다.** `../side/agent`를 뒤집으면 소비 저장소의
+ * 이름을 알아야 하는데 여기 없다. 그때는 절대 경로를 쓰라고 자리표시자를 남긴다.
+ *
+ * @param {string} harnessPath
+ * @returns {string}
+ */
+export function backTo(harnessPath) {
+  const parts = harnessPath.split('/').filter((p) => p !== '' && p !== '.')
+  if (parts.some((p) => p === '..')) return '<소비저장소 절대경로>'
+  return parts.map(() => '..').join('/')
 }

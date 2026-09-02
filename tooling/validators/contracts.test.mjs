@@ -13,7 +13,7 @@ import { findForeignNamespaceTokens, insertTokens } from './profile-namespace.mj
 import { findUndeclaredNestedRepos, submodulePathsFrom } from './nested-repo.mjs'
 import { findWidenedHosts, findUnfilledAllowlist } from './network-scope.mjs'
 import { adrNumbers, findAdrIndexDrift } from './adr-index.mjs'
-import { harnessPathFrom, toolScript } from '../generators/commands.mjs'
+import { harnessPathFrom, toolScript, backTo } from '../generators/commands.mjs'
 import { shellArg } from '../shell.mjs'
 import {
   CONVENTION_KEYS,
@@ -3047,4 +3047,28 @@ test('붙여 넣어 쓰는 줄은 공백이 든 경로를 한 인자로 남긴�
 test('공백이 든 하네스 경로도 cd 한 줄로 남는다', () => {
   const rendered = toolScript({ name: 'step', script: 'npm run step' }, '../my harness/agent')
   assert.match(rendered, /^cd '\.\.\/my harness\/agent'/)
+})
+
+test('cd 뒤의 인자는 하네스에서 본 경로로 바뀐다', () => {
+  // 도구가 인자를 현재 위치에서 푼다. 읽는 사람이 알던 .agent-harness/profile.yaml 을
+  // 그대로 쓰면 하네스 안을 가리킨다 (#106 리뷰).
+  const step = { name: 'step', script: 'npm run step -- <workflow> <step> [--profile <경로>] [--run <runId>]' }
+  const out = toolScript(step, '.agent-harness/harness')
+  assert.match(out, /--profile \.\.\/\.\.\/\.agent-harness\/profile\.yaml/)
+  const init = { name: 'init', script: 'npm run init -- <소비저장소 경로>' }
+  assert.match(toolScript(init, '.agent-harness/harness'), /npm run init -- \.\.\/\.\./)
+})
+
+test('하네스가 저장소 밖이면 되돌아갈 길을 못 만든다', () => {
+  // ../side/agent 를 뒤집으려면 소비 저장소의 이름을 알아야 하는데 여기 없다.
+  // 지어내지 않고 절대 경로를 쓰라고 남긴다.
+  assert.equal(backTo('../side/agent'), '<소비저장소 절대경로>')
+  assert.equal(backTo('.agent-harness/harness'), '../..')
+  assert.equal(backTo('harness'), '..')
+})
+
+test('하네스 경로도 플랫폼과 무관하게 슬래시다', () => {
+  // 문서로 나가는 줄이다. 백슬래시는 셸에서 안 먹는다.
+  const winRelative = () => '.agent-harness\\harness'
+  assert.equal(harnessPathFrom('/r', '/r/.agent-harness/harness', winRelative), '.agent-harness/harness')
 })
