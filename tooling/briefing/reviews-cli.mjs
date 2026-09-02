@@ -5,7 +5,7 @@
 // 거기 붙는다.
 
 import { execFileSync } from 'node:child_process'
-import { findUnansweredReviews, findPendingChecks, reviewers } from './reviews.mjs'
+import { findUnansweredReviews, findPendingChecks, reviewers, reviewCoverage } from './reviews.mjs'
 
 const pr = process.argv[2]
 
@@ -53,7 +53,9 @@ const checks = ghChecks(['pr', 'checks', pr, '--json', 'name,state,bucket']) ?? 
 
 // API가 배열이 아닌 것을 돌려줄 수 있다. 순수 함수는 막고 있지만 아래 루프는 안 막는다.
 const commentList = Array.isArray(comments) ? comments : []
-const reviewed = reviewers(gh(['pr', 'view', pr, '--json', 'reviews']).reviews)
+const view = gh(['pr', 'view', pr, '--json', 'reviews,headRefOid'])
+const reviewed = reviewers(view.reviews)
+const coverage = reviewCoverage(view.reviews, view.headRefOid)
 const unanswered = findUnansweredReviews(commentList)
 const pending = findPendingChecks(checks)
 
@@ -65,6 +67,7 @@ for (const c of commentList) {
 
 console.log(`PR #${pr}`)
 console.log(`  리뷰를 낸 쪽  ${reviewed.length ? reviewed.join(' · ') : '없음  ⚠'}`)
+console.log(`  최신을 본 쪽  ${coverage.sawHead.length ? coverage.sawHead.join(' · ') : '없음  ⚠'}`)
 if (byBot.size === 0) console.log('  봇 인라인 지적 없음')
 for (const [bot, total] of byBot) {
   const left = unanswered.filter((u) => u.bot === bot).length
@@ -84,7 +87,15 @@ if (pending.length) console.log(`\n진행 중인 체크: ${pending.join(' · ')}
 // 아무도 안 본 것과 보고 지적이 없는 것은 다르다.
 if (reviewed.length === 0) console.log('\n아직 아무도 리뷰를 내지 않았다. 지적이 없는 것과 다르다.')
 
-if (unanswered.length || pending.length || reviewed.length === 0) {
+// 리뷰가 있어도 그것이 지금 머지될 커밋을 본 것이 아니면 아무도 안 본 것과 같다.
+if (coverage.stale.length) {
+  console.log(`\n낡은 리뷰 — 지금 머지될 ${view.headRefOid.slice(0, 7)} 를 안 봤다`)
+  for (const { login, commit } of coverage.stale) {
+    console.log(`  ${login.padEnd(26)}본 커밋 ${String(commit).slice(0, 7)}`)
+  }
+}
+
+if (unanswered.length || pending.length || coverage.sawHead.length === 0) {
   console.log('\n머지하기 전에 볼 것이 있다.')
   process.exit(1)
 }

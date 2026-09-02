@@ -58,6 +58,42 @@ export function reviewers(reviews) {
 }
 
 /**
+ * 리뷰가 **지금 머지될 커밋**을 봤는가.
+ *
+ * `reviewers`만으로는 부족했다. 리뷰가 하나 있어도 그것이 두 커밋 전을 본 것이면
+ * 지금 머지되는 코드는 아무도 안 본 것이다. 실제로 그 상태에서 이 도구가 초록으로
+ * 말했다 (#107).
+ *
+ * **이것이 CI가 못 잡는 자리와 같은 자리다.** CI는 푸시에 돌지만 리뷰는 사람이나
+ * 봇이 따로 낸다 — 마지막 푸시 뒤에 안 온 리뷰는 낡은 채로 남는다.
+ *
+ * **봇이 뭐라고 썼는지는 읽지 않는다.** 한도 소진·건너뜀·진행 중을 문구로 가르면
+ * 벤더가 문구를 바꿀 때 조용히 깨지고, 봇이 늘 때마다 여기가 늘어난다. 어느 커밋을
+ * 봤는지만 본다 — 그것은 GitHub이 주는 구조다.
+ *
+ * @param {Array<{author?: {login?: string}, commit?: {oid?: string}}>} reviews
+ * @param {string} headSha 지금 머지될 커밋
+ * @returns {{sawHead: string[], stale: Array<{login: string, commit: string}>}}
+ */
+export function reviewCoverage(reviews, headSha) {
+  const sawHead = new Set()
+  const stale = new Map()
+  for (const review of reviews ?? []) {
+    const login = review?.author?.login
+    if (!login) continue
+    const commit = review?.commit?.oid
+    // 커밋을 모르면 봤다고 치지 않는다. 모르는 것과 최신을 본 것은 다르다.
+    if (headSha && commit === headSha) sawHead.add(login)
+    else stale.set(login, commit ?? '알 수 없음')
+  }
+  for (const login of sawHead) stale.delete(login)
+  return {
+    sawHead: [...sawHead],
+    stale: [...stale].map(([login, commit]) => ({ login, commit })),
+  }
+}
+
+/**
  * 아직 끝나지 않은 체크.
  *
  * 리뷰 봇은 체크로도 상태를 낸다 — CodeRabbit이 `Review in progress`를 그렇게

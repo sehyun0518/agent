@@ -56,7 +56,7 @@ import {
 import { buildStepBriefing, renderStepBriefing, parseGateHeader, stepIds } from '../briefing/step.mjs'
 import { walk } from '../walk.mjs'
 import { matchExpectations, readEvidenceRecords } from '../briefing/evidence.mjs'
-import { findUnansweredReviews, findPendingChecks, reviewers } from '../briefing/reviews.mjs'
+import { findUnansweredReviews, findPendingChecks, reviewers, reviewCoverage } from '../briefing/reviews.mjs'
 import { findBrokenSectionRefs, sectionNumbers } from './doc-refs.mjs'
 import { findUnknownHookEvents, hookEventOf, knownHookEvents, isHookDoc } from './hook-events.mjs'
 import { findLayerAdvice, renderLayerAdvice, testLayersInCommands } from './layer-advice.mjs'
@@ -3071,4 +3071,46 @@ test('하네스 경로도 플랫폼과 무관하게 슬래시다', () => {
   // 문서로 나가는 줄이다. 백슬래시는 셸에서 안 먹는다.
   const winRelative = () => '.agent-harness\\harness'
   assert.equal(harnessPathFrom('/r', '/r/.agent-harness/harness', winRelative), '.agent-harness/harness')
+})
+
+// ── 리뷰가 최신을 봤는가 (#107) ─────────────────────────────────────────
+
+test('두 커밋 전을 본 리뷰는 최신을 본 것이 아니다', () => {
+  // 리뷰가 하나 있어도 그것이 낡았으면 지금 머지되는 코드는 아무도 안 본 것이다.
+  const out = reviewCoverage([{ author: { login: 'bot' }, commit: { oid: 'old' } }], 'head')
+  assert.deepEqual(out.sawHead, [])
+  assert.deepEqual(out.stale, [{ login: 'bot', commit: 'old' }])
+})
+
+test('최신을 본 리뷰가 있으면 낡은 것으로 세지 않는다', () => {
+  // 같은 봇이 낡은 것과 최신 것을 둘 다 냈으면 최신을 본 것이다.
+  const out = reviewCoverage(
+    [
+      { author: { login: 'bot' }, commit: { oid: 'old' } },
+      { author: { login: 'bot' }, commit: { oid: 'head' } },
+    ],
+    'head',
+  )
+  assert.deepEqual(out.sawHead, ['bot'])
+  assert.deepEqual(out.stale, [])
+})
+
+test('커밋을 모르면 봤다고 치지 않는다', () => {
+  // 모르는 것과 최신을 본 것은 다르다. 안전한 방향은 안 봤다고 보는 쪽이다.
+  const out = reviewCoverage([{ author: { login: 'bot' } }], 'head')
+  assert.deepEqual(out.sawHead, [])
+  assert.equal(out.stale[0].commit, '알 수 없음')
+})
+
+test('봇이 뭐라고 썼는지는 보지 않는다', () => {
+  // 한도 소진·건너뜀을 문구로 가르면 벤더가 문구를 바꿀 때 조용히 깨진다.
+  // 판정은 커밋만 본다 — 본문이 무엇이든 같은 결과여야 한다.
+  const skipped = { author: { login: 'bot' }, body: 'Review skipped', commit: { oid: 'head' } }
+  const judged = { author: { login: 'bot' }, body: 'No issues found', commit: { oid: 'head' } }
+  assert.deepEqual(reviewCoverage([skipped], 'head'), reviewCoverage([judged], 'head'))
+})
+
+test('리뷰가 없으면 최신을 본 쪽도 없다', () => {
+  assert.deepEqual(reviewCoverage([], 'head'), { sawHead: [], stale: [] })
+  assert.deepEqual(reviewCoverage(undefined, 'head'), { sawHead: [], stale: [] })
 })
