@@ -6,7 +6,7 @@
 // 워크플로 선행조건 도달 가능성, 미러 드리프트.
 
 import { readFileSync, readdirSync, existsSync, lstatSync } from 'node:fs'
-import { join, relative, resolve, dirname, basename } from 'node:path'
+import { join, relative, resolve, dirname, basename, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import Ajv from 'ajv/dist/2020.js' // 스키마가 draft 2020-12를 쓴다
 import addFormats from 'ajv-formats'
@@ -74,12 +74,25 @@ const checked = []
 // 조언은 실패가 아니다. 저장소가 자기 도구를 고르는 자리라 막지 않는다 (ADR-0037).
 // 이 채널이 없어서 "말은 해야 하는데 막으면 안 되는 것"을 담을 자리가 없었다.
 const advisories = []
+/**
+ * 보고에 쓸 경로.
+ *
+ * `--profile`이 가리키는 소비 저장소는 하네스 **밖**이라 ROOT 기준 상대 경로가
+ * `../../../../../..`로 시작한다. 어느 파일인지 못 읽는다. 밖이면 절대 경로를 쓴다.
+ */
+function display(path) {
+  const rel = relative(ROOT, path)
+  // 구성 요소로 본다. `..cache/` 같은 ROOT 안의 이름이 `..` 로 시작한다고
+  // 밖으로 오판하면 안 된다 (#104 리뷰).
+  return rel === '..' || rel.startsWith(`..${sep}`) ? path : rel
+}
+
 function advise(file, message) {
-  advisories.push({ file: relative(ROOT, file), message })
+  advisories.push({ file: display(file), message })
 }
 
 function fail(file, message) {
-  problems.push({ file: relative(ROOT, file), message })
+  problems.push({ file: display(file), message })
 }
 
 function readJson(path) {
@@ -1008,7 +1021,7 @@ function validateFile(path, kind, extraChecks) {
   }
 
   const mark = problems.length === before ? 'ok  ' : 'FAIL'
-  checked.push(`${mark} ${kind}: ${relative(ROOT, path)}`)
+  checked.push(`${mark} ${kind}: ${display(path)}`)
 }
 
 // ---------------------------------------------------------------- 정책 강제 수단 대조
