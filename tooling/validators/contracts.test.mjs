@@ -14,6 +14,7 @@ import { findUndeclaredNestedRepos, submodulePathsFrom } from './nested-repo.mjs
 import { findWidenedHosts, findUnfilledAllowlist } from './network-scope.mjs'
 import { adrNumbers, findAdrIndexDrift } from './adr-index.mjs'
 import { harnessPathFrom, toolScript } from '../generators/commands.mjs'
+import { shellArg } from '../shell.mjs'
 import {
   CONVENTION_KEYS,
   declaredCommandKeys,
@@ -3032,4 +3033,18 @@ test('하네스 자기 미러에는 cd를 붙이지 않는다', () => {
   const command = { name: 'step', script: 'npm run step -- <workflow> <step>' }
   assert.equal(toolScript(command, null), command.script)
   assert.equal(toolScript(command, '.'), command.script)
+})
+
+test('붙여 넣어 쓰는 줄은 공백이 든 경로를 한 인자로 남긴다', () => {
+  // init 이 찍는 경로에서 처음 났고 도구 커맨드의 cd 줄에서 똑같이 다시 났다.
+  // 해법을 한 파일 안에만 두었기 때문이다 (#102 · #106).
+  assert.equal(shellArg('/a/b-c.d'), '/a/b-c.d')
+  assert.equal(shellArg('../my harness/agent'), "'../my harness/agent'")
+  assert.equal(shellArg("it's"), "'it'\\''s'")
+  assert.equal(shellArg(''), "''")
+})
+
+test('공백이 든 하네스 경로도 cd 한 줄로 남는다', () => {
+  const rendered = toolScript({ name: 'step', script: 'npm run step' }, '../my harness/agent')
+  assert.match(rendered, /^cd '\.\.\/my harness\/agent'/)
 })

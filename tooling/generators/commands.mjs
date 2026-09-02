@@ -1,3 +1,5 @@
+import { shellArg } from '../shell.mjs'
+
 /**
  * 수동 실행 대상을 계약에서 유도한다.
  *
@@ -280,6 +282,6 @@ export function harnessPathFrom(into, root, relative) {
  */
 export function toolScript(command, harnessPath) {
   if (!harnessPath || harnessPath === '.') return command.script
-  const lines = [`cd ${harnessPath}   # npm 스크립트는 하네스에 있다`, command.script]
+  const lines = [`cd ${shellArg(harnessPath)}   # npm 스크립트는 하네스에 있다`, command.script]
   return lines.join('\n')
 }
