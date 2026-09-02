@@ -16,7 +16,7 @@ const isBot = (login) => /\[bot\]$/.test(login ?? '')
  * 답하지 않은 봇 지적.
  *
  * 스레드의 뿌리(`in_reply_to_id`가 없는 것)가 봇이고, 그 스레드에 사람 답글이
- * 하나도 없으면 미응답이다. 봇이 봇에게 단 답글은 세지 않는다 — CodeRabbit이 내
+ * 하나도 없으면 미응답이다. 봇이 봇에게 단 답글은 세지 않는다 — 리뷰 봇이 내
  * 답글에 다시 답하는 일이 있고, 그것은 내가 답한 증거가 아니다.
  *
  * @param {Array<{id: number, in_reply_to_id: number|null, user: {login: string}, path?: string, line?: number, html_url?: string}>} comments
@@ -60,8 +60,8 @@ export function reviewers(reviews) {
 /**
  * 아직 끝나지 않은 체크.
  *
- * 리뷰 봇은 체크로도 상태를 낸다 — CodeRabbit이 `Review in progress`를 그렇게
- * 알린다. 진행 중인 것이 있으면 지적이 더 올 수 있다.
+ * 리뷰 봇은 체크로도 상태를 낸다 — 리뷰가 진행 중임을 체크로 알리는 봇이 있다.
+ * 진행 중인 것이 있으면 지적이 더 올 수 있다.
  *
  * @param {Array<{name: string, state?: string, conclusion?: string, bucket?: string}>} checks
  * @returns {string[]} 진행 중인 체크 이름
