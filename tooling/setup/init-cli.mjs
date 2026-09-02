@@ -91,3 +91,12 @@ if (conventionsMissing.length) {
 console.log('\n다음')
 console.log(`  node ${join('<하네스>', 'tooling', 'validators', 'validate.mjs')} --profile ${join('.agent-harness', 'profile.yaml')}`)
 console.log('  채우지 않은 계층 규약은 도메인 것을 제안받는다 (ADR-0037)')
+
+// 프로파일만 있으면 이 저장소에서 흐름을 시작할 수 없다 — 역할·스킬·커맨드가
+// 하네스 안에만 있기 때문이다. 실제로 `commands`가 0인 저장소를 봤다 (ADR-0040).
+const mirrored = existsSync(join(dir, 'generated.json'))
+console.log(`\n생성물  ${mirrored ? '이 저장소에 있다 — 하네스를 올렸으면 다시 낸다' : '아직 없다 — /step 같은 커맨드를 칠 수 없다'}`)
+// 붙여 넣어 쓰는 줄이다. 공백이 든 경로는 인자가 쪼개져 --into 가 엉뚱한 값을 받는다.
+const shell = (path) => (/^[\w./-]+$/.test(path) ? path : `'${path.replace(/'/g, `'\\''`)}'`)
+console.log(`  npm run generate -- --check --into ${shell(repo)}   먼저 무엇이 바뀌는지 본다`)
+console.log(`  npm run generate -- --into ${shell(repo)}`)

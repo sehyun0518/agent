@@ -17,6 +17,14 @@ import {
   findUnusedCommandKeys,
 } from './command-keys.mjs'
 import {
+  MANIFEST_PATH,
+  toPosix,
+  escapesBase,
+  buildManifest,
+  findStaleMirrorFiles,
+  findUnmanagedFiles,
+} from '../generators/consumer-mirror.mjs'
+import {
   normalize,
   classifyPack,
   extractVendoredBody,
@@ -2858,3 +2866,94 @@ test('프로파일이 비어도 터지지 않는다', () => {
   assert.deepEqual(whatIsLeft({}, undefined, undefined), { missing: [], conventionsMissing: [] })
 })
 
+
+// ── 소비 저장소 미러 (ADR-0040) ─────────────────────────────────────────
+
+test('지난번에 놓았는데 이번에 안 낸 것만 지운다', () => {
+  const stale = findStaleMirrorFiles(
+    ['.claude/agents/spec.md'],
+    { files: ['.claude/agents/spec.md', '.claude/agents/gone.md'] },
+  )
+  assert.deepEqual(stale, ['.claude/agents/gone.md'])
+})
+
+test('매니페스트가 없으면 아무것도 지우지 않는다', () => {
+  // 처음 내는 저장소다. 여기서 present를 지우기 시작하면 남의 것을 지운다.
+  assert.deepEqual(findStaleMirrorFiles(['.claude/agents/spec.md'], {}), [])
+  assert.deepEqual(findStaleMirrorFiles(['.claude/agents/spec.md'], undefined), [])
+})
+
+test('저장소가 자기 것으로 둔 파일은 지우지 않고 말만 한다', () => {
+  const unmanaged = findUnmanagedFiles(
+    ['.claude/agents/spec.md', '.claude/agents/mine.md'],
+    ['.claude/agents/spec.md'],
+    {},
+  )
+  assert.deepEqual(unmanaged, ['.claude/agents/mine.md'])
+})
+
+test('지난번 매니페스트에 있으면 관리하지 않는 것이 아니다', () => {
+  // 이번에 안 냈어도 우리가 놓은 것이다. stale 쪽이 가져간다 — 양쪽에 걸리면 안 된다.
+  const previous = { files: ['.claude/agents/gone.md'] }
+  assert.deepEqual(findUnmanagedFiles(['.claude/agents/gone.md'], [], previous), [])
+  assert.deepEqual(findStaleMirrorFiles([], previous), ['.claude/agents/gone.md'])
+})
+
+test('매니페스트는 어느 판이 냈는지와 정렬된 목록을 담는다', () => {
+  const manifest = buildManifest({ version: '0.3.0', files: ['b.md', 'a.md'] })
+  assert.equal(manifest.harness, '0.3.0')
+  assert.deepEqual(manifest.files, ['a.md', 'b.md'])
+  assert.match(manifest.$comment, /직접 고치지 않는다/)
+})
+
+test('매니페스트 자리는 프로파일 옆이다', () => {
+  // init이 쓰는 .agent-harness/ 와 같은 디렉터리여야 소비 저장소가 한 곳만 본다.
+  assert.equal(MANIFEST_PATH, '.agent-harness/generated.json')
+})
+
+test('매니페스트 경로는 플랫폼과 무관하게 슬래시다', () => {
+  // 매니페스트가 저장소에 커밋되어 플랫폼을 건너다닌다. Windows에서 낸 것을
+  // macOS에서 읽으면 겹치는 경로가 없고 지난번 것 **전부**가 지울 대상이 된다.
+  assert.equal(toPosix('.claude\\agents\\spec.md'), '.claude/agents/spec.md')
+  assert.equal(toPosix('.claude/agents/spec.md'), '.claude/agents/spec.md')
+})
+
+test('Windows에서 낸 매니페스트를 POSIX에서 읽어도 지울 것이 없다', () => {
+  const previous = { files: ['.claude\\agents\\spec.md'] }
+  assert.deepEqual(findStaleMirrorFiles(['.claude/agents/spec.md'], previous), [])
+  assert.deepEqual(findUnmanagedFiles(['.claude/agents/spec.md'], [], previous), [])
+})
+
+test('매니페스트를 손으로 고쳐 files가 배열이 아니면 없는 것으로 본다', () => {
+  // 문자열이면 스프레드가 글자로 쪼개지고 숫자면 터진다. 둘 다 소비 저장소에서 난다.
+  for (const broken of ['a.md', 42, null, { a: 1 }]) {
+    assert.deepEqual(findStaleMirrorFiles(['x.md'], { files: broken }), [])
+    assert.deepEqual(findUnmanagedFiles(['y.md'], [], { files: broken }), ['y.md'])
+  }
+})
+
+test('매니페스트에 적히는 경로도 슬래시로 고른다', () => {
+  assert.deepEqual(buildManifest({ version: '0.3.0', files: ['a\\b.md'] }).files, ['a/b.md'])
+})
+
+test('매니페스트가 저장소 밖을 가리키면 지울 대상에서 뺀다', () => {
+  // 매니페스트는 소비 저장소 안의 데이터 파일이다. ../ 가 들어가면
+  // join(INTO, rel) 이 밖을 가리키고 rmSync 가 남의 파일을 지운다 (#102 리뷰).
+  const previous = { files: ['.claude/agents/gone.md', '../victim.txt', '/etc/passwd'] }
+  assert.deepEqual(findStaleMirrorFiles([], previous, '/repo'), ['.claude/agents/gone.md'])
+})
+
+test('base를 안 주면 거르지 않는다', () => {
+  // 하네스 자기 미러에는 소비 저장소 개념이 없다. 인자를 선택으로 두되
+  // 안 주면 전과 같이 동작해야 한다.
+  assert.deepEqual(findStaleMirrorFiles([], { files: ['../x.md'] }), ['../x.md'])
+})
+
+test('담김 판정은 이름이 겹치는 형제 디렉터리에 속지 않는다', () => {
+  assert.equal(escapesBase('/repo', '.claude/a.md'), false)
+  assert.equal(escapesBase('/repo', '.'), false)
+  assert.equal(escapesBase('/repo', '../repo-evil/a.md'), true)
+  assert.equal(escapesBase('/repo', '../victim.txt'), true)
+  assert.equal(escapesBase('/repo', '/etc/passwd'), true)
+  assert.equal(escapesBase('/repo', 'a/../../b.md'), true)
+})

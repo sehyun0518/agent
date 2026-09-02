@@ -3,12 +3,13 @@
 //
 //   node tooling/generators/generate.mjs           미러를 쓴다
 //   node tooling/generators/generate.mjs --check   쓰지 않고 드리프트만 보고한다 (CI 게이트)
+//   node tooling/generators/generate.mjs --into <경로>   소비 저장소로 낸다 (ADR-0040)
 //
 // 생성 대상(.claude · .codex)은 직접 편집하지 않는다. 소스를 고치고 다시 생성한다.
 // 생성 집합에 없는데 관리 디렉터리에 남아 있는 파일은 고아로 보고하고 제거한다.
 
-import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, statSync, rmSync } from 'node:fs'
-import { join, dirname, relative } from 'node:path'
+import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, statSync, realpathSync, rmSync } from 'node:fs'
+import { join, dirname, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
 import {
@@ -17,6 +18,13 @@ import {
   findUndeclaredPlatforms,
   renderPermissionFile,
 } from './permissions.mjs'
+import {
+  MANIFEST_PATH,
+  toPosix,
+  buildManifest,
+  findStaleMirrorFiles,
+  findUnmanagedFiles,
+} from './consumer-mirror.mjs'
 import {
   commandsFromCapabilities,
   commandsFromProfile,
@@ -27,6 +35,46 @@ import {
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const CHECK_ONLY = process.argv.includes('--check')
+
+// `--into <경로>`면 소비 저장소로 낸다. 소스는 언제나 하네스에서 읽고 출력만 옮긴다
+// (ADR-0040). 안 주면 하네스 자기 미러다.
+const intoFlag = process.argv.indexOf('--into')
+if (intoFlag !== -1 && !process.argv[intoFlag + 1]) {
+  console.error('--into 뒤에 경로가 없다.')
+  process.exit(2)
+}
+const INTO = intoFlag === -1 ? null : resolve(process.argv[intoFlag + 1])
+const OUT_BASE = INTO ?? ROOT
+if (INTO && !existsSync(INTO)) {
+  console.error(`--into ${process.argv[intoFlag + 1]} 가 없다.`)
+  process.exit(2)
+}
+// existsSync는 일반 파일도 통과시킨다. 그대로 두면 나중에 ENOTDIR로 죽어서
+// 인자가 잘못됐다는 것이 안 보인다 — init-cli가 이미 같은 검사를 한다.
+if (INTO && !statSync(INTO).isDirectory()) {
+  console.error(`--into ${process.argv[intoFlag + 1]} 은 디렉터리가 아니다.`)
+  process.exit(2)
+}
+
+/**
+ * 쓰려는 디렉터리가 정말 소비 저장소 안인지.
+ *
+ * 남의 저장소를 받아 여기에 겨눌 수 있다. `.claude`가 저장소 밖을 가리키는
+ * 심볼릭 링크면 `writeFileSync`가 **그 밖에** 425개를 쓴다. 문자열 담김으로는
+ * 안 걸리므로 실제 경로로 본다 (#102 리뷰).
+ */
+function refuseEscapingOutput(dir) {
+  if (!INTO) return
+  let probe = dir
+  while (!existsSync(probe) && dirname(probe) !== probe) probe = dirname(probe)
+  const real = realpathSync(probe)
+  const root = realpathSync(INTO)
+  if (real !== root && !real.startsWith(root + sep)) {
+    console.error(`${relative(INTO, dir)} 이 저장소 밖(${real})을 가리킨다 — 쓰지 않는다.`)
+    console.error('  심볼릭 링크를 걷어내고 다시 부른다.')
+    process.exit(2)
+  }
+}
 
 const platforms = JSON.parse(readFileSync(join(ROOT, 'tooling', 'generators', 'platforms.json'), 'utf8'))
 
@@ -396,7 +444,7 @@ function renderCodexEntry({ capabilities, workflows, profiles }) {
 // ------------------------------------------------------------------ 출력
 
 function emit(path, content) {
-  const rel = relative(ROOT, path)
+  const rel = toPosix(relative(OUT_BASE, path))
   expected.add(rel)
 
   const current = existsSync(path) ? readFileSync(path, 'utf8') : null
@@ -419,7 +467,8 @@ const { agents, skills } = sources
 
 for (const [platform, config] of Object.entries(platforms)) {
   if (platform.startsWith('$') || !config.enabled) continue
-  const out = (...parts) => join(ROOT, config.outputDir, ...parts)
+  const out = (...parts) => join(OUT_BASE, config.outputDir, ...parts)
+  refuseEscapingOutput(join(OUT_BASE, config.outputDir))
 
   if (platform === 'claude') {
     for (const agent of agents) emit(out(config.agentDir, `${agent.id}.md`), renderClaudeAgent(agent, config))
@@ -491,14 +540,57 @@ for (const name of findUndeclaredPlatforms(platforms, permissionTable)) {
 // 생성 집합에 없는데 관리 디렉터리에 남아 있는 파일. 이름이 바뀐 역할의 옛 파일이
 // 그대로 남으면 플랫폼이 그걸 계속 읽는다.
 
-for (const [platform, config] of Object.entries(platforms)) {
-  if (platform.startsWith('$') || !config.enabled) continue
-  for (const sub of [config.agentDir, config.skillDir, 'rules'].filter(Boolean)) {
-    for (const path of listFiles(join(ROOT, config.outputDir, sub))) {
-      const rel = relative(ROOT, path)
-      if (expected.has(rel)) continue
-      orphans.push(rel)
-      if (!CHECK_ONLY) rmSync(path)
+const unmanaged = []
+
+if (INTO) {
+  // 소비 저장소는 자기 역할·스킬을 가질 수 있다. **생성 집합에 없다고 지우지 않는다** —
+  // 지난번에 우리가 놓은 것만 지운다 (ADR-0040).
+  const manifestPath = join(INTO, MANIFEST_PATH)
+  refuseEscapingOutput(dirname(manifestPath))
+  // 손으로 고칠 파일이다 — ADR-0040이 고치지 말라고 적어 둔 것이 그 증거다. 여기서
+  // 죽으면 다시 내서 고칠 길까지 막힌다. 조용히 넘기지는 않는다.
+  let previous = {}
+  if (existsSync(manifestPath)) {
+    try {
+      previous = JSON.parse(readFileSync(manifestPath, 'utf8'))
+    } catch (error) {
+      console.warn(`매니페스트를 읽지 못했다 — 이번엔 아무것도 지우지 않고 다시 쓴다.`)
+      console.warn(`  ${MANIFEST_PATH}: ${String(error.message).split('\n')[0]}`)
+    }
+  }
+  const emitted = [...expected]
+
+  for (const rel of findStaleMirrorFiles(emitted, previous, INTO)) {
+    const path = join(INTO, rel)
+    if (!existsSync(path)) continue
+    orphans.push(rel)
+    if (!CHECK_ONLY) rmSync(path)
+  }
+
+  const present = []
+  for (const [platform, config] of Object.entries(platforms)) {
+    if (platform.startsWith('$') || !config.enabled) continue
+    for (const sub of [config.agentDir, config.skillDir, config.commandDir, 'rules'].filter(Boolean)) {
+      for (const path of listFiles(join(INTO, config.outputDir, sub))) present.push(toPosix(relative(INTO, path)))
+    }
+  }
+  unmanaged.push(...findUnmanagedFiles(present, emitted, previous))
+
+  if (!CHECK_ONLY) {
+    const version = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version
+    mkdirSync(dirname(manifestPath), { recursive: true })
+    writeFileSync(manifestPath, `${JSON.stringify(buildManifest({ version, files: emitted }), null, 2)}\n`)
+  }
+} else {
+  for (const [platform, config] of Object.entries(platforms)) {
+    if (platform.startsWith('$') || !config.enabled) continue
+    for (const sub of [config.agentDir, config.skillDir, 'rules'].filter(Boolean)) {
+      for (const path of listFiles(join(ROOT, config.outputDir, sub))) {
+        const rel = toPosix(relative(ROOT, path))
+        if (expected.has(rel)) continue
+        orphans.push(rel)
+        if (!CHECK_ONLY) rmSync(path)
+      }
     }
   }
 }
@@ -509,6 +601,13 @@ console.log(
   `소스: 에이전트 ${agents.length}, 스킬 ${skills.size}, ` +
     `Capability ${sources.capabilities.length}, 워크플로 ${sources.workflows.length}`,
 )
+
+if (unmanaged.length > 0) {
+  // 지우지 않는다. 저장소가 일부러 둔 것일 수 있고 그 판단은 저장소가 한다.
+  console.log(`\n하네스가 관리하지 않는 파일 ${unmanaged.length}개 — 손대지 않는다:`)
+  for (const rel of unmanaged) console.log(`  · ${rel}`)
+  console.log('  손으로 복사한 것이면 이제 하네스가 내는 것으로 바뀌었는지 본다 (ADR-0040)')
+}
 
 if (errors.length > 0) {
   console.error('\n오류:')
