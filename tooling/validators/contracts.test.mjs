@@ -18,6 +18,7 @@ import {
 } from './command-keys.mjs'
 import {
   MANIFEST_PATH,
+  toPosix,
   buildManifest,
   findStaleMirrorFiles,
   findUnmanagedFiles,
@@ -2907,4 +2908,29 @@ test('매니페스트는 어느 판이 냈는지와 정렬된 목록을 담는�
 test('매니페스트 자리는 프로파일 옆이다', () => {
   // init이 쓰는 .agent-harness/ 와 같은 디렉터리여야 소비 저장소가 한 곳만 본다.
   assert.equal(MANIFEST_PATH, '.agent-harness/generated.json')
+})
+
+test('매니페스트 경로는 플랫폼과 무관하게 슬래시다', () => {
+  // 매니페스트가 저장소에 커밋되어 플랫폼을 건너다닌다. Windows에서 낸 것을
+  // macOS에서 읽으면 겹치는 경로가 없고 지난번 것 **전부**가 지울 대상이 된다.
+  assert.equal(toPosix('.claude\\agents\\spec.md'), '.claude/agents/spec.md')
+  assert.equal(toPosix('.claude/agents/spec.md'), '.claude/agents/spec.md')
+})
+
+test('Windows에서 낸 매니페스트를 POSIX에서 읽어도 지울 것이 없다', () => {
+  const previous = { files: ['.claude\\agents\\spec.md'] }
+  assert.deepEqual(findStaleMirrorFiles(['.claude/agents/spec.md'], previous), [])
+  assert.deepEqual(findUnmanagedFiles(['.claude/agents/spec.md'], [], previous), [])
+})
+
+test('매니페스트를 손으로 고쳐 files가 배열이 아니면 없는 것으로 본다', () => {
+  // 문자열이면 스프레드가 글자로 쪼개지고 숫자면 터진다. 둘 다 소비 저장소에서 난다.
+  for (const broken of ['a.md', 42, null, { a: 1 }]) {
+    assert.deepEqual(findStaleMirrorFiles(['x.md'], { files: broken }), [])
+    assert.deepEqual(findUnmanagedFiles(['y.md'], [], { files: broken }), ['y.md'])
+  }
+})
+
+test('매니페스트에 적히는 경로도 슬래시로 고른다', () => {
+  assert.deepEqual(buildManifest({ version: '0.3.0', files: ['a\\b.md'] }).files, ['a/b.md'])
 })

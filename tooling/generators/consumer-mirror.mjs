@@ -15,6 +15,37 @@
 export const MANIFEST_PATH = '.agent-harness/generated.json'
 
 /**
+ * 경로를 POSIX 구분자로 맞춘다.
+ *
+ * **매니페스트가 저장소에 커밋되어 플랫폼을 건너다닌다.** `relative()`는 Windows에서
+ * 백슬래시를 낸다 — Windows에서 낸 매니페스트를 macOS에서 읽으면 겹치는 경로가
+ * 하나도 없고, **지난번에 놓은 것 전부가 지울 대상이 된다.**
+ *
+ * 기록하는 쪽과 읽는 쪽 **양쪽 다** 통과시켜야 한다. 한쪽만 맞추면 Windows 안에서
+ * 스스로 안 맞는다.
+ *
+ * @param {string} path
+ * @returns {string}
+ */
+export function toPosix(path) {
+  return String(path).replace(/\\/g, '/')
+}
+
+/**
+ * 매니페스트의 파일 목록.
+ *
+ * ADR-0040이 "직접 고치지 않는다"고 적어 둔 파일이므로 **누군가 고친다.** 배열이
+ * 아니면 없는 것으로 본다 — 문자열이면 스프레드가 글자로 쪼개지고 숫자면 터진다.
+ *
+ * @param {unknown} previous
+ * @returns {string[]}
+ */
+function manifestFiles(previous) {
+  const files = previous?.files
+  return Array.isArray(files) ? files : []
+}
+
+/**
  * 이번에 낸 것과 지난번 매니페스트를 비교해 지울 것을 고른다.
  *
  * **지난번에 우리가 놓은 것 중 이번에 안 낸 것**만 지운다. 매니페스트에 없는 파일은
@@ -25,8 +56,8 @@ export const MANIFEST_PATH = '.agent-harness/generated.json'
  * @returns {string[]} 지울 상대 경로
  */
 export function findStaleMirrorFiles(emitted, previous) {
-  const now = new Set(emitted ?? [])
-  return (previous?.files ?? []).filter((path) => !now.has(path)).sort()
+  const now = new Set((emitted ?? []).map(toPosix))
+  return manifestFiles(previous).map(toPosix).filter((path) => !now.has(path)).sort()
 }
 
 /**
@@ -41,8 +72,8 @@ export function findStaleMirrorFiles(emitted, previous) {
  * @returns {string[]}
  */
 export function findUnmanagedFiles(present, emitted, previous) {
-  const known = new Set([...(emitted ?? []), ...(previous?.files ?? [])])
-  return (present ?? []).filter((path) => !known.has(path)).sort()
+  const known = new Set([...(emitted ?? []), ...manifestFiles(previous)].map(toPosix))
+  return (present ?? []).map(toPosix).filter((path) => !known.has(path)).sort()
 }
 
 /**
@@ -59,6 +90,6 @@ export function buildManifest({ version, files }) {
       '하네스가 이 저장소에 놓은 생성물. 직접 고치지 않는다 — 하네스에서 다시 낸다. ' +
       '여기 없는 파일은 하네스가 손대지 않는다 (ADR-0040).',
     harness: version,
-    files: [...(files ?? [])].sort(),
+    files: [...(files ?? [])].map(toPosix).sort(),
   }
 }

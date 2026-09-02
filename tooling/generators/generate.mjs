@@ -19,6 +19,7 @@ import {
 } from './permissions.mjs'
 import {
   MANIFEST_PATH,
+  toPosix,
   buildManifest,
   findStaleMirrorFiles,
   findUnmanagedFiles,
@@ -416,7 +417,7 @@ function renderCodexEntry({ capabilities, workflows, profiles }) {
 // ------------------------------------------------------------------ 출력
 
 function emit(path, content) {
-  const rel = relative(OUT_BASE, path)
+  const rel = toPosix(relative(OUT_BASE, path))
   expected.add(rel)
 
   const current = existsSync(path) ? readFileSync(path, 'utf8') : null
@@ -517,7 +518,17 @@ if (INTO) {
   // 소비 저장소는 자기 역할·스킬을 가질 수 있다. **생성 집합에 없다고 지우지 않는다** —
   // 지난번에 우리가 놓은 것만 지운다 (ADR-0040).
   const manifestPath = join(INTO, MANIFEST_PATH)
-  const previous = existsSync(manifestPath) ? JSON.parse(readFileSync(manifestPath, 'utf8')) : {}
+  // 손으로 고칠 파일이다 — ADR-0040이 고치지 말라고 적어 둔 것이 그 증거다. 여기서
+  // 죽으면 다시 내서 고칠 길까지 막힌다. 조용히 넘기지는 않는다.
+  let previous = {}
+  if (existsSync(manifestPath)) {
+    try {
+      previous = JSON.parse(readFileSync(manifestPath, 'utf8'))
+    } catch (error) {
+      console.warn(`매니페스트를 읽지 못했다 — 이번엔 아무것도 지우지 않고 다시 쓴다.`)
+      console.warn(`  ${MANIFEST_PATH}: ${String(error.message).split('\n')[0]}`)
+    }
+  }
   const emitted = [...expected]
 
   for (const rel of findStaleMirrorFiles(emitted, previous)) {
@@ -531,7 +542,7 @@ if (INTO) {
   for (const [platform, config] of Object.entries(platforms)) {
     if (platform.startsWith('$') || !config.enabled) continue
     for (const sub of [config.agentDir, config.skillDir, config.commandDir, 'rules'].filter(Boolean)) {
-      for (const path of listFiles(join(INTO, config.outputDir, sub))) present.push(relative(INTO, path))
+      for (const path of listFiles(join(INTO, config.outputDir, sub))) present.push(toPosix(relative(INTO, path)))
     }
   }
   unmanaged.push(...findUnmanagedFiles(present, emitted, previous))
@@ -546,7 +557,7 @@ if (INTO) {
     if (platform.startsWith('$') || !config.enabled) continue
     for (const sub of [config.agentDir, config.skillDir, 'rules'].filter(Boolean)) {
       for (const path of listFiles(join(ROOT, config.outputDir, sub))) {
-        const rel = relative(ROOT, path)
+        const rel = toPosix(relative(ROOT, path))
         if (expected.has(rel)) continue
         orphans.push(rel)
         if (!CHECK_ONLY) rmSync(path)
