@@ -35,7 +35,7 @@ commands:
 
 ADR-0026이 툴체인에서 내린 판단과 같다 — **저장소가 자기 선행조건을 아는 유일한 쪽이다.**
 
-`operations.md` §0의 "조언만" 칸에 들어간다. `version-advice`·`npm run reviews`에 이은
+`operations.md` §0의 "조언만" 칸에 들어간다. `version-advice`에 이은
 세 번째다.
 
 ### 검증기에 조언 채널을 만든다
