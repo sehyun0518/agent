@@ -20,6 +20,7 @@ import { findEvidenceWithoutArtifact } from './evidence-artifact.mjs'
 import { findMissingMootBranches } from './workflow-red-proof.mjs'
 import { walk } from '../walk.mjs'
 import { findBrokenSectionRefs } from './doc-refs.mjs'
+import { findVendorNames } from './vendor-names.mjs'
 import { findUnknownHookEvents, knownHookEvents, isHookDoc } from './hook-events.mjs'
 import { findLayerAdvice, renderLayerAdvice } from './layer-advice.mjs'
 import { findLayerStepsWithoutEscape, findUnproducedVerdicts } from './layer-applicability.mjs'
@@ -1118,6 +1119,19 @@ for (const { source, target, section } of findBrokenSectionRefs(
   DOCS,
 )) {
   fail(join(ROOT, source), `${target}에 §${section}이 없다. 참조가 틀렸거나 절이 사라졌다. (ADR-0034)`)
+}
+
+// 리뷰 봇의 상표명은 저장소에 남기지 않는다. 하네스는 특정 벤더의 것이 아니고,
+// 이름은 낡는다 — 열여섯 곳에 들어와 있었다 (#108).
+const NAME_SOURCES = [
+  ...walk(join(ROOT, 'docs'), (p) => p.endsWith('.md')),
+  ...walk(join(ROOT, 'tooling'), (p) => p.endsWith('.mjs')),
+  join(ROOT, 'README.md'),
+].filter(existsSync)
+for (const { path, name, line } of findVendorNames(
+  NAME_SOURCES.map((p) => ({ path: relative(ROOT, p), text: readFileSync(p, 'utf8') })),
+)) {
+  fail(join(ROOT, path), `${line}행에 '${name}'이 있다. 리뷰 봇의 상표명을 적지 않는다 — 붙는 봇은 저장소마다 다르다.`)
 }
 
 // 설명 없는 도구 커맨드는 명령 한 줄이지 커맨드가 아니다.
