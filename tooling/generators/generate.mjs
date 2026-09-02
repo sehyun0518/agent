@@ -589,7 +589,7 @@ if (INTO) {
 } else {
   for (const [platform, config] of Object.entries(platforms)) {
     if (platform.startsWith('$') || !config.enabled) continue
-    for (const sub of [config.agentDir, config.skillDir, 'rules'].filter(Boolean)) {
+    for (const sub of [config.agentDir, config.skillDir, config.commandDir, 'rules'].filter(Boolean)) {
       for (const path of listFiles(join(ROOT, config.outputDir, sub))) {
         const rel = toPosix(relative(ROOT, path))
         if (expected.has(rel)) continue

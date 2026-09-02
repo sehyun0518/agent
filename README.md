@@ -257,5 +257,6 @@ Capability와 프로파일 소스에서 생성합니다.
 | [ADR-0038](docs/adr/0038-layer-applicability.md) | 계층은 전부 필수이고, 해당 없음은 계약 고정 단계가 판정합니다. |
 | [ADR-0039](docs/adr/0039-setup-command.md) | 설정 커맨드는 뼈대를 놓고 채울 것을 알려줍니다. 탐지하지 않습니다. |
 | [ADR-0040](docs/adr/0040-consumer-mirror.md) | 생성물을 소비 저장소로 냅니다. 매니페스트에 적은 것만 지웁니다. |
+| [ADR-0041](docs/adr/0041-drop-review-counter.md) | 리뷰 미응답을 세는 도구를 없앱니다. 막지 못하면서 통제처럼 보였습니다. |
 
 구조 이관 내역은 [docs/migration/inventory.md](docs/migration/inventory.md)에서 확인할 수 있습니다.

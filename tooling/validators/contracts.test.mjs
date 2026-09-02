@@ -57,7 +57,6 @@ import {
 import { buildStepBriefing, renderStepBriefing, parseGateHeader, stepIds } from '../briefing/step.mjs'
 import { walk } from '../walk.mjs'
 import { matchExpectations, readEvidenceRecords } from '../briefing/evidence.mjs'
-import { findUnansweredReviews, findPendingChecks, reviewers } from '../briefing/reviews.mjs'
 import { findBrokenSectionRefs, sectionNumbers } from './doc-refs.mjs'
 import { findUnknownHookEvents, hookEventOf, knownHookEvents, isHookDoc } from './hook-events.mjs'
 import { findLayerAdvice, renderLayerAdvice, testLayersInCommands } from './layer-advice.mjs'
@@ -2459,76 +2458,6 @@ test('증거 파일이 비어도 터지지 않는다', () => {
   assert.deepEqual(readEvidenceRecords(undefined), { records: [], malformed: 0 })
   assert.deepEqual(matchExpectations(undefined, [기대])[0].found, null)
   assert.deepEqual(matchExpectations([], undefined), [])
-})
-
-// ── 리뷰 미응답 (ADR-0034) ────────────────────────────────────────────────
-//
-// 이 세션이 리뷰 세 건을 놓쳤다. 늦게 온 것이 아니라 머지 28분 전에 도착해 있었고
-// 안 돌아봤다. 사람이 기억하는 것으로 고치면 같은 실패가 또 난다.
-
-const 봇글 = (id, bot = 'reviewer[bot]', over = {}) =>
-  ({ id, in_reply_to_id: null, user: { login: bot }, path: 'a.mjs', line: 1, ...over })
-const 답글 = (id, root, login) => ({ id, in_reply_to_id: root, user: { login } })
-
-test('답한 지적은 세지 않는다', () => {
-  assert.deepEqual(
-    findUnansweredReviews([봇글(1), 답글(2, 1, 'sehyun0518')]),
-    [],
-  )
-})
-
-test('답 없는 봇 지적을 낸다', () => {
-  const found = findUnansweredReviews([봇글(1), 봇글(2)])
-  assert.deepEqual(found.map((f) => f.id), [1, 2])
-})
-
-// 봇이 내 답글에 다시 답한다. 그것은 내가 답한 증거가 아니다.
-test('봇이 봇에게 단 답글은 응답으로 세지 않는다', () => {
-  assert.deepEqual(
-    findUnansweredReviews([봇글(1), 답글(2, 1, 'reviewer[bot]')]).map((f) => f.id),
-    [1],
-  )
-})
-
-test('사람이 연 스레드는 대상이 아니다', () => {
-  assert.deepEqual(findUnansweredReviews([봇글(1, 'sehyun0518')]), [])
-})
-
-test('코멘트가 없어도 터지지 않는다', () => {
-  assert.deepEqual(findUnansweredReviews(undefined), [])
-  assert.deepEqual(findUnansweredReviews([null, undefined]), [])
-})
-
-// "지적 없음"과 "아직 안 봤다"는 다르다. 인라인만 세면 둘이 같아 보이고, 아무도 안 본
-// PR이 깨끗하다고 보고된다 — 이 도구를 처음 돌렸을 때 실제로 그랬다.
-test('리뷰를 낸 쪽을 낸다', () => {
-  assert.deepEqual(
-    reviewers([{ author: { login: 'reviewer' } }, { author: { login: 'sehyun0518' } },
-      { author: { login: 'reviewer' } }]),
-    ['reviewer', 'sehyun0518'],
-  )
-})
-
-test('아무도 안 봤으면 빈 목록이다', () => {
-  assert.deepEqual(reviewers([]), [])
-  assert.deepEqual(reviewers(undefined), [])
-  assert.deepEqual(reviewers([null, { author: null }]), [])
-})
-
-test('진행 중인 체크를 낸다', () => {
-  assert.deepEqual(
-    findPendingChecks([
-      { name: 'check', bucket: 'pass' },
-      { name: 'review-bot', bucket: 'pending' },
-      { name: 'x', state: 'IN_PROGRESS' },
-      { name: 'y' },
-    ]),
-    ['review-bot', 'x', 'y'],
-  )
-})
-
-test('체크가 없어도 터지지 않는다', () => {
-  assert.deepEqual(findPendingChecks(undefined), [])
 })
 
 // ── 문서 절 참조 (ADR-0034) ──────────────────────────────────────────────
