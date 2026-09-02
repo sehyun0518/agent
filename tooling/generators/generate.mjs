@@ -30,6 +30,8 @@ import {
   commandsFromProfile,
   commandsFromWorkflows,
   commandsFromTools,
+  harnessPathFrom,
+  toolScript,
   findDuplicateCommands,
 } from './commands.mjs'
 
@@ -335,6 +337,8 @@ function renderInsertions(insertions) {
   )
 }
 
+const HARNESS_PATH = harnessPathFrom(INTO, ROOT, relative)
+
 function renderCommand(command) {
   const front = { description: command.description.replace(/\s+/g, ' ').slice(0, 200) }
   // 워크플로는 흐름 전체를 건네므로 본문이 다르다. 다만 순서를 여기 옮겨 적지
@@ -345,8 +349,9 @@ function renderCommand(command) {
       `---\n${stringifyYaml(front, { lineWidth: 0 })}---\n\n` +
       `\`${source}\`를 읽고 그 순서대로 진행한다. 단계 ${command.stepCount}개다.\n\n` +
       `각 step의 \`expect\`·\`expectAnyOf\`가 전이 조건이고, \`gate\`가 가리키는\n` +
-      `\`workflows/gates/*.md\`가 무엇을 봐야 하는지 정한다. \`skippable\`이 있는 단계만\n` +
-      `생략할 수 있고, 생략하면 사유를 증거로 남긴다.\n\n` +
+      `\`workflows/gates/*.md\`가 무엇을 봐야 하는지 정한다. 계층은 전부 필수다 —\n` +
+      `건너뛰는 것이 아니라 계약 고정 단계의 \`test.<layer>.applicability\` 판정이\n` +
+      `\`not-applicable\`일 때 넘어간다 (ADR-0038).\n\n` +
       `순서를 여기 옮겨 적지 않는다. 워크플로 파일이 단일 출처다.\n\n` +
       renderInsertions(command.insertions) +
       `**자동이 아닌 것.** 이 저장소에는 워크플로 실행 엔진도 증거 저장소도 없다\n` +
@@ -360,7 +365,7 @@ function renderCommand(command) {
   if (command.kind === 'tool') {
     return (
       `---\n${stringifyYaml(front, { lineWidth: 0 })}---\n\n` +
-      `\`\`\`bash\n${command.script}\n\`\`\`\n\n` +
+      `\`\`\`bash\n${toolScript(command, HARNESS_PATH)}\n\`\`\`\n\n` +
       `${command.note ?? ''}\n\n` +
       `이 파일에 내용을 옮겨 적지 않는다.\n`
     )

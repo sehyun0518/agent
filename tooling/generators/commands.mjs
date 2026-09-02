@@ -246,3 +246,40 @@ export function commandsFromWorkflows(workflows, profiles = []) {
     insertions: insertionsForWorkflow(w, profiles),
   }))
 }
+
+/**
+ * 소비 저장소에서 하네스 스크립트를 부를 때 서 있어야 하는 곳.
+ *
+ * 도구 커맨드는 `npm run step -- ...`을 시키는데 **그 스크립트는 하네스의
+ * `package.json`에 있다.** 소비 저장소에서 그대로 치면 `Missing script: "step"`이다.
+ * 실제로 그랬다 (#106).
+ *
+ * 배치를 하드코딩하지 않는다. 하네스가 소비 저장소 안에 있을 수도 있고 나란히
+ * 있을 수도 있다(ADR-0020) — 둘 다 상대 경로로 나온다.
+ *
+ * @param {string|null} into 소비 저장소 절대 경로. 하네스 자기 미러면 null
+ * @param {string} root 하네스 절대 경로
+ * @param {(from: string, to: string) => string} relative
+ * @returns {string|null} 소비 저장소 기준 하네스 경로. 자기 미러면 null
+ */
+export function harnessPathFrom(into, root, relative) {
+  if (!into) return null
+  const rel = relative(into, root)
+  return rel === '' ? '.' : rel
+}
+
+/**
+ * 도구 커맨드의 실행 줄.
+ *
+ * 하네스 자기 미러에서는 `npm run`만 적는다 — 이미 거기 서 있다. 소비 저장소로
+ * 낼 때만 `cd`와 프로파일 경로를 붙인다.
+ *
+ * @param {{script: string, name: string}} command
+ * @param {string|null} harnessPath
+ * @returns {string}
+ */
+export function toolScript(command, harnessPath) {
+  if (!harnessPath || harnessPath === '.') return command.script
+  const lines = [`cd ${harnessPath}   # npm 스크립트는 하네스에 있다`, command.script]
+  return lines.join('\n')
+}

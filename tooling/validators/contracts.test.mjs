@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { parse as parseYaml } from 'yaml'
+import { relative as require_relative } from 'node:path'
 import { resolveTestingLayers, findTestLayerConflicts } from './profile-testing.mjs'
 import { createWorkflowGraph } from './workflow-graph.mjs'
 import { resolveRunners, findUnresolvedRunners, findDuplicateInserts } from './profile-roster.mjs'
@@ -12,6 +13,7 @@ import { findForeignNamespaceTokens, insertTokens } from './profile-namespace.mj
 import { findUndeclaredNestedRepos, submodulePathsFrom } from './nested-repo.mjs'
 import { findWidenedHosts, findUnfilledAllowlist } from './network-scope.mjs'
 import { adrNumbers, findAdrIndexDrift } from './adr-index.mjs'
+import { harnessPathFrom, toolScript } from '../generators/commands.mjs'
 import {
   CONVENTION_KEYS,
   declaredCommandKeys,
@@ -2999,4 +3001,35 @@ test('저장소 이름이 null이어도 프로파일의 id가 문자열이다', 
   assert.equal(typeof doc.id, 'string')
   assert.equal(typeof doc.namespace, 'string')
   assert.equal(doc.id, 'null')
+})
+
+// ── 도구 커맨드의 실행 위치 (#106) ──────────────────────────────────────
+
+test('소비 저장소로 낼 때 하네스 경로를 배치에서 유도한다', () => {
+  // 배치를 하드코딩하지 않는다. 안에 넣는 것도 나란히 두는 것도 정당하다 (ADR-0020).
+  const rel = (from, to) => require_relative(from, to)
+  assert.equal(harnessPathFrom('/repo', '/repo/.agent-harness/harness', rel), '.agent-harness/harness')
+  assert.equal(harnessPathFrom('/repo', '/side/agent', rel), '../side/agent')
+})
+
+test('하네스 자기 미러에는 경로가 없다', () => {
+  const rel = (from, to) => require_relative(from, to)
+  assert.equal(harnessPathFrom(null, '/repo', rel), null)
+  assert.equal(harnessPathFrom('/repo', '/repo', rel), '.')
+})
+
+test('소비 저장소용 도구 커맨드는 어디서 칠지 말한다', () => {
+  // npm 스크립트는 하네스의 package.json 에 있다. 소비 저장소에서 그대로 치면
+  // Missing script: "step" 이다 — 실제로 그랬다.
+  const command = { name: 'step', script: 'npm run step -- <workflow> <step>' }
+  const rendered = toolScript(command, '.agent-harness/harness')
+  assert.match(rendered, /^cd \.agent-harness\/harness/)
+  assert.match(rendered, /npm run step/)
+})
+
+test('하네스 자기 미러에는 cd를 붙이지 않는다', () => {
+  // 이미 거기 서 있다. 붙이면 자기 자신으로 cd 하라는 말이 된다.
+  const command = { name: 'step', script: 'npm run step -- <workflow> <step>' }
+  assert.equal(toolScript(command, null), command.script)
+  assert.equal(toolScript(command, '.'), command.script)
 })
