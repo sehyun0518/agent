@@ -6,7 +6,7 @@
 // 워크플로 선행조건 도달 가능성, 미러 드리프트.
 
 import { readFileSync, readdirSync, existsSync, lstatSync } from 'node:fs'
-import { join, relative, resolve, dirname, basename } from 'node:path'
+import { join, relative, resolve, dirname, basename, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import Ajv from 'ajv/dist/2020.js' // 스키마가 draft 2020-12를 쓴다
 import addFormats from 'ajv-formats'
@@ -82,7 +82,9 @@ const advisories = []
  */
 function display(path) {
   const rel = relative(ROOT, path)
-  return rel.startsWith('..') ? path : rel
+  // 구성 요소로 본다. `..cache/` 같은 ROOT 안의 이름이 `..` 로 시작한다고
+  // 밖으로 오판하면 안 된다 (#104 리뷰).
+  return rel === '..' || rel.startsWith(`..${sep}`) ? path : rel
 }
 
 function advise(file, message) {

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { parse as parseYaml } from 'yaml'
 import { resolveTestingLayers, findTestLayerConflicts } from './profile-testing.mjs'
 import { createWorkflowGraph } from './workflow-graph.mjs'
 import { resolveRunners, findUnresolvedRunners, findDuplicateInserts } from './profile-roster.mjs'
@@ -57,7 +58,7 @@ import { findBrokenSectionRefs, sectionNumbers } from './doc-refs.mjs'
 import { findUnknownHookEvents, hookEventOf, knownHookEvents, isHookDoc } from './hook-events.mjs'
 import { findLayerAdvice, renderLayerAdvice, testLayersInCommands } from './layer-advice.mjs'
 import { findLayerStepsWithoutEscape, findUnproducedVerdicts, layerOfStep } from './layer-applicability.mjs'
-import { skeleton, slug, submoduleProblem, whatIsLeft } from '../setup/init.mjs'
+import { skeleton, slug, yamlScalar, submoduleProblem, whatIsLeft } from '../setup/init.mjs'
 import {
   findUnreachablePreconditions,
   findUnusedAssumes,
@@ -2981,4 +2982,21 @@ test('슬러그는 스키마 패턴을 실제로 통과한다', () => {
   for (const name of ['MyApp', 'my_app', '2048', '블로그', '--x--', 'a.b.c', '']) {
     assert.match(slug(name), pattern, `${name} 를 바꾼 값이 패턴을 어긴다`)
   }
+})
+
+test('YAML이 문자열로 안 읽는 값은 따옴표로 감싼다', () => {
+  // true · false · null 은 슬러그 패턴을 통과하지만 따옴표 없이 적으면
+  // 파서가 불리언과 null 로 바꾼다. 그러면 id 가 문자열이 아니게 된다.
+  assert.equal(yamlScalar('true'), '"true"')
+  assert.equal(yamlScalar('null'), '"null"')
+  assert.equal(yamlScalar('False'), '"False"')
+  assert.equal(yamlScalar('myapp'), 'myapp')
+  assert.equal(yamlScalar('truely'), 'truely')
+})
+
+test('저장소 이름이 null이어도 프로파일의 id가 문자열이다', () => {
+  const doc = parseYaml(skeleton({ id: slug('null'), namespace: slug('null'), commandKeys: [], conventionKeys: [] }))
+  assert.equal(typeof doc.id, 'string')
+  assert.equal(typeof doc.namespace, 'string')
+  assert.equal(doc.id, 'null')
 })

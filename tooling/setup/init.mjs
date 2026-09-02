@@ -38,6 +38,20 @@ export function slug(name) {
   return /^[a-z]/.test(cleaned) ? cleaned : `repo-${cleaned}`
 }
 
+/**
+ * 프로파일에 적을 YAML 스칼라.
+ *
+ * `true` · `false` · `null` 은 슬러그 패턴을 통과하는데 **따옴표 없이 적으면
+ * 문자열로 안 읽힌다** — 파서가 불리언과 null로 바꾼다. 그러면 `id`가 문자열이
+ * 아니게 되어 스키마를 어긴다. 저장소 이름이 `null`인 경우다 (#104 리뷰).
+ *
+ * @param {string} value
+ * @returns {string}
+ */
+export function yamlScalar(value) {
+  return /^(true|false|null)$/i.test(value) ? `"${value}"` : value
+}
+
 /** 최소 유효 프로파일. 스키마의 required 넷만 채우고 나머지는 주석으로 남긴다. */
 export function skeleton({ id, namespace, commandKeys, conventionKeys }) {
   const keys = (commandKeys ?? []).map((k) => `  #   ${k}`).join('\n')
@@ -48,9 +62,9 @@ export function skeleton({ id, namespace, commandKeys, conventionKeys }) {
 # 순서와 게이트는 하네스의 workflows/ 가 소유한다.
 
 schemaVersion: 1
-id: ${id}
+id: ${yamlScalar(id)}
 kind: repository
-namespace: ${namespace}
+namespace: ${yamlScalar(namespace)}
 
 # ---------------------------------------------------------------- 실행 명령
 # 코어 변형의 commandKey가 여기를 찾는다. 이름이 아래와 다르면 **양쪽 다 조용히**
