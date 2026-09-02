@@ -19,6 +19,7 @@ import {
 import {
   MANIFEST_PATH,
   toPosix,
+  escapesBase,
   buildManifest,
   findStaleMirrorFiles,
   findUnmanagedFiles,
@@ -2933,4 +2934,26 @@ test('매니페스트를 손으로 고쳐 files가 배열이 아니면 없는 �
 
 test('매니페스트에 적히는 경로도 슬래시로 고른다', () => {
   assert.deepEqual(buildManifest({ version: '0.3.0', files: ['a\\b.md'] }).files, ['a/b.md'])
+})
+
+test('매니페스트가 저장소 밖을 가리키면 지울 대상에서 뺀다', () => {
+  // 매니페스트는 소비 저장소 안의 데이터 파일이다. ../ 가 들어가면
+  // join(INTO, rel) 이 밖을 가리키고 rmSync 가 남의 파일을 지운다 (#102 리뷰).
+  const previous = { files: ['.claude/agents/gone.md', '../victim.txt', '/etc/passwd'] }
+  assert.deepEqual(findStaleMirrorFiles([], previous, '/repo'), ['.claude/agents/gone.md'])
+})
+
+test('base를 안 주면 거르지 않는다', () => {
+  // 하네스 자기 미러에는 소비 저장소 개념이 없다. 인자를 선택으로 두되
+  // 안 주면 전과 같이 동작해야 한다.
+  assert.deepEqual(findStaleMirrorFiles([], { files: ['../x.md'] }), ['../x.md'])
+})
+
+test('담김 판정은 이름이 겹치는 형제 디렉터리에 속지 않는다', () => {
+  assert.equal(escapesBase('/repo', '.claude/a.md'), false)
+  assert.equal(escapesBase('/repo', '.'), false)
+  assert.equal(escapesBase('/repo', '../repo-evil/a.md'), true)
+  assert.equal(escapesBase('/repo', '../victim.txt'), true)
+  assert.equal(escapesBase('/repo', '/etc/passwd'), true)
+  assert.equal(escapesBase('/repo', 'a/../../b.md'), true)
 })

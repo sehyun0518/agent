@@ -11,6 +11,8 @@
 // 벤더링이 같은 문제를 이미 풀었다(ADR-0016) — **무엇을 우리가 놓았는지 적어 두고 그것만
 // 본다.** 여기서는 방향이 반대일 뿐이다.
 
+import { resolve, sep } from 'node:path'
+
 /** 소비 저장소에 두는 매니페스트 경로. 프로파일 옆이다. */
 export const MANIFEST_PATH = '.agent-harness/generated.json'
 
@@ -46,6 +48,22 @@ function manifestFiles(previous) {
 }
 
 /**
+ * 상대 경로가 기준 밖으로 나가는가.
+ *
+ * 매니페스트는 **소비 저장소 안의 데이터 파일**이다. 거기 `../../something`이 들어
+ * 있으면 `join(INTO, rel)`이 저장소 밖을 가리키고 **`rmSync`가 남의 파일을 지운다.**
+ * 지우는 경로에는 담는 것을 확인하고 들어간다 (#102 리뷰).
+ *
+ * @param {string} base 절대 경로
+ * @param {string} rel
+ * @returns {boolean}
+ */
+export function escapesBase(base, rel) {
+  const target = resolve(base, rel)
+  return target !== base && !target.startsWith(base.endsWith(sep) ? base : base + sep)
+}
+
+/**
  * 이번에 낸 것과 지난번 매니페스트를 비교해 지울 것을 고른다.
  *
  * **지난번에 우리가 놓은 것 중 이번에 안 낸 것**만 지운다. 매니페스트에 없는 파일은
@@ -53,11 +71,16 @@ function manifestFiles(previous) {
  *
  * @param {string[]} emitted 이번에 낸 상대 경로
  * @param {{files?: string[]}} previous 지난번 매니페스트
+ * @param {string} [base] 소비 저장소 절대 경로. 주면 밖으로 나가는 항목을 뺀다
  * @returns {string[]} 지울 상대 경로
  */
-export function findStaleMirrorFiles(emitted, previous) {
+export function findStaleMirrorFiles(emitted, previous, base) {
   const now = new Set((emitted ?? []).map(toPosix))
-  return manifestFiles(previous).map(toPosix).filter((path) => !now.has(path)).sort()
+  return manifestFiles(previous)
+    .map(toPosix)
+    .filter((path) => !now.has(path))
+    .filter((path) => !base || !escapesBase(base, path))
+    .sort()
 }
 
 /**
