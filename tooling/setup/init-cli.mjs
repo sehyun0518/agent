@@ -9,6 +9,7 @@ import { join, dirname, basename, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse as parseYaml } from 'yaml'
 import { walk } from '../walk.mjs'
+import { shellArg } from '../shell.mjs'
 import { declaredCommandKeys, CONVENTION_KEYS } from '../validators/command-keys.mjs'
 import { skeleton, slug, submoduleProblem, whatIsLeft } from './init.mjs'
 
@@ -96,7 +97,5 @@ console.log('  채우지 않은 계층 규약은 도메인 것을 제안받는�
 // 하네스 안에만 있기 때문이다. 실제로 `commands`가 0인 저장소를 봤다 (ADR-0040).
 const mirrored = existsSync(join(dir, 'generated.json'))
 console.log(`\n생성물  ${mirrored ? '이 저장소에 있다 — 하네스를 올렸으면 다시 낸다' : '아직 없다 — /step 같은 커맨드를 칠 수 없다'}`)
-// 붙여 넣어 쓰는 줄이다. 공백이 든 경로는 인자가 쪼개져 --into 가 엉뚱한 값을 받는다.
-const shell = (path) => (/^[\w./-]+$/.test(path) ? path : `'${path.replace(/'/g, `'\\''`)}'`)
-console.log(`  npm run generate -- --check --into ${shell(repo)}   먼저 무엇이 바뀌는지 본다`)
-console.log(`  npm run generate -- --into ${shell(repo)}`)
+console.log(`  npm run generate -- --check --into ${shellArg(repo)}   먼저 무엇이 바뀌는지 본다`)
+console.log(`  npm run generate -- --into ${shellArg(repo)}`)

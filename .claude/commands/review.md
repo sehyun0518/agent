@@ -5,8 +5,9 @@ description: 이미 만들어진 변경을 판정만 한다. 구현하지 않으
 `workflows/review.yaml`를 읽고 그 순서대로 진행한다. 단계 7개다.
 
 각 step의 `expect`·`expectAnyOf`가 전이 조건이고, `gate`가 가리키는
-`workflows/gates/*.md`가 무엇을 봐야 하는지 정한다. `skippable`이 있는 단계만
-생략할 수 있고, 생략하면 사유를 증거로 남긴다.
+`workflows/gates/*.md`가 무엇을 봐야 하는지 정한다. 계층은 전부 필수다 —
+건너뛰는 것이 아니라 계약 고정 단계의 `test.<layer>.applicability` 판정이
+`not-applicable`일 때 넘어간다 (ADR-0038).
 
 순서를 여기 옮겨 적지 않는다. 워크플로 파일이 단일 출처다.
 

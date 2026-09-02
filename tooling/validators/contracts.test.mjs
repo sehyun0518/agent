@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { parse as parseYaml } from 'yaml'
+import { relative as require_relative } from 'node:path'
 import { resolveTestingLayers, findTestLayerConflicts } from './profile-testing.mjs'
 import { createWorkflowGraph } from './workflow-graph.mjs'
 import { resolveRunners, findUnresolvedRunners, findDuplicateInserts } from './profile-roster.mjs'
@@ -12,6 +13,8 @@ import { findForeignNamespaceTokens, insertTokens } from './profile-namespace.mj
 import { findUndeclaredNestedRepos, submodulePathsFrom } from './nested-repo.mjs'
 import { findWidenedHosts, findUnfilledAllowlist } from './network-scope.mjs'
 import { adrNumbers, findAdrIndexDrift } from './adr-index.mjs'
+import { harnessPathFrom, toolScript, backTo } from '../generators/commands.mjs'
+import { shellArg } from '../shell.mjs'
 import {
   CONVENTION_KEYS,
   declaredCommandKeys,
@@ -2999,4 +3002,73 @@ test('저장소 이름이 null이어도 프로파일의 id가 문자열이다', 
   assert.equal(typeof doc.id, 'string')
   assert.equal(typeof doc.namespace, 'string')
   assert.equal(doc.id, 'null')
+})
+
+// ── 도구 커맨드의 실행 위치 (#106) ──────────────────────────────────────
+
+test('소비 저장소로 낼 때 하네스 경로를 배치에서 유도한다', () => {
+  // 배치를 하드코딩하지 않는다. 안에 넣는 것도 나란히 두는 것도 정당하다 (ADR-0020).
+  const rel = (from, to) => require_relative(from, to)
+  assert.equal(harnessPathFrom('/repo', '/repo/.agent-harness/harness', rel), '.agent-harness/harness')
+  assert.equal(harnessPathFrom('/repo', '/side/agent', rel), '../side/agent')
+})
+
+test('하네스 자기 미러에는 경로가 없다', () => {
+  const rel = (from, to) => require_relative(from, to)
+  assert.equal(harnessPathFrom(null, '/repo', rel), null)
+  assert.equal(harnessPathFrom('/repo', '/repo', rel), '.')
+})
+
+test('소비 저장소용 도구 커맨드는 어디서 칠지 말한다', () => {
+  // npm 스크립트는 하네스의 package.json 에 있다. 소비 저장소에서 그대로 치면
+  // Missing script: "step" 이다 — 실제로 그랬다.
+  const command = { name: 'step', script: 'npm run step -- <workflow> <step>' }
+  const rendered = toolScript(command, '.agent-harness/harness')
+  assert.match(rendered, /^cd \.agent-harness\/harness/)
+  assert.match(rendered, /npm run step/)
+})
+
+test('하네스 자기 미러에는 cd를 붙이지 않는다', () => {
+  // 이미 거기 서 있다. 붙이면 자기 자신으로 cd 하라는 말이 된다.
+  const command = { name: 'step', script: 'npm run step -- <workflow> <step>' }
+  assert.equal(toolScript(command, null), command.script)
+  assert.equal(toolScript(command, '.'), command.script)
+})
+
+test('붙여 넣어 쓰는 줄은 공백이 든 경로를 한 인자로 남긴다', () => {
+  // init 이 찍는 경로에서 처음 났고 도구 커맨드의 cd 줄에서 똑같이 다시 났다.
+  // 해법을 한 파일 안에만 두었기 때문이다 (#102 · #106).
+  assert.equal(shellArg('/a/b-c.d'), '/a/b-c.d')
+  assert.equal(shellArg('../my harness/agent'), "'../my harness/agent'")
+  assert.equal(shellArg("it's"), "'it'\\''s'")
+  assert.equal(shellArg(''), "''")
+})
+
+test('공백이 든 하네스 경로도 cd 한 줄로 남는다', () => {
+  const rendered = toolScript({ name: 'step', script: 'npm run step' }, '../my harness/agent')
+  assert.match(rendered, /^cd '\.\.\/my harness\/agent'/)
+})
+
+test('cd 뒤의 인자는 하네스에서 본 경로로 바뀐다', () => {
+  // 도구가 인자를 현재 위치에서 푼다. 읽는 사람이 알던 .agent-harness/profile.yaml 을
+  // 그대로 쓰면 하네스 안을 가리킨다 (#106 리뷰).
+  const step = { name: 'step', script: 'npm run step -- <workflow> <step> [--profile <경로>] [--run <runId>]' }
+  const out = toolScript(step, '.agent-harness/harness')
+  assert.match(out, /--profile \.\.\/\.\.\/\.agent-harness\/profile\.yaml/)
+  const init = { name: 'init', script: 'npm run init -- <소비저장소 경로>' }
+  assert.match(toolScript(init, '.agent-harness/harness'), /npm run init -- \.\.\/\.\./)
+})
+
+test('하네스가 저장소 밖이면 되돌아갈 길을 못 만든다', () => {
+  // ../side/agent 를 뒤집으려면 소비 저장소의 이름을 알아야 하는데 여기 없다.
+  // 지어내지 않고 절대 경로를 쓰라고 남긴다.
+  assert.equal(backTo('../side/agent'), '<소비저장소 절대경로>')
+  assert.equal(backTo('.agent-harness/harness'), '../..')
+  assert.equal(backTo('harness'), '..')
+})
+
+test('하네스 경로도 플랫폼과 무관하게 슬래시다', () => {
+  // 문서로 나가는 줄이다. 백슬래시는 셸에서 안 먹는다.
+  const winRelative = () => '.agent-harness\\harness'
+  assert.equal(harnessPathFrom('/r', '/r/.agent-harness/harness', winRelative), '.agent-harness/harness')
 })
