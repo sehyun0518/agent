@@ -12,6 +12,8 @@ import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, statSy
 import { join, dirname, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml'
+import { renderCodexMcp, mergeCodexMcp } from './mcp.mjs'
+import { renderCodexAgentConfig } from './codex-agent.mjs'
 import {
   buildSettings,
   findPermissionMismatches,
@@ -399,6 +401,8 @@ function renderCodexAgent(agent) {
   const skills = [...new Set((agent.skills ?? []).map(skillName))]
   if (skills.length > 0) front.skills = skills
 
+  if (agent.mcpServers?.length) front.mcpServers = [...new Set(agent.mcpServers.flatMap(Object.keys))]
+
   return (
     `---\n${stringifyYaml(front, { lineWidth: 0 })}---\n\n` +
     `# ${agent.id} (Codex 래퍼)\n\n` +
@@ -428,7 +432,8 @@ function renderCodexEntry({ capabilities, workflows, profiles }) {
     `| 워크플로 | \`workflows/\` |\n` +
     `| 정책 | \`policies/\` |\n` +
     `| 어휘 | \`docs/vocabulary.md\` |\n\n` +
-    `\`.codex/\`는 Codex 운용을 위한 얇은 래퍼와 \`SKILL.md\` 미러만 둔다.\n\n` +
+    `\`.codex/agents/*.toml\`은 네이티브 서브 에이전트 설정이고, \`*.md\`는 역할 안내다.\n` +
+    `MCP가 필요한 작업은 해당 이름의 서브 에이전트로 호출한다. 설정 변경 후에는 새 세션에서 호출한다.\n\n` +
     `## Capability\n\n${capList}\n\n` +
     `## 워크플로\n\n${wfList}\n\n` +
     `## 프로파일\n\n${prList}\n\n` +
@@ -487,7 +492,24 @@ for (const [platform, config] of Object.entries(platforms)) {
     }
 
   } else if (platform === 'codex') {
-    for (const agent of agents) emit(out(config.agentDir, `${agent.id}.md`), renderCodexAgent(agent))
+    const mcpPath = out('config.toml')
+    refuseEscapingOutput(mcpPath)
+    try {
+      const current = existsSync(mcpPath) ? readFileSync(mcpPath, 'utf8') : ''
+      emit(mcpPath, mergeCodexMcp(current, renderCodexMcp(agents)))
+    } catch (error) {
+      errors.push(error.message)
+    }
+    const serverNames = [...new Set(agents.flatMap((agent) => (agent.mcpServers ?? []).flatMap(Object.keys)))]
+    for (const agent of agents) {
+      emit(out(config.agentDir, `${agent.id}.md`), renderCodexAgent(agent))
+      const manifest = agent.capability
+        ? `capabilities/${agent.capability}/capability.yaml`
+        : agent.profile ? `profiles/${agent.profile}/profile.yaml` : 'packages/orchestrator/orchestrator.yaml'
+      emit(out(config.agentDir, `${agent.id}.toml`), renderCodexAgentConfig(agent, {
+        source: sourcePathOf(agent), manifest, harnessPath: HARNESS_PATH, serverNames,
+      }))
+    }
     for (const [name, dir] of skills) {
       for (const { rel, path } of skillFiles(dir)) emit(out(config.skillDir, name, rel), readFileSync(path, 'utf8'))
     }
@@ -496,9 +518,11 @@ for (const [platform, config] of Object.entries(platforms)) {
       out('README.md'),
       `# .codex — 생성된 미러\n\n` +
         `**이 디렉터리는 생성물이다. 직접 편집하지 않는다.** 진입점은 \`.codex/AGENTS.md\`.\n\n` +
-        `- \`agents/\` — 역할 래퍼. 본문은 각 \`source\`가 가리키는 소스가 단일 출처다.\n` +
+        `- \`agents/*.toml\` — Codex가 실제로 불러오는 네이티브 서브 에이전트와 역할별 MCP 설정이다.\n` +
+        `- \`agents/*.md\` — 역할 안내. 본문은 각 \`source\`가 가리키는 소스가 단일 출처다.\n` +
         `- \`skills/\` — \`SKILL.md\` 미러. 규칙 팩은 \`rules/\` 하위까지 그대로 옮긴다.\n` +
         `- \`rules/permissions.rules\` — 승인·금지 명령을 Codex 런타임에 투영한 생성 규칙이다.\n\n` +
+        `- \`config.toml\` — MCP 서버 설정. 하네스 관리 블록만 생성하며 나머지 설정은 보존한다.\n\n` +
         `수정은 \`capabilities/\`·\`profiles/\`·\`packages/orchestrator/\`에서 하고\n` +
         `\`npm run generate\`를 돌린다. CI가 재생성 결과와 커밋 상태를 대조한다.\n`,
     )

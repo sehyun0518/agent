@@ -2,6 +2,8 @@
 name: accessibility
 source: profiles/frontend/agents/accessibility.md
 profile: frontend
+mcpServers:
+  - playwright
 ---
 
 # accessibility (Codex 래퍼)

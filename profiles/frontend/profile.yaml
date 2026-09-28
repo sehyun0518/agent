@@ -171,13 +171,24 @@ bindings:
       - frontend:lynx-api-docs
       - frontend:lynx-typescript
       - frontend:rspeedy-bundle-size
-    tools: [mcp__playwright]
+    tools: [mcp__playwright, mcp__supabase, mcp__posthog]
     mcpServers:
       - playwright:
           type: stdio
           command: npx
           args: ["-y", "@playwright/mcp@latest"]
-    note: 시각 자가 점검용. RN 타깃이면 이 도구 대신 RN 프리뷰를 쓴다.
+      - supabase:
+          type: http
+          url: https://mcp.supabase.com/mcp
+      - posthog:
+          type: http
+          url: https://mcp.posthog.com/mcp
+    note: >-
+      Playwright는 시각 자가 점검용이며 RN 타깃이면 RN 프리뷰를 쓴다.
+      Supabase는 계약에 지정된 프로젝트의 스키마·타입·로그 확인과 허용된 통합 작업에 쓴다.
+      최초 OAuth 인증과 프로젝트 범위 설정은 docs/supabase-mcp.md를 따른다.
+      PostHog는 계약에 지정된 프로젝트의 이벤트·오류·기능 플래그 확인과 허용된 계측 작업에 쓴다.
+      PostHog OAuth 인증과 CLI 보조 사용은 docs/posthog-mcp.md를 따른다.
 
   - capability: test-design
     variant: e2e

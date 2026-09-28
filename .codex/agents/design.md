@@ -2,6 +2,8 @@
 name: design
 source: profiles/frontend/agents/design.md
 profile: frontend
+mcpServers:
+  - playwright
 ---
 
 # design (Codex 래퍼)

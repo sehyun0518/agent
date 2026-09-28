@@ -14,7 +14,8 @@
 | 정책 | `policies/` |
 | 어휘 | `docs/vocabulary.md` |
 
-`.codex/`는 Codex 운용을 위한 얇은 래퍼와 `SKILL.md` 미러만 둔다.
+`.codex/agents/*.toml`은 네이티브 서브 에이전트 설정이고, `*.md`는 역할 안내다.
+MCP가 필요한 작업은 해당 이름의 서브 에이전트로 호출한다. 설정 변경 후에는 새 세션에서 호출한다.
 
 ## Capability
 
