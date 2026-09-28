@@ -87,6 +87,7 @@ const drifted = []
 const orphans = []
 const errors = []
 const expected = new Set()
+const pendingWrites = new Map()
 
 function listDirs(dir) {
   if (!existsSync(dir)) return []
@@ -464,9 +465,7 @@ function emit(path, content) {
     drifted.push(rel)
     return
   }
-  mkdirSync(dirname(path), { recursive: true })
-  writeFileSync(path, content)
-  written.push(rel)
+  pendingWrites.set(path, content)
 }
 
 const permissionTable = JSON.parse(readFileSync(join(ROOT, 'tooling', 'generators', 'permissions.json'), 'utf8'))
@@ -565,6 +564,19 @@ for (const name of findUndeclaredPlatforms(platforms, permissionTable)) {
   )
 }
 
+// 선언·렌더·병합 검증이 모두 끝나기 전에는 어떤 생성물도 바꾸지 않는다.
+// 실패한 출력이 expected에서 빠져도 정리 단계가 기존 개인 설정을 지우지 못하게 한다.
+if (errors.length > 0) {
+  console.error('\n오류:')
+  for (const message of errors) console.error(`  ✗ ${message}`)
+  process.exit(1)
+}
+for (const [path, content] of pendingWrites) {
+  mkdirSync(dirname(path), { recursive: true })
+  writeFileSync(path, content)
+  written.push(toPosix(relative(OUT_BASE, path)))
+}
+
 // ------------------------------------------------- 고아 정리
 // 생성 집합에 없는데 관리 디렉터리에 남아 있는 파일. 이름이 바뀐 역할의 옛 파일이
 // 그대로 남으면 플랫폼이 그걸 계속 읽는다.
@@ -636,12 +648,6 @@ if (unmanaged.length > 0) {
   console.log(`\n하네스가 관리하지 않는 파일 ${unmanaged.length}개 — 손대지 않는다:`)
   for (const rel of unmanaged) console.log(`  · ${rel}`)
   console.log('  손으로 복사한 것이면 이제 하네스가 내는 것으로 바뀌었는지 본다 (ADR-0040)')
-}
-
-if (errors.length > 0) {
-  console.error('\n오류:')
-  for (const message of errors) console.error(`  ✗ ${message}`)
-  process.exit(1)
 }
 
 if (CHECK_ONLY) {
