@@ -19,7 +19,9 @@ produces:
 
 permissions:
   filesystem: write
-  network: none
+  network: allowlist
+  # 외부 서비스 연결 호스트는 소비 저장소가 정한다 (docs/supabase-mcp.md).
+  networkAllowlist: []
   destructive: false
 
 # 구현자가 자가 교정을 위해 하네스를 돌리는 것은 작업 방식이지 기록의 증거가 아니다.

@@ -2,6 +2,8 @@
 name: tester
 source: capabilities/test-design/agents/tester.md
 capability: test-design
+mcpServers:
+  - playwright
 ---
 
 # tester (Codex 래퍼)

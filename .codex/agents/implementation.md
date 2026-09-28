@@ -10,6 +10,10 @@ skills:
   - react-native-skills
   - reactlynx-best-practices
   - vanilla-lynx
+mcpServers:
+  - playwright
+  - supabase
+  - posthog
 ---
 
 # implementation (Codex 래퍼)

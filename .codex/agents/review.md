@@ -4,6 +4,8 @@ source: capabilities/review/agents/review.md
 capability: review
 skills:
   - requirements-spec
+mcpServers:
+  - playwright
 ---
 
 # review (Codex 래퍼)

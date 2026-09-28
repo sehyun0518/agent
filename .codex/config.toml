@@ -1,0 +1,12 @@
+# BEGIN agent-harness MCP
+# 생성물: profiles/ · capabilities/를 고치고 npm run generate를 실행한다.
+[mcp_servers."playwright"]
+command = "npx"
+args = ["-y","@playwright/mcp@latest"]
+
+[mcp_servers."posthog"]
+url = "https://mcp.posthog.com/mcp"
+
+[mcp_servers."supabase"]
+url = "https://mcp.supabase.com/mcp"
+# END agent-harness MCP

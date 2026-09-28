@@ -24,7 +24,7 @@
     "skillDir": "skills",
     "skillFile": "SKILL.md",
     "bodyMode": "reference",
-    "$comment": "얇은 래퍼 + SKILL.md 미러 + AGENTS.md 진입점. 슬래시 커맨드 개념이 달라 commandDir를 두지 않는다. 신뢰된 프로젝트의 .codex/rules/*.rules는 Codex가 시작할 때 읽는다.",
+    "$comment": "네이티브 agents/*.toml + 역할 안내 *.md + SKILL.md 미러 + AGENTS.md 진입점. TOML은 역할 원본을 참조하며 배정된 MCP를 설정한다. 슬래시 커맨드 개념이 달라 commandDir를 두지 않는다. 신뢰된 프로젝트의 .codex/rules/*.rules는 Codex가 시작할 때 읽는다.",
     "permissionFile": "rules/permissions.rules",
     "permissionFormat": "codex-rules"
   }
