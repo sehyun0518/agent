@@ -5,7 +5,7 @@
 // 회귀 케이스가 거기 붙는다.
 
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
-import { join, dirname, basename, relative } from 'node:path'
+import { join, dirname, basename, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parse as parseYaml } from 'yaml'
 import { buildStepBriefing, renderStepBriefing, stepIds } from './step.mjs'
@@ -70,9 +70,23 @@ function workflowIds() {
     .map((n) => basename(n).replace(/\.ya?ml$/, ''))
 }
 
+/**
+ * 증거가 있는 곳. `--profile`이 소비 저장소를 가리키면 거기가 주 체크아웃이다 —
+ * 일은 그 저장소에서 하고 증거도 그 옆에 쌓인다(ADR-0018). ROOT만 보면 소비
+ * 저장소에서 흐름을 돌리는 내내 "대조하지 않았다"만 나온다.
+ */
+function evidenceRoot(profilePaths) {
+  for (const value of profilePaths) {
+    const marker = `${sep}.agent-harness${sep}`
+    const at = resolve(value).lastIndexOf(marker)
+    if (at !== -1) return resolve(value).slice(0, at)
+  }
+  return ROOT
+}
+
 // 발급은 정하지 않는다(execution-state). 읽는 쪽이 찾는 방법만 정한다 — ADR-0033 결정 3.
-function resolveRun(requested) {
-  const dir = join(ROOT, '.harness', 'runs')
+function resolveRun(requested, base) {
+  const dir = join(base, '.harness', 'runs')
   if (requested) return { runId: requested }
   if (!existsSync(dir)) return { runId: null }
   const runs = readdirSync(dir).filter((n) => !n.startsWith('.'))
@@ -85,9 +99,9 @@ function resolveRun(requested) {
 // 증거는 실행 산출물이라 손으로도 쓴다. 깨졌다고 브리핑 전체를 막지 않는다 —
 // ADR-0033이 "읽는 쪽이 건너뛰고 그 사실을 말한다"고 적었다. 선언과 다른 자리다:
 // 선언이 깨지면 브리핑을 만들 수 없지만, 증거가 깨져도 단계 설명은 나온다.
-function loadEvidence(runId) {
+function loadEvidence(runId, base) {
   if (!runId) return null
-  const path = join(ROOT, '.harness', 'runs', runId, 'evidence.yaml')
+  const path = join(base, '.harness', 'runs', runId, 'evidence.yaml')
   if (!existsSync(path)) return { records: [], malformed: 0, path, missing: true }
   try {
     return { ...readEvidenceRecords(parseYaml(readFileSync(path, 'utf8'))), path }
@@ -141,8 +155,9 @@ if (!workflowPath) {
 }
 
 const workflow = readYaml(workflowPath)
-const run = resolveRun(requestedRun)
-const evidence = loadEvidence(run.runId)
+const evidenceBase = evidenceRoot(profilePaths)
+const run = resolveRun(requestedRun, evidenceBase)
+const evidence = loadEvidence(run.runId, evidenceBase)
 
 const briefing = buildStepBriefing({
   workflow,
@@ -166,7 +181,7 @@ if (run.ambiguous) {
   console.log(`\n흐름이 여럿이라 증거를 대조하지 않았다. --run으로 고른다:`)
   console.log(run.ambiguous.map((r) => `  ${r}`).join('\n'))
 } else if (!run.runId) {
-  console.log('\n증거를 대조하지 않았다 — .harness/runs/에 흐름이 없다 (ADR-0033).')
+  console.log(`\n증거를 대조하지 않았다 — ${relative(ROOT, join(evidenceBase, '.harness', 'runs'))}에 흐름이 없다 (ADR-0033).`)
 } else if (evidence?.missing) {
   console.log(`\n증거를 대조하지 않았다 — ${relative(ROOT, evidence.path)}이 없다.`)
 } else if (evidence?.broken) {
