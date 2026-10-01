@@ -15,6 +15,7 @@ import { findWidenedHosts, findUnfilledAllowlist } from './network-scope.mjs'
 import { adrNumbers, findAdrIndexDrift } from './adr-index.mjs'
 import { harnessPathFrom, toolScript, backTo } from '../generators/commands.mjs'
 import { shellArg } from '../shell.mjs'
+import { findVendorNames, VENDOR_NAMES } from './vendor-names.mjs'
 import {
   CONVENTION_KEYS,
   declaredCommandKeys,
@@ -2465,7 +2466,7 @@ test('증거 파일이 비어도 터지지 않는다', () => {
 // 이 세션이 리뷰 세 건을 놓쳤다. 늦게 온 것이 아니라 머지 28분 전에 도착해 있었고
 // 안 돌아봤다. 사람이 기억하는 것으로 고치면 같은 실패가 또 난다.
 
-const 봇글 = (id, bot = 'coderabbitai[bot]', over = {}) =>
+const 봇글 = (id, bot = 'reviewer[bot]', over = {}) =>
   ({ id, in_reply_to_id: null, user: { login: bot }, path: 'a.mjs', line: 1, ...over })
 const 답글 = (id, root, login) => ({ id, in_reply_to_id: root, user: { login } })
 
@@ -2481,10 +2482,10 @@ test('답 없는 봇 지적을 낸다', () => {
   assert.deepEqual(found.map((f) => f.id), [1, 2])
 })
 
-// CodeRabbit이 내 답글에 다시 답한다. 그것은 내가 답한 증거가 아니다.
+// 봇이 내 답글에 다시 답한다. 그것은 내가 답한 증거가 아니다.
 test('봇이 봇에게 단 답글은 응답으로 세지 않는다', () => {
   assert.deepEqual(
-    findUnansweredReviews([봇글(1), 답글(2, 1, 'coderabbitai[bot]')]).map((f) => f.id),
+    findUnansweredReviews([봇글(1), 답글(2, 1, 'reviewer[bot]')]).map((f) => f.id),
     [1],
   )
 })
@@ -2502,9 +2503,9 @@ test('코멘트가 없어도 터지지 않는다', () => {
 // PR이 깨끗하다고 보고된다 — 이 도구를 처음 돌렸을 때 실제로 그랬다.
 test('리뷰를 낸 쪽을 낸다', () => {
   assert.deepEqual(
-    reviewers([{ author: { login: 'gemini-code-assist' } }, { author: { login: 'sehyun0518' } },
-      { author: { login: 'gemini-code-assist' } }]),
-    ['gemini-code-assist', 'sehyun0518'],
+    reviewers([{ author: { login: 'reviewer' } }, { author: { login: 'sehyun0518' } },
+      { author: { login: 'reviewer' } }]),
+    ['reviewer', 'sehyun0518'],
   )
 })
 
@@ -2518,11 +2519,11 @@ test('진행 중인 체크를 낸다', () => {
   assert.deepEqual(
     findPendingChecks([
       { name: 'check', bucket: 'pass' },
-      { name: 'CodeRabbit', bucket: 'pending' },
+      { name: 'review-bot', bucket: 'pending' },
       { name: 'x', state: 'IN_PROGRESS' },
       { name: 'y' },
     ]),
-    ['CodeRabbit', 'x', 'y'],
+    ['review-bot', 'x', 'y'],
   )
 })
 
@@ -3071,4 +3072,39 @@ test('하네스 경로도 플랫폼과 무관하게 슬래시다', () => {
   // 문서로 나가는 줄이다. 백슬래시는 셸에서 안 먹는다.
   const winRelative = () => '.agent-harness\\harness'
   assert.equal(harnessPathFrom('/r', '/r/.agent-harness/harness', winRelative), '.agent-harness/harness')
+})
+
+// ── 벤더 상표명 (#108) ──────────────────────────────────────────────────
+//
+// **이 케이스들은 이름을 적지 않는다.** 목록에서 조립한다 — 검사가 자기 회귀
+// 케이스에 걸리는 것을 예외로 풀면, 그 예외가 곧 빠져나갈 구멍이 된다.
+
+const 상표 = VENDOR_NAMES[0]
+
+test('리뷰 봇의 상표명을 잡는다', () => {
+  const found = findVendorNames([{ path: 'a.mjs', text: `x\n// ${상표} 이 말했다\n` }])
+  assert.equal(found.length, 1)
+  assert.equal(found[0].line, 2)
+})
+
+test('대소문자를 가리지 않는다', () => {
+  const 대문자 = 상표.toUpperCase()
+  assert.equal(findVendorNames([{ path: 'a.md', text: 대문자 }]).length, 1)
+})
+
+test('목록을 가진 파일 자신은 세지 않는다', () => {
+  // 자기가 자기를 걸면 늘 실패한다.
+  assert.deepEqual(findVendorNames([{ path: 'tooling/validators/vendor-names.mjs', text: 상표 }]), [])
+})
+
+test('목록의 모든 이름이 실제로 잡힌다', () => {
+  // 목록에 넣었는데 안 잡히는 것이 없어야 한다.
+  for (const name of VENDOR_NAMES) {
+    assert.ok(findVendorNames([{ path: 'a.md', text: name }]).length >= 1, `${name} 이 안 잡힌다`)
+  }
+})
+
+test('상표명이 없으면 통과한다', () => {
+  assert.deepEqual(findVendorNames([{ path: 'a.mjs', text: '리뷰 봇이 말했다' }]), [])
+  assert.deepEqual(findVendorNames(undefined), [])
 })
